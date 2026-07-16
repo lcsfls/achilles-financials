@@ -1,15 +1,16 @@
 # 🏛️ Achilles Financials
 
-**Self-hosted private wealth dashboard** — connect your Revolut account via QR code, track categorized
-spending, precious metals, investments with live prices, your occupational pension, and simulate your
-path to financial independence. Wrapped in a dark glassmorphism UI with a gold accent.
+**Self-hosted private wealth dashboard.** Connect your bank by scanning a QR code, then track
+categorized spending, precious metals, investments with live prices and your pension — and simulate
+your path to financial independence. Dark glassmorphism UI with a gold accent.
+
+Works with **2,700+ banks across 30 European countries** through
+[Enable Banking](https://enablebanking.com)'s PSD2 interface — read-only, revocable, and everything
+stays on your own server.
 
 > ⚡ **This project is 100 % vibe-coded.** Every line — app, design, deployment scripts, this README —
 > was written by an AI coding agent ([Claude Code](https://claude.com/claude-code)) in conversation.
 > No human wrote a single line of code. Review it accordingly before trusting it with your finances. 🤖
-
-**Deutsch?** Die App selbst ist zweisprachig — beim ersten Start wählst du im Setup-Assistenten
-zwischen Deutsch und Englisch.
 
 ---
 
@@ -17,22 +18,17 @@ zwischen Deutsch und Englisch.
 
 | | |
 |---|---|
-| 🏦 **Revolut via QR code** | Connect through GoCardless Bank Account Data (PSD2, free tier, read-only). Generate a QR code, scan it with your phone, authorize in the Revolut app — Achilles syncs up to 12 months of history. |
-| 📄 **CSV import** | No GoCardless account? Export a statement from the Revolut app (Account → Statement → CSV) and upload it. Duplicate-safe, works with German and English exports. |
-| 🏷️ **Auto-categorization** | Rule-based categories (groceries, subscriptions, housing, …). Manual overrides are sticky and survive re-syncs. |
-| 🥇 **Precious metals** | Track every purchase (lot) of gold, silver, platinum or palladium with grams, cost basis and date. Live spot prices (gold-api.com + ECB FX) show current value and P/L per lot and per metal. |
-| 📈 **Investments + live prices** | Stocks, ETFs, crypto — add a Yahoo-format symbol (`AAPL`, `VWCE.DE`, `BTC-EUR`) and refresh all prices with one click, including USD→EUR conversion. |
-| 👀 **Watchlist** | Watch any symbol with price and daily change. |
-| 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, FIRE number, years to financial independence — interactive sliders, seeded from your real net worth. |
-| 🐷 **Occupational pension** | Log the balances from your pension statements; the latest balance feeds into net worth and the FIRE simulation. |
-| 🌍 **Bilingual** | German and English, chosen in the first-run setup wizard, switchable anytime. |
-| ⬆️ **Self-updating** | Settings → Updates shows the changelog since your version and installs it with one click (pulls this repo and rebuilds). Or one line in the shell. |
-| 🔒 **Private by design** | Everything lives in a single SQLite file on your server. The only outbound calls are public price/FX APIs — no personal data ever leaves your box. |
-
-## Screenshots
-
-Dark glassmorphism UI, gold accents, animated charts — run the demo mode and see for yourself:
-the setup wizard offers realistic sample data on first launch.
+| 🏦 **Any European bank, by QR code** | Pick your country, search your bank, scan the QR code with your phone, approve in your banking app. Achilles pulls up to 12 months of history — balances and transactions only, never payment access. |
+| 📄 **CSV import** | No API account needed: export a statement from your banking app and upload it. Duplicate-safe, understands English and German column headers. |
+| 🏷️ **Auto-categorization** | Rule-based categories (groceries, subscriptions, housing, …). Manual overrides stick and survive re-syncs. |
+| 🥇 **Precious metals** | Track every purchase as its own lot — grams, cost basis, date, dealer. Live spot prices for gold, silver, platinum and palladium show current value and P/L per lot and per metal. |
+| 📈 **Investments + live prices** | Stocks, ETFs, crypto. Add a Yahoo-format symbol (`AAPL`, `VWCE.DE`, `BTC-EUR`) and refresh every price with one click, including USD→EUR conversion. |
+| 👀 **Watchlist** | Watch any symbol with its price and daily change. |
+| 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, your FIRE number, and years to financial independence — interactive sliders, seeded from your real net worth. |
+| 🐷 **Pension tracking** | Log balances from your pension statements; the latest one feeds into net worth and the FIRE simulation. |
+| 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
+| ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |
+| 🔒 **Private by design** | One SQLite file on your server. Outbound calls go only to public price/FX APIs and your bank's PSD2 endpoint — no analytics, no cloud, no middleman holding your data. |
 
 ## Quick start (local)
 
@@ -43,11 +39,12 @@ npm install
 npm run dev        # → http://localhost:3000
 ```
 
-The first-run setup wizard walks you through language, the optional Revolut connection and demo data.
+The setup wizard walks you through language, the optional bank connection, and demo data. Demo mode
+fills the dashboard with realistic sample data so you can explore before connecting anything real.
 
 ## Deployment
 
-### Proxmox (recommended) — one command
+### Proxmox — one command
 
 Run on your Proxmox VE host as root:
 
@@ -55,14 +52,14 @@ Run on your Proxmox VE host as root:
 bash <(curl -fsSL https://raw.githubusercontent.com/lcsfls/achilles-financials/main/deploy/proxmox-install.sh)
 ```
 
-The script creates an unprivileged Debian 12 LXC (with `nesting=1`), installs Docker, clones this
-repo, builds the image and starts the app.
+Creates an unprivileged Debian 12 LXC (`nesting=1`), installs Docker, clones this repo, builds the
+image, starts the app, and wires up the in-app updater.
 
 Storage is detected automatically — if your host has exactly one container storage it's used, and if
 there are several the script lists them (with free space) and asks. Pass `STORAGE=<name>` to skip the
-question; run `pvesm status --content rootdir` to see the names on your host.
+question; `pvesm status --content rootdir` shows the names on your host.
 
-All defaults are overridable via environment variables:
+All defaults are overridable:
 
 ```bash
 CTID=120 STORAGE=local-zfs BRIDGE=vmbr0 NET_IP=192.168.1.50/24 NET_GW=192.168.1.1 \
@@ -77,14 +74,35 @@ cd achilles-financials
 APP_URL=http://<your-lan-ip>:3000 docker compose up -d --build
 ```
 
-`APP_URL` **must** be the address reachable from your phone — Revolut redirects back to it after
-authorization. Data lives in the `achilles-data` volume (`/data/achilles.db`); backing up that one
+`APP_URL` **must** be the address reachable from your phone — your bank redirects back to it after
+authorization. Data lives in the `achilles-data` volume (`/data/achilles.db`); backing up that single
 file is a full backup:
 
 ```bash
 docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
   tar czf /backup/achilles-backup.tar.gz /data
 ```
+
+## Connecting your bank
+
+Personal accounts can only be reached through a licensed PSD2 provider — talking to banks directly
+would require a qualified eSeal certificate (~€1–2k/year). Achilles uses **Enable Banking**, a
+Finnish AISP covering 2,700+ banks in 30 European countries. Their *Restricted Production* tier is
+free for personal use: real production data, but only from accounts you whitelist yourself — exactly
+what a personal dashboard needs.
+
+1. Create an account at [enablebanking.com](https://enablebanking.com)
+2. Register an application in the Control Panel. Set the redirect URL to
+   `http://<your-host>:3000/api/bank/callback` (Settings shows the exact URL for your install).
+   You'll get an **Application ID** and a **private key** (`.pem`).
+3. Paste both into the setup wizard or under **Settings**. They're stored only in your local SQLite.
+4. **Connect** → pick country → search your bank → scan the QR code → approve in your banking app → **Sync**
+
+Access is read-only, valid for up to 180 days, and revocable in your banking app at any time.
+Prefer not to register at all? Use the **CSV import** on the Connect page.
+
+> **Note:** one bank at a time. Multiple accounts *within* that bank all sync; connecting several
+> different banks in parallel isn't supported yet.
 
 ## Updating
 
@@ -93,50 +111,35 @@ installs it on click. The app writes a request to `control/`, a systemd watcher 
 `deploy/update.sh`, which pulls and rebuilds. Your database is untouched. The Proxmox installer sets
 this up automatically.
 
-**In the shell** — one line, from inside the LXC/host:
+**In the shell** — one line, inside the LXC/host:
 
 ```bash
 /opt/achilles-financials/deploy/update.sh
 ```
 
-Or straight from the Proxmox host (replace `120` with your CTID):
+Or from the Proxmox host (replace `120` with your CTID):
 
 ```bash
 pct exec 120 -- /opt/achilles-financials/deploy/update.sh
 ```
 
-The script is idempotent: it exits early if you're already on the latest commit, and writes its log
-to `control/update.log`.
+Idempotent: it exits early if you're already on the latest commit, and logs to `control/update.log`.
 
-> **Note on in-app updates:** they only work when `./control` is bind-mounted and the systemd watcher
-> is installed (the Proxmox installer does both). Without it, the app still *checks* for updates and
-> shows you the shell command to copy — it just won't run it itself. The app never gets access to the
-> Docker socket.
-
-## Connecting Revolut
-
-Personal Revolut accounts can only be accessed through a licensed PSD2 provider — that's what
-GoCardless Bank Account Data is (FCA-regulated, free tier, read-only, revocable in the Revolut app
-at any time).
-
-1. Create a free account at [bankaccountdata.gocardless.com](https://bankaccountdata.gocardless.com)
-2. Create a secret pair under **Developers → User Secrets**
-3. Paste it in the setup wizard or under **Settings**
-4. **Connect** → generate the QR code → scan with your phone → approve in the Revolut app → **Sync**
-
-Don't want a GoCardless account? Use the **CSV import** on the Connect page instead.
+> In-app updates need `./control` bind-mounted and the systemd watcher installed (the Proxmox
+> installer does both). Without it, the app still *checks* for updates and shows you the shell command
+> to copy — it just won't run it itself. The app never gets access to the Docker socket.
 
 ## Stack
 
 Next.js 15 (App Router, standalone output) · React 19 · Tailwind CSS 4 · shadcn-style UI (Radix)
 · Recharts · better-sqlite3 · Docker multi-stage build
 
-Price data: [gold-api.com](https://gold-api.com) (metals) · Yahoo Finance (stocks/ETFs/crypto)
-· [frankfurter.app](https://frankfurter.app) (FX)
+Data sources: [Enable Banking](https://enablebanking.com) (PSD2 banking) ·
+[gold-api.com](https://gold-api.com) (metal spot prices) · Yahoo Finance (stocks/ETFs/crypto) ·
+[frankfurter.app](https://frankfurter.app) (FX rates)
 
 ## Disclaimer
 
-This is a hobby project, built entirely by an AI, for personal use on a private network.
-It has no authentication layer — do not expose it to the public internet without putting a
-reverse proxy with auth (Authelia, Tailscale, VPN, …) in front of it.
-Nothing in this app is financial advice.
+A hobby project, built entirely by an AI, for personal use on a private network. It has **no
+authentication layer** — don't expose it to the public internet without a reverse proxy with auth
+(Authelia, Tailscale, VPN, …) in front of it. Nothing in this app is financial advice.

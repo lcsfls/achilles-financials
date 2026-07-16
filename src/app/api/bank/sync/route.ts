@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncAccounts } from "@/lib/gocardless";
+import { syncAccounts } from "@/lib/enablebanking";
 
 export const dynamic = "force-dynamic";
 

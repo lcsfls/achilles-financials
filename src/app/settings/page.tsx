@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { gcConfigured: boolean; gcSecretIdMasked: string | null; country: string; demoMode: boolean; language: string };
+type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string };
 
 type UpdateInfo = {
   repo: string;
@@ -26,16 +27,21 @@ type UpdateInfo = {
 export default function SettingsPage() {
   const { t, lang, setLang } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [secretId, setSecretId] = useState("");
-  const [secretKey, setSecretKey] = useState("");
+  const [appId, setAppId] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
   const [country, setCountry] = useState("DE");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [upd, setUpd] = useState<UpdateInfo | null>(null);
   const [updBusy, setUpdBusy] = useState(false);
   const [updError, setUpdError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
+  const [redirectUrl, setRedirectUrl] = useState("…/api/bank/callback");
+  useEffect(() => { setRedirectUrl(`${window.location.origin}/api/bank/callback`); }, []);
 
   const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); });
   const loadUpdate = () => fetch("/api/update").then((r) => r.json()).then(setUpd).catch(() => {});
@@ -62,18 +68,20 @@ export default function SettingsPage() {
 
   const save = async () => {
     setBusy(true);
-    await fetch("/api/settings", {
+    setSaveError(null);
+    const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        gcSecretId: secretId || undefined,
-        gcSecretKey: secretKey || undefined,
+        ebAppId: appId || undefined,
+        ebPrivateKey: privateKey || undefined,
         country,
       }),
     });
     setBusy(false);
-    setSecretId("");
-    setSecretKey("");
+    if (!res.ok) { setSaveError((await res.json()).error); return; }
+    setAppId("");
+    setPrivateKey("");
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     load();
@@ -128,46 +136,54 @@ export default function SettingsPage() {
               <KeyRound className="h-5 w-5 text-gold" strokeWidth={1.7} />
             </div>
             <div>
-              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">GoCardless Bank Account Data</CardTitle>
-              <div className="text-xs text-muted-2">{t("PSD2-Schnittstelle für die Revolut-Verbindung")}</div>
+              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">Enable Banking</CardTitle>
+              <div className="text-xs text-muted-2">{t("PSD2-Schnittstelle zu 2.700+ Banken in Europa")}</div>
             </div>
           </div>
-          {settings?.gcConfigured
-            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Konfiguriert")} {settings.gcSecretIdMasked && `(${settings.gcSecretIdMasked})`}</Badge>
+          {settings?.ebConfigured
+            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Konfiguriert")} {settings.ebAppIdMasked && `(${settings.ebAppIdMasked})`}</Badge>
             : <Badge color="#fbbf24">{t("Nicht konfiguriert")}</Badge>}
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs leading-relaxed text-muted-2">
-            {t("Kostenlosen Account anlegen unter")}{" "}
-            <a href="https://bankaccountdata.gocardless.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-gold-bright hover:underline">
-              bankaccountdata.gocardless.com <ExternalLink className="h-3 w-3" />
+            {t("Account anlegen unter")}{" "}
+            <a href="https://enablebanking.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-gold-bright hover:underline">
+              enablebanking.com <ExternalLink className="h-3 w-3" />
             </a>
-            , {t("dann unter Developers → User Secrets ein Secret-Paar erstellen und hier einfügen. Die Schlüssel werden ausschließlich lokal in deiner SQLite-Datenbank gespeichert.")}
+            , {t("im Control Panel eine Anwendung registrieren (Redirect-URL siehe unten) und den dabei erzeugten Private Key hier einfügen. Application-ID und Key bleiben ausschließlich in deiner lokalen SQLite-Datenbank.")}
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Secret ID</Label>
-              <Input placeholder={settings?.gcConfigured ? "••••••••" : "1c8d4c0e-…"} value={secretId} onChange={(e) => setSecretId(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Secret Key</Label>
-              <Input type="password" placeholder={settings?.gcConfigured ? "••••••••" : "Secret Key"} value={secretKey} onChange={(e) => setSecretKey(e.target.value)} />
-            </div>
+          <div className="glass-inset rounded-xl px-3 py-2 text-[11px]">
+            <span className="text-muted-2">{t("Redirect-URL für das Control Panel")}: </span>
+            <code className="text-gold-bright">{redirectUrl}</code>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Application ID</Label>
+            <Input placeholder={settings?.ebConfigured ? "••••••••" : "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"} value={appId} onChange={(e) => setAppId(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("Private Key (.pem-Inhalt)")}</Label>
+            <textarea
+              rows={4}
+              spellCheck={false}
+              placeholder={settings?.ebConfigured ? "•••••••• (gesetzt)" : "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"}
+              value={privateKey}
+              onChange={(e) => setPrivateKey(e.target.value)}
+              className="flex w-full rounded-xl glass-inset px-4 py-3 font-mono text-[11px] text-foreground placeholder:text-muted-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+            />
           </div>
           <div className="space-y-1.5 sm:w-1/2">
-            <Label>{t("Land des Revolut-Kontos")}</Label>
+            <Label>{t("Land deiner Bank")}</Label>
             <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="DE">{t("Deutschland")}</option>
-              <option value="AT">{t("Österreich")}</option>
-              <option value="FR">{t("Frankreich")}</option>
-              <option value="ES">{t("Spanien")}</option>
-              <option value="IT">{t("Italien")}</option>
-              <option value="NL">{t("Niederlande")}</option>
-              <option value="IE">{t("Irland")}</option>
-              <option value="LT">{t("Litauen")}</option>
-              <option value="GB">{t("Großbritannien")}</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{lang === "de" ? c.de : c.en}</option>
+              ))}
             </Select>
           </div>
+          {saveError && (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-xs text-rose-soft">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {saveError}
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-1">
             <Button onClick={save} disabled={busy}>{t("Speichern")}</Button>
             {saved && <span className="flex items-center gap-1.5 text-sm text-emerald-soft"><CheckCircle2 className="h-4 w-4" /> {t("Gespeichert")}</span>}

@@ -1,7 +1,7 @@
 import { db, setSetting } from "./db";
 import { categorize } from "./categorize";
 
-/** Seed realistischer Demo-Daten, solange noch kein Revolut-Konto verbunden ist. */
+/** Seed realistischer Demo-Daten, solange noch keine Bank verbunden ist. */
 export function seedDemoData() {
   const d = db();
   const now = new Date();
@@ -9,7 +9,7 @@ export function seedDemoData() {
   d.prepare("INSERT OR REPLACE INTO accounts (id, provider, name, iban, currency, balance, last_synced) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
     "demo-main",
     "demo",
-    "Revolut Hauptkonto (Demo)",
+    "Hauptkonto (Demo)",
     "LT12 3250 0000 0000 0000",
     "EUR",
     8432.17,

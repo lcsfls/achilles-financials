@@ -24,7 +24,7 @@ function migrate(d: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY,
-      provider TEXT NOT NULL DEFAULT 'revolut',
+      provider TEXT NOT NULL DEFAULT 'bank',
       name TEXT,
       iban TEXT,
       currency TEXT DEFAULT 'EUR',

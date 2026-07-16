@@ -4,61 +4,72 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { QrCode, RefreshCw, CheckCircle2, AlertTriangle, Smartphone, ShieldCheck, Link2, FileUp } from "lucide-react";
+import { QrCode, RefreshCw, CheckCircle2, AlertTriangle, Smartphone, Link2, FileUp, Search, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
+import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
-type Status = { hasCreds: boolean; status: string | null; accounts: number; lastSync: string | null; error?: string };
-
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  CR: { label: "Erstellt — warte auf Autorisierung", color: "#fbbf24" },
-  GC: { label: "Autorisierung läuft", color: "#fbbf24" },
-  UA: { label: "Autorisierung läuft", color: "#fbbf24" },
-  GA: { label: "Zugriff wird gewährt", color: "#fbbf24" },
-  SA: { label: "Konten werden ausgewählt", color: "#fbbf24" },
-  LN: { label: "Verbunden", color: "#34d399" },
-  EX: { label: "Abgelaufen — bitte neu verbinden", color: "#fb7185" },
-  RJ: { label: "Abgelehnt", color: "#fb7185" },
+type Status = {
+  hasCreds: boolean; status: string | null; accounts: number;
+  aspsp: string | null; country: string; lastSync: string | null; linkedAt: string | null; error?: string;
 };
+type Aspsp = { name: string; country: string; logo?: string };
 
 function ConnectInner() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const params = useSearchParams();
-  const justLinked = params.get("linked") === "1";
 
   const [status, setStatus] = useState<Status | null>(null);
   const [qr, setQr] = useState<{ link: string; qrDataUrl: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(
-    justLinked ? { kind: "ok", text: "Revolut wurde autorisiert! Starte jetzt die erste Synchronisierung." } : null
-  );
+  const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const loadStatus = useCallback(() => fetch("/api/revolut/status").then((r) => r.json()).then(setStatus), []);
-  useEffect(() => { loadStatus(); }, [loadStatus]);
+  const [country, setCountry] = useState("DE");
+  const [aspsps, setAspsps] = useState<Aspsp[] | null>(null);
+  const [aspspQuery, setAspspQuery] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
 
-  // Während der QR-Code angezeigt wird: Status alle 5 s pollen
+  const loadStatus = useCallback(() => fetch("/api/bank/status").then((r) => r.json()).then(setStatus), []);
+
   useEffect(() => {
-    if (!qr) return;
-    const iv = setInterval(loadStatus, 5000);
-    return () => clearInterval(iv);
-  }, [qr, loadStatus]);
+    const linked = params.get("linked") === "1";
+    const error = params.get("error");
+    if (linked) setMessage({ kind: "ok", text: t("Bank verbunden! Starte jetzt die erste Synchronisierung.") });
+    else if (error) setMessage({ kind: "err", text: error });
+    loadStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const createQr = async () => {
-    setBusy("qr");
+  useEffect(() => { if (status?.country) setCountry(status.country); }, [status?.country]);
+
+  const loadAspsps = useCallback(async (c: string) => {
+    setBusy("aspsps");
+    setAspsps(null);
     setMessage(null);
-    const res = await fetch("/api/revolut/connect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
+    const res = await fetch(`/api/bank/aspsps?country=${c}`);
     const data = await res.json();
     setBusy(null);
     if (!res.ok) { setMessage({ kind: "err", text: data.error }); return; }
+    setAspsps(data.aspsps);
+  }, []);
+
+  const createQr = async (aspspName: string) => {
+    setBusy("qr");
+    setMessage(null);
+    setSelected(aspspName);
+    const res = await fetch("/api/bank/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aspspName, country }),
+    });
+    const data = await res.json();
+    setBusy(null);
+    if (!res.ok) { setMessage({ kind: "err", text: data.error }); setSelected(null); return; }
     setQr(data);
-    loadStatus();
   };
 
   const importCsv = async (file: File) => {
@@ -79,7 +90,7 @@ function ConnectInner() {
   const sync = async () => {
     setBusy("sync");
     setMessage(null);
-    const res = await fetch("/api/revolut/sync", { method: "POST" });
+    const res = await fetch("/api/bank/sync", { method: "POST" });
     const data = await res.json();
     setBusy(null);
     if (!res.ok) { setMessage({ kind: "err", text: data.error }); return; }
@@ -87,15 +98,16 @@ function ConnectInner() {
     loadStatus();
   };
 
-  const linked = status?.status === "LN";
-  const st = status?.status ? STATUS_LABEL[status.status] : null;
+  const linked = Boolean(status?.linkedAt) && status?.status !== "EXPIRED";
+  const filtered = (aspsps ?? []).filter((a) => a.name.toLowerCase().includes(aspspQuery.toLowerCase()));
+  const noCreds = status !== null && !status.hasCreds;
 
   return (
     <div className="space-y-6">
       <div className="rise">
-        <h1 className="font-display text-4xl gold-text">{t("Revolut verbinden")}</h1>
+        <h1 className="font-display text-4xl gold-text">{t("Bank verbinden")}</h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-2">
-          {t("Die Verbindung läuft über die PSD2-Banking-Schnittstelle von GoCardless — du autorisierst den Zugriff direkt in deiner Revolut-App. Achilles erhält nur Lesezugriff auf Salden und Umsätze, niemals Zugriff auf Zahlungen.")}
+          {t("Über die PSD2-Schnittstelle von Enable Banking — 2.700+ Banken in 30 europäischen Ländern. Du autorisierst den Zugriff direkt in deiner Banking-App. Achilles bekommt nur Lesezugriff auf Salden und Umsätze, niemals Zugriff auf Zahlungen.")}
         </p>
       </div>
 
@@ -105,19 +117,17 @@ function ConnectInner() {
           message.kind === "ok" ? "border-emerald-soft/25 bg-emerald-soft/8 text-emerald-soft" : "border-rose-soft/25 bg-rose-soft/8 text-rose-soft"
         )}>
           {message.kind === "ok" ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertTriangle className="h-5 w-5 shrink-0" />}
-          {t(message.text)}
+          {message.text}
         </div>
       )}
 
-      {status && !status.hasCreds && (
+      {noCreds && (
         <Card className="rise rise-1 border-amber-400/20 p-6">
           <div className="flex items-start gap-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
             <div className="text-sm leading-relaxed text-muted">
-              <span className="font-medium text-foreground">{t("GoCardless-Zugangsdaten fehlen.")}</span>{" "}
-              {t("Lege dir unter")}{" "}
-              <span className="text-gold-bright">bankaccountdata.gocardless.com</span>{" "}
-              {t("einen kostenlosen Account an, erstelle unter „Developers → User Secrets“ ein Secret-Paar und hinterlege es in den")}{" "}
+              <span className="font-medium text-foreground">{t("Enable-Banking-Zugangsdaten fehlen.")}</span>{" "}
+              {t("Lege einen Account auf enablebanking.com an, registriere im Control Panel eine Anwendung und hinterlege Application-ID und Private Key in den")}{" "}
               <Link href="/settings" className="text-gold-bright underline underline-offset-2">{t("Einstellungen")}</Link>.
             </div>
           </div>
@@ -125,45 +135,100 @@ function ConnectInner() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* QR card */}
+        {/* Bankauswahl / QR */}
         <Card className="rise rise-2">
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>{t("QR-Code · Smartphone")}</CardTitle>
-            {st && <Badge color={st.color}>{t(st.label)}</Badge>}
+            <CardTitle>{qr ? t("QR-Code · Smartphone") : t("Bank wählen")}</CardTitle>
+            {linked && status?.aspsp && <Badge color="#34d399">{status.aspsp}</Badge>}
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-5 pb-8">
             {qr ? (
               <>
                 <div className="rounded-3xl bg-gradient-to-b from-[#f7efdb] to-[#efe4c4] p-4 shadow-[0_24px_64px_-16px_rgba(212,175,55,0.35)]">
-                  <Image src={qr.qrDataUrl} alt="Revolut QR-Code" width={260} height={260} className="rounded-xl" unoptimized />
+                  <Image src={qr.qrDataUrl} alt={t("QR-Code")} width={260} height={260} className="rounded-xl" unoptimized />
                 </div>
                 <div className="text-center text-xs leading-relaxed text-muted-2">
-                  {t("Mit der Smartphone-Kamera scannen — der Link öffnet die Autorisierung, die Revolut-App übernimmt automatisch.")}
+                  {selected && <div className="mb-1 font-medium text-foreground">{selected}</div>}
+                  {t("Mit der Smartphone-Kamera scannen — der Link öffnet die Autorisierung, deine Banking-App übernimmt automatisch.")}
                 </div>
-                <a href={qr.link} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-gold-bright hover:underline">
-                  <Link2 className="h-3.5 w-3.5" /> {t("Oder Link direkt auf diesem Gerät öffnen")}
-                </a>
+                <div className="flex flex-col items-center gap-2">
+                  <a href={qr.link} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-gold-bright hover:underline">
+                    <Link2 className="h-3.5 w-3.5" /> {t("Oder Link direkt auf diesem Gerät öffnen")}
+                  </a>
+                  <button onClick={() => { setQr(null); setSelected(null); }} className="cursor-pointer text-xs text-muted-2 hover:text-foreground">
+                    {t("Andere Bank wählen")}
+                  </button>
+                </div>
               </>
             ) : (
-              <>
-                <div className="flex h-[260px] w-[260px] items-center justify-center rounded-3xl glass-inset">
-                  <QrCode className="h-20 w-20 text-white/10" strokeWidth={0.8} />
+              <div className="w-full space-y-4">
+                <div className="space-y-1.5">
+                  <Label>{t("Land")}</Label>
+                  <Select
+                    value={country}
+                    onChange={(e) => { setCountry(e.target.value); setAspsps(null); setAspspQuery(""); }}
+                    disabled={noCreds}
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>{lang === "de" ? c.de : c.en}</option>
+                    ))}
+                  </Select>
                 </div>
-                <Button onClick={createQr} disabled={busy === "qr" || (status !== null && !status.hasCreds)} className="w-full max-w-[260px]">
-                  {busy === "qr" ? t("QR-Code wird erstellt …") : linked ? t("Neu verbinden") : t("QR-Code erzeugen")}
-                </Button>
-              </>
+
+                {aspsps === null ? (
+                  <>
+                    <div className="flex h-[180px] items-center justify-center rounded-2xl glass-inset">
+                      <QrCode className="h-16 w-16 text-white/10" strokeWidth={0.8} />
+                    </div>
+                    <Button className="w-full" disabled={busy === "aspsps" || noCreds} onClick={() => loadAspsps(country)}>
+                      <Building2 className="h-4 w-4" />
+                      {busy === "aspsps" ? t("Lade Banken …") : t("Banken anzeigen")}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-2" />
+                      <Input
+                        className="pl-10"
+                        placeholder={t("{n} Banken durchsuchen …", { n: aspsps.length })}
+                        value={aspspQuery}
+                        onChange={(e) => setAspspQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="max-h-[280px] space-y-1 overflow-y-auto">
+                      {filtered.length === 0 && (
+                        <div className="py-6 text-center text-xs text-muted-2">{t("Keine Bank gefunden.")}</div>
+                      )}
+                      {filtered.slice(0, 100).map((a) => (
+                        <button
+                          key={a.name}
+                          onClick={() => createQr(a.name)}
+                          disabled={busy === "qr"}
+                          className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {a.logo
+                            ? <img src={a.logo} alt="" className="h-6 w-6 shrink-0 rounded object-contain" />
+                            : <Building2 className="h-5 w-5 shrink-0 text-muted-2" />}
+                          <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Steps / sync card */}
+        {/* Schritte / Sync / CSV */}
         <div className="space-y-4">
           <Card className="rise rise-3 p-6">
             <div className="space-y-5">
               {[
-                { icon: ShieldCheck, title: t("1 · QR-Code erzeugen"), text: t("Achilles erstellt eine sichere Verbindungsanfrage (Requisition) bei GoCardless.") },
-                { icon: Smartphone, title: t("2 · Mit dem Smartphone scannen"), text: t("In der Revolut-App bestätigst du den Lesezugriff auf Salden und Transaktionen (gültig 180 Tage).") },
+                { icon: Building2, title: t("1 · Bank wählen"), text: t("Land auswählen und deine Bank aus der Liste anklicken.") },
+                { icon: Smartphone, title: t("2 · Mit dem Smartphone scannen"), text: t("In deiner Banking-App bestätigst du den Lesezugriff auf Salden und Transaktionen.") },
                 { icon: RefreshCw, title: t("3 · Synchronisieren"), text: t("Achilles lädt bis zu 12 Monate Umsatzhistorie und kategorisiert alles automatisch.") },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} className="flex gap-4">
@@ -201,9 +266,9 @@ function ConnectInner() {
                 <FileUp className="h-5 w-5 text-sky-soft" strokeWidth={1.7} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{t("Alternative ohne GoCardless: CSV-Import")}</div>
+                <div className="text-sm font-medium">{t("Alternative: CSV-Import")}</div>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-2">
-                  {t("In der Revolut-App: Konto → Auszug → CSV exportieren und hier hochladen. Duplikate werden automatisch erkannt, manuelle Kategorien bleiben erhalten.")}
+                  {t("Ohne Bankanbindung: Kontoauszug als CSV aus deiner Banking-App exportieren und hier hochladen. Duplikate werden automatisch erkannt, manuelle Kategorien bleiben erhalten.")}
                 </p>
                 <label className="mt-3 inline-block">
                   <input

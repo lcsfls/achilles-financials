@@ -13,7 +13,7 @@ const display = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "Achilles Financials",
-  description: "Private Wealth Dashboard — Revolut, Edelmetalle & Investments",
+  description: "Private Wealth Dashboard — Banking, Edelmetalle & Investments",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

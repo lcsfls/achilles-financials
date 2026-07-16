@@ -74,10 +74,10 @@ export default function OverviewPage() {
           </div>
           <h1 className="font-display text-3xl gold-text">{t("Willkommen bei Achilles")}</h1>
           <p className="text-sm leading-relaxed text-muted">
-            {t("Verbinde dein Revolut-Konto per QR-Code oder starte mit Demo-Daten, um das Dashboard zu erkunden.")}
+            {t("Verbinde dein Konto per QR-Code oder starte mit Demo-Daten, um das Dashboard zu erkunden.")}
           </p>
           <div className="flex gap-3">
-            <Link href="/connect"><Button><QrCode className="h-4 w-4" /> {t("Revolut verbinden")}</Button></Link>
+            <Link href="/connect"><Button><QrCode className="h-4 w-4" /> {t("Konto verbinden")}</Button></Link>
             <Button variant="glass" onClick={async () => { setLoading(true); await fetch("/api/demo", { method: "POST" }); load(); }}>
               {t("Demo-Daten laden")}
             </Button>

@@ -75,7 +75,7 @@ export async function GET() {
     pension: { value: pensionValue, lastDate: pensionRow?.statement_date ?? null },
     netWorth: cashTotal + metals.totalValue + invValue + pensionValue,
     demoMode: getSetting("demo_mode") === "1",
-    lastSync: getSetting("gc_last_sync"),
-    connected: Boolean(getSetting("gc_requisition_id")) && getSetting("gc_requisition_status") === "linked",
+    lastSync: getSetting("eb_last_sync"),
+    connected: getSetting("eb_auth_status") === "linked",
   });
 }

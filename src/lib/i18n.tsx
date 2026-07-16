@@ -47,9 +47,9 @@ const EN: Record<string, string> = {
   // Übersicht
   "Portfolio wird geladen …": "Loading portfolio …",
   "Willkommen bei Achilles": "Welcome to Achilles",
-  "Verbinde dein Revolut-Konto per QR-Code oder starte mit Demo-Daten, um das Dashboard zu erkunden.":
-    "Connect your Revolut account via QR code or start with demo data to explore the dashboard.",
-  "Revolut verbinden": "Connect Revolut",
+  "Verbinde dein Konto per QR-Code oder starte mit Demo-Daten, um das Dashboard zu erkunden.":
+    "Connect your bank via QR code or start with demo data to explore the dashboard.",
+  "Konto verbinden": "Connect a bank",
   "Demo-Daten laden": "Load demo data",
   "Gesamtvermögen": "Net Worth",
   "Demo-Modus": "Demo mode",
@@ -224,32 +224,30 @@ const EN: Record<string, string> = {
   "Lade Simulator …": "Loading simulator …",
 
   // Verbinden
-  "Die Verbindung läuft über die PSD2-Banking-Schnittstelle von GoCardless — du autorisierst den Zugriff direkt in deiner Revolut-App. Achilles erhält nur Lesezugriff auf Salden und Umsätze, niemals Zugriff auf Zahlungen.":
-    "The connection uses GoCardless's PSD2 banking interface — you authorize access directly in your Revolut app. Achilles only gets read access to balances and transactions, never to payments.",
-  "Revolut wurde autorisiert! Starte jetzt die erste Synchronisierung.": "Revolut authorized! Now run the first sync.",
-  "GoCardless-Zugangsdaten fehlen.": "GoCardless credentials missing.",
-  "Lege dir unter": "Create a free account at",
-  "einen kostenlosen Account an, erstelle unter „Developers → User Secrets“ ein Secret-Paar und hinterlege es in den":
-    ", create a secret pair under “Developers → User Secrets” and save it in",
+  "Bank verbinden": "Connect your bank",
+  "Über die PSD2-Schnittstelle von Enable Banking — 2.700+ Banken in 30 europäischen Ländern. Du autorisierst den Zugriff direkt in deiner Banking-App. Achilles bekommt nur Lesezugriff auf Salden und Umsätze, niemals Zugriff auf Zahlungen.":
+    "Through Enable Banking's PSD2 interface — 2,700+ banks across 30 European countries. You authorize access directly in your banking app. Achilles only gets read access to balances and transactions, never to payments.",
+  "Bank verbunden! Starte jetzt die erste Synchronisierung.": "Bank connected! Now run the first sync.",
+  "Enable-Banking-Zugangsdaten fehlen.": "Enable Banking credentials missing.",
+  "Lege einen Account auf enablebanking.com an, registriere im Control Panel eine Anwendung und hinterlege Application-ID und Private Key in den":
+    "Create an account at enablebanking.com, register an application in the Control Panel, and save the application ID and private key in",
+  "Bank wählen": "Choose your bank",
+  "Land": "Country",
+  "Banken anzeigen": "Show banks",
+  "Lade Banken …": "Loading banks …",
+  "{n} Banken durchsuchen …": "Search {n} banks …",
+  "Keine Bank gefunden.": "No bank found.",
+  "Andere Bank wählen": "Choose a different bank",
+  "QR-Code": "QR code",
   "QR-Code · Smartphone": "QR code · Smartphone",
-  "Erstellt — warte auf Autorisierung": "Created — awaiting authorization",
-  "Autorisierung läuft": "Authorization in progress",
-  "Zugriff wird gewährt": "Granting access",
-  "Konten werden ausgewählt": "Selecting accounts",
-  "Verbunden": "Connected",
-  "Abgelaufen — bitte neu verbinden": "Expired — please reconnect",
-  "Abgelehnt": "Rejected",
-  "Mit der Smartphone-Kamera scannen — der Link öffnet die Autorisierung, die Revolut-App übernimmt automatisch.":
-    "Scan with your phone camera — the link opens the authorization and the Revolut app takes over automatically.",
+  "Mit der Smartphone-Kamera scannen — der Link öffnet die Autorisierung, deine Banking-App übernimmt automatisch.":
+    "Scan with your phone camera — the link opens the authorization and your banking app takes over automatically.",
   "Oder Link direkt auf diesem Gerät öffnen": "Or open the link directly on this device",
-  "QR-Code wird erstellt …": "Creating QR code …",
-  "Neu verbinden": "Reconnect",
-  "QR-Code erzeugen": "Generate QR code",
-  "1 · QR-Code erzeugen": "1 · Generate QR code",
-  "Achilles erstellt eine sichere Verbindungsanfrage (Requisition) bei GoCardless.": "Achilles creates a secure connection request (requisition) with GoCardless.",
+  "1 · Bank wählen": "1 · Choose your bank",
+  "Land auswählen und deine Bank aus der Liste anklicken.": "Pick your country and select your bank from the list.",
   "2 · Mit dem Smartphone scannen": "2 · Scan with your phone",
-  "In der Revolut-App bestätigst du den Lesezugriff auf Salden und Transaktionen (gültig 180 Tage).":
-    "In the Revolut app you confirm read access to balances and transactions (valid for 180 days).",
+  "In deiner Banking-App bestätigst du den Lesezugriff auf Salden und Transaktionen.":
+    "In your banking app you confirm read access to balances and transactions.",
   "3 · Synchronisieren": "3 · Synchronize",
   "Achilles lädt bis zu 12 Monate Umsatzhistorie und kategorisiert alles automatisch.": "Achilles loads up to 12 months of history and categorizes everything automatically.",
   "Synchronisierung": "Synchronization",
@@ -259,9 +257,9 @@ const EN: Record<string, string> = {
   "Jetzt syncen": "Sync now",
   "Läuft …": "Running …",
   "Synchronisiert: {a} Konten, {n} Transaktionen.": "Synced: {a} accounts, {n} transactions.",
-  "Alternative ohne GoCardless: CSV-Import": "Alternative without GoCardless: CSV import",
-  "In der Revolut-App: Konto → Auszug → CSV exportieren und hier hochladen. Duplikate werden automatisch erkannt, manuelle Kategorien bleiben erhalten.":
-    "In the Revolut app: Account → Statement → export CSV and upload it here. Duplicates are detected automatically, manual categories are preserved.",
+  "Alternative: CSV-Import": "Alternative: CSV import",
+  "Ohne Bankanbindung: Kontoauszug als CSV aus deiner Banking-App exportieren und hier hochladen. Duplikate werden automatisch erkannt, manuelle Kategorien bleiben erhalten.":
+    "Without a bank connection: export a statement as CSV from your banking app and upload it here. Duplicates are detected automatically, manual categories are preserved.",
   "CSV-Datei auswählen": "Choose CSV file",
   "Importiere …": "Importing …",
   "CSV importiert: {n} Transaktionen ({s} übersprungen).": "CSV imported: {n} transactions ({s} skipped).",
@@ -270,22 +268,17 @@ const EN: Record<string, string> = {
   "API-Zugänge, Sprache und Daten verwalten.": "Manage API access, language and data.",
   "Sprache": "Language",
   "Sprache der Oberfläche und Zahlenformate": "Interface language and number formats",
-  "PSD2-Schnittstelle für die Revolut-Verbindung": "PSD2 interface for the Revolut connection",
+  "PSD2-Schnittstelle zu 2.700+ Banken in Europa": "PSD2 interface to 2,700+ banks across Europe",
   "Konfiguriert": "Configured",
   "Nicht konfiguriert": "Not configured",
-  "Kostenlosen Account anlegen unter": "Create a free account at",
-  "dann unter Developers → User Secrets ein Secret-Paar erstellen und hier einfügen. Die Schlüssel werden ausschließlich lokal in deiner SQLite-Datenbank gespeichert.":
-    "then create a secret pair under Developers → User Secrets and paste it here. The keys are stored exclusively in your local SQLite database.",
-  "Land des Revolut-Kontos": "Country of your Revolut account",
-  "Deutschland": "Germany",
-  "Österreich": "Austria",
-  "Frankreich": "France",
-  "Spanien": "Spain",
-  "Italien": "Italy",
-  "Niederlande": "Netherlands",
-  "Irland": "Ireland",
-  "Litauen": "Lithuania",
-  "Großbritannien": "United Kingdom",
+  "Account anlegen unter": "Create an account at",
+  "im Control Panel eine Anwendung registrieren (Redirect-URL siehe unten) und den dabei erzeugten Private Key hier einfügen. Application-ID und Key bleiben ausschließlich in deiner lokalen SQLite-Datenbank.":
+    "register an application in the Control Panel (redirect URL below) and paste the private key it generates here. The application ID and key never leave your local SQLite database.",
+  "Redirect-URL für das Control Panel": "Redirect URL for the Control Panel",
+  "Private Key (.pem-Inhalt)": "Private key (.pem contents)",
+  "Land deiner Bank": "Country of your bank",
+  "Das sieht nicht nach einem Private Key aus. Erwartet wird der Inhalt der .pem-Datei inklusive der BEGIN/END-Zeilen.":
+    "That doesn't look like a private key. Paste the contents of the .pem file including the BEGIN/END lines.",
   "Realistische Beispieldaten zum Erkunden des Dashboards": "Realistic sample data to explore the dashboard",
   "Aktiv": "Active",
   "Demo-Daten entfernen": "Remove demo data",
@@ -322,7 +315,9 @@ const EN: Record<string, string> = {
   // Setup
   "Willkommen · Welcome": "Willkommen · Welcome",
   "Sprache wählen / Choose your language": "Sprache wählen / Choose your language",
-  "Revolut-Verbindung (optional)": "Revolut connection (optional)",
+  "Bankanbindung (optional)": "Bank connection (optional)",
+  "Application-ID und Private Key aus deinem Enable-Banking-Control-Panel (enablebanking.com).":
+    "Application ID and private key from your Enable Banking Control Panel (enablebanking.com).",
   "Du kannst das jederzeit später in den Einstellungen nachholen — oder Kontoauszüge per CSV importieren.":
     "You can do this later in Settings at any time — or import statements via CSV.",
   "Überspringen": "Skip",
@@ -335,13 +330,14 @@ const EN: Record<string, string> = {
   "Direkt mit deinen echten Daten loslegen.": "Start right away with your real data.",
   "Los geht's": "Let's go",
   "Einen Moment …": "One moment …",
-  "Secret ID & Key aus deinem GoCardless-Account (bankaccountdata.gocardless.com, kostenlos).":
-    "Secret ID & key from your GoCardless account (bankaccountdata.gocardless.com, free).",
 
   // API-Fehlermeldungen (häufigste)
-  "GoCardless-Zugangsdaten fehlen. Bitte in den Einstellungen Secret ID & Secret Key hinterlegen.":
-    "GoCardless credentials missing. Please add Secret ID & Secret Key in Settings.",
-  "Keine Revolut-Verbindung vorhanden. Bitte zuerst per QR-Code verbinden.": "No Revolut connection yet. Please connect via QR code first.",
+  "Enable-Banking-Zugangsdaten fehlen. Bitte Application-ID und Private Key in den Einstellungen hinterlegen.":
+    "Enable Banking credentials missing. Please add the application ID and private key in Settings.",
+  "Keine Bankverbindung vorhanden. Bitte zuerst per QR-Code verbinden.": "No bank connection yet. Please connect via QR code first.",
+  "Private Key konnte nicht gelesen werden. Erwartet wird der vollständige Inhalt der .pem-Datei inklusive BEGIN/END-Zeilen.":
+    "Could not read the private key. Paste the full contents of the .pem file including the BEGIN/END lines.",
+  "Die Session enthält keine Konten. Bitte neu verbinden.": "The session contains no accounts. Please reconnect.",
   "Symbol ist bereits auf der Watchlist": "Symbol is already on the watchlist",
 };
 

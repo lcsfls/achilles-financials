@@ -6,36 +6,40 @@ import { Shield, Sparkles, Database, KeyRound, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
 export default function SetupPage() {
   const { t, lang, setLang } = useI18n();
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [secretId, setSecretId] = useState("");
-  const [secretKey, setSecretKey] = useState("");
+  const [appId, setAppId] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
   const [country, setCountry] = useState("DE");
   const [startMode, setStartMode] = useState<"demo" | "empty">("demo");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const finish = async () => {
     setBusy(true);
-    await fetch("/api/settings", {
+    setError(null);
+    const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: lang,
         country,
-        gcSecretId: secretId || undefined,
-        gcSecretKey: secretKey || undefined,
+        ebAppId: appId || undefined,
+        ebPrivateKey: privateKey || undefined,
         setupDone: true,
       }),
     });
+    if (!res.ok) { setBusy(false); setError((await res.json()).error); setStep(1); return; }
     if (startMode === "demo") await fetch("/api/demo", { method: "POST" });
     router.replace("/");
   };
 
-  const STEPS = [t("Sprache"), "GoCardless", "Start"];
+  const STEPS = [t("Sprache"), "Enable Banking", "Start"];
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -96,7 +100,7 @@ export default function SetupPage() {
             </div>
           )}
 
-          {/* Step 1: GoCardless (optional) */}
+          {/* Step 1: Enable Banking (optional) */}
           {step === 1 && (
             <div className="space-y-5">
               <div className="flex items-center gap-3">
@@ -104,41 +108,45 @@ export default function SetupPage() {
                   <KeyRound className="h-5 w-5 text-gold" strokeWidth={1.7} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold">{t("Revolut-Verbindung (optional)")}</h2>
-                  <p className="text-xs text-muted-2">{t("Secret ID & Key aus deinem GoCardless-Account (bankaccountdata.gocardless.com, kostenlos).")}</p>
+                  <h2 className="text-lg font-semibold">{t("Bankanbindung (optional)")}</h2>
+                  <p className="text-xs text-muted-2">{t("Application-ID und Private Key aus deinem Enable-Banking-Control-Panel (enablebanking.com).")}</p>
                 </div>
               </div>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Secret ID</Label>
-                  <Input placeholder="1c8d4c0e-…" value={secretId} onChange={(e) => setSecretId(e.target.value)} />
+                  <Label>Application ID</Label>
+                  <Input placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" value={appId} onChange={(e) => setAppId(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Secret Key</Label>
-                  <Input type="password" placeholder="Secret Key" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} />
+                  <Label>{t("Private Key (.pem-Inhalt)")}</Label>
+                  <textarea
+                    rows={3}
+                    spellCheck={false}
+                    placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"}
+                    value={privateKey}
+                    onChange={(e) => setPrivateKey(e.target.value)}
+                    className="flex w-full rounded-xl glass-inset px-4 py-3 font-mono text-[11px] text-foreground placeholder:text-muted-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t("Land des Revolut-Kontos")}</Label>
+                  <Label>{t("Land deiner Bank")}</Label>
                   <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-                    <option value="DE">{t("Deutschland")}</option>
-                    <option value="AT">{t("Österreich")}</option>
-                    <option value="FR">{t("Frankreich")}</option>
-                    <option value="ES">{t("Spanien")}</option>
-                    <option value="IT">{t("Italien")}</option>
-                    <option value="NL">{t("Niederlande")}</option>
-                    <option value="IE">{t("Irland")}</option>
-                    <option value="LT">{t("Litauen")}</option>
-                    <option value="GB">{t("Großbritannien")}</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>{lang === "de" ? c.de : c.en}</option>
+                    ))}
                   </Select>
                 </div>
               </div>
+              {error && (
+                <div className="rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-xs text-rose-soft">{error}</div>
+              )}
               <p className="text-[11px] leading-relaxed text-muted-2">
                 {t("Du kannst das jederzeit später in den Einstellungen nachholen — oder Kontoauszüge per CSV importieren.")}
               </p>
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>{t("Zurück")}</Button>
                 <Button className="flex-1" onClick={() => setStep(2)}>
-                  {secretId && secretKey ? t("Weiter") : t("Überspringen")}
+                  {appId && privateKey ? t("Weiter") : t("Überspringen")}
                 </Button>
               </div>
             </div>

@@ -49,7 +49,7 @@ function findCol(header: string[], names: string[]): number {
   return header.findIndex((h) => names.includes(h.trim().toLowerCase()));
 }
 
-/** Import eines Revolut-Kontoauszugs (CSV-Export aus der App: Konto → Auszug → CSV). */
+/** Import eines Kontoauszugs im CSV-Format (getestet mit Revolut-Exporten, DE + EN). */
 export async function POST(req: NextRequest) {
   const { csv } = await req.json();
   if (!csv || typeof csv !== "string") return NextResponse.json({ error: "CSV-Inhalt fehlt" }, { status: 400 });
@@ -67,11 +67,11 @@ export async function POST(req: NextRequest) {
   const iBalance = findCol(header, COL.balance);
 
   if (iAmount === -1 || (iCompleted === -1 && iStarted === -1)) {
-    return NextResponse.json({ error: "Das sieht nicht nach einem Revolut-CSV-Export aus (Spalten „Amount“/„Completed Date“ fehlen)." }, { status: 400 });
+    return NextResponse.json({ error: "Das sieht nicht nach einem Kontoauszug-CSV aus (Spalten „Amount“/„Completed Date“ bzw. „Betrag“/„Abschlussdatum“ fehlen)." }, { status: 400 });
   }
 
   const d = db();
-  const accountId = "revolut-csv";
+  const accountId = "csv-import";
   let imported = 0;
   let skipped = 0;
   let lastDate = "";
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   const run = d.transaction(() => {
     d.prepare(
       `INSERT INTO accounts (id, provider, name, iban, currency, balance, last_synced)
-       VALUES (?, 'revolut-csv', 'Revolut (CSV-Import)', NULL, 'EUR', 0, ?)
+       VALUES (?, 'csv', 'Konto (CSV-Import)', NULL, 'EUR', 0, ?)
        ON CONFLICT(id) DO NOTHING`
     ).run(accountId, new Date().toISOString());
 
