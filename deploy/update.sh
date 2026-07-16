@@ -16,6 +16,8 @@
 set -uo pipefail
 
 APP_DIR="${APP_DIR:-/opt/achilles-financials}"
+# stable = neuester Versions-Tag (Standard), edge = Spitze des Branches
+CHANNEL="${CHANNEL:-stable}"
 CONTROL_DIR="$APP_DIR/control"
 LOG_FILE="$CONTROL_DIR/update.log"
 FROM_APP=0
@@ -78,11 +80,23 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 echo "=== $(date -Iseconds) — update gestartet (von ${FROM_SHA:0:7}) ===" >> "$LOG_FILE"
 
 log "Hole Änderungen von origin/${BRANCH} …"
-if ! git fetch origin "$BRANCH" >>"$LOG_FILE" 2>&1; then
+if ! git fetch --tags --force origin "$BRANCH" >>"$LOG_FILE" 2>&1; then
   fail "git fetch fehlgeschlagen — Netzwerk oder Repo-Zugriff prüfen."
 fi
 
-TO_SHA="$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo '')"
+# Zielstand bestimmen: höchster Versions-Tag oder Branch-Spitze
+TARGET_REF="origin/${BRANCH}"
+if [[ "$CHANNEL" == "stable" ]]; then
+  LATEST_TAG="$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)"
+  if [[ -n "$LATEST_TAG" ]]; then
+    TARGET_REF="$LATEST_TAG"
+    log "Neueste Version: ${LATEST_TAG}"
+  else
+    log "Keine Versions-Tags gefunden — nutze ${BRANCH}."
+  fi
+fi
+
+TO_SHA="$(git rev-parse "$TARGET_REF" 2>/dev/null || echo '')"
 
 if [[ -n "$FROM_SHA" && "$FROM_SHA" == "$TO_SHA" ]]; then
   ok "Bereits auf dem neuesten Stand (${FROM_SHA:0:7})."
@@ -90,8 +104,8 @@ if [[ -n "$FROM_SHA" && "$FROM_SHA" == "$TO_SHA" ]]; then
   exit 0
 fi
 
-log "Aktualisiere ${FROM_SHA:0:7} → ${TO_SHA:0:7} …"
-if ! git reset --hard "origin/${BRANCH}" >>"$LOG_FILE" 2>&1; then
+log "Aktualisiere ${FROM_SHA:0:7} → ${TO_SHA:0:7} (${TARGET_REF}) …"
+if ! git reset --hard "$TARGET_REF" >>"$LOG_FILE" 2>&1; then
   fail "git reset fehlgeschlagen."
 fi
 
@@ -113,10 +127,7 @@ fi
 
 docker image prune -f >>"$LOG_FILE" 2>&1 || true
 
-cat > "${CONTROL_DIR}/.version.tmp" <<EOF
-{"sha":"${TO_SHA}","deployedAt":"$(date -Iseconds)","branch":"${BRANCH}"}
-EOF
-mv -f "${CONTROL_DIR}/.version.tmp" "${CONTROL_DIR}/version.json"
+APP_DIR="$APP_DIR" "$APP_DIR/deploy/write-version.sh" >>"$LOG_FILE" 2>&1 || true
 
 write_status "success" "Update auf ${TO_SHA:0:7} abgeschlossen"
 echo "=== $(date -Iseconds) — update ok: ${FROM_SHA:0:7} -> ${TO_SHA:0:7} ===" >> "$LOG_FILE"

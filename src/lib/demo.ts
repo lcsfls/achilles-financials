@@ -63,12 +63,18 @@ export function seedDemoData() {
       for (const [merchant, desc, base, freq] of merchants) {
         const count = Math.floor(freq) + (rand() < freq % 1 ? 1 : 0);
         for (let i = 0; i < count; i++) {
-          const day = Math.max(1, Math.min(28, Math.floor(rand() * 28) + 1));
+          // Einnahmen auf den Monatsanfang legen: bei einem zufälligen Tag
+          // würde das Gehalt im laufenden Monat oft in der Zukunft liegen und
+          // rausfallen — die Sparquote hätte dann keine Basis.
+          const day = base > 0 ? 1 : Math.max(1, Math.min(28, Math.floor(rand() * 28) + 1));
           const date = new Date(now.getFullYear(), now.getMonth() - month, day);
           if (date > now) continue;
           const jitter = 1 + (rand() - 0.5) * 0.35;
           const amount = Math.round(base * (Math.abs(base) > 500 ? 1 : jitter) * 100) / 100;
-          const iso = date.toISOString().slice(0, 10);
+          // NICHT toISOString(): das rechnet nach UTC und schiebt den
+          // 1. eines Monats in einer Zone östlich von Greenwich auf den
+          // Vormonat — das Gehalt landete so im falschen Monat.
+          const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
           const id = `demo-${merchant}-${month}-${i}`;
           const description = desc.endsWith("-0") ? `${desc}${month}${i}` : desc;
           insert.run(id, iso, amount, merchant, description, categorize(merchant, description, amount));

@@ -8,13 +8,16 @@ import path from "path";
  * Update-Anforderung; ein systemd-Path-Unit auf dem Host startet daraufhin
  * deploy/update.sh, das den Status zurückschreibt. So braucht die App weder
  * den Docker-Socket noch Git im Image.
+ *
+ * Versionen: Maßgeblich sind Git-Tags (v1.2.3), nicht einzelne Commits — ein
+ * Commit-Hash sagt niemandem, ob sich ein Update lohnt.
  */
 const CONTROL_DIR = process.env.CONTROL_DIR || "/control";
 
 export const REPO = process.env.REPO_SLUG || "lcsfls/achilles-financials";
 export const BRANCH = process.env.REPO_BRANCH || "main";
 
-export type Version = { sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
+export type Version = { version: string | null; sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
 export type UpdateState = "idle" | "requested" | "running" | "success" | "error";
 export type UpdateStatus = {
   state: UpdateState;
@@ -23,7 +26,6 @@ export type UpdateStatus = {
   fromSha?: string;
   toSha?: string;
   message?: string;
-  log?: string;
 };
 
 function readJson<T>(file: string): T | null {
@@ -34,13 +36,6 @@ function readJson<T>(file: string): T | null {
   }
 }
 
-/**
- * Ist der Control-Kanal gemountet und wirklich beschreibbar?
- *
- * Das Verzeichnis allein zu prüfen genügt nicht: update.sh läuft als root und
- * hinterlässt root-eigene Dateien. Dann ist das Verzeichnis schreibbar, die
- * Statusdatei aber nicht — und der Schreibversuch scheitert erst beim Klick.
- */
 export type ControlState = "ok" | "missing" | "readonly";
 
 /**
@@ -82,16 +77,19 @@ export class ControlWriteError extends Error {
       cause.code === "EACCES" || cause.code === "EPERM"
         ? `Keine Schreibrechte im Control-Verzeichnis (${cause.path ?? CONTROL_DIR}). ` +
           `Die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren: ` +
-          `chown -R 1001:1001 /opt/achilles-financials/control`
+          `${FIX_PERMISSIONS_COMMAND}`
         : `Update konnte nicht angefordert werden: ${cause.message}`
     );
   }
 }
 
 export function getVersion(): Version {
-  const v = readJson<{ sha?: string; deployedAt?: string; branch?: string }>("version.json");
+  const v = readJson<{ version?: string; sha?: string; deployedAt?: string; branch?: string }>("version.json");
   const sha = v?.sha ?? process.env.GIT_SHA ?? null;
   return {
+    // APP_VERSION wird beim Image-Build aus package.json gesetzt und ist da,
+    // auch wenn der Control-Kanal fehlt (z. B. plain Docker).
+    version: v?.version ?? process.env.APP_VERSION ?? null,
     sha,
     shortSha: sha ? sha.slice(0, 7) : null,
     deployedAt: v?.deployedAt ?? null,
@@ -117,41 +115,59 @@ export function requestUpdate(): void {
   }
 }
 
-/** Neueste Commits auf dem Branch — ohne Token (60 Requests/h pro IP genügen). */
-export async function fetchRemoteHead(): Promise<{ sha: string; date: string | null; message: string | null } | null> {
-  try {
-    const res = await fetch(`https://api.github.com/repos/${REPO}/commits/${BRANCH}`, {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "achilles-financials" },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      sha: data.sha,
-      date: data.commit?.committer?.date ?? null,
-      message: (data.commit?.message ?? "").split("\n")[0] || null,
-    };
-  } catch {
-    return null;
-  }
+/* ---------- Versionsvergleich über Tags ---------- */
+
+export type Semver = { major: number; minor: number; patch: number };
+
+export function parseSemver(input: string | null | undefined): Semver | null {
+  if (!input) return null;
+  const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(input.trim());
+  if (!m) return null;
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
 }
 
-/** Wie viele Commits liegt die lokale Version zurück (+ deren Titel)? */
-export async function fetchBehind(localSha: string, remoteSha: string): Promise<{ count: number; commits: string[] } | null> {
+export function compareSemver(a: Semver, b: Semver): number {
+  return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
+}
+
+export type Release = { version: string; tag: string; sha: string; notes: string | null; publishedAt: string | null };
+
+/**
+ * Neueste veröffentlichte Version. Bevorzugt GitHub-Releases (mit Notes);
+ * fällt auf Tags zurück, falls zu einem Tag kein Release angelegt wurde.
+ */
+export async function fetchLatestRelease(): Promise<Release | null> {
+  const headers = { Accept: "application/vnd.github+json", "User-Agent": "achilles-financials" };
+
   try {
-    const res = await fetch(`https://api.github.com/repos/${REPO}/compare/${localSha}...${remoteSha}`, {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "achilles-financials" },
-      cache: "no-store",
-    });
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers, cache: "no-store" });
+    if (res.ok) {
+      const d = await res.json();
+      const version = String(d.tag_name ?? "").replace(/^v/, "");
+      if (parseSemver(version)) {
+        return {
+          version,
+          tag: d.tag_name,
+          sha: d.target_commitish ?? "",
+          notes: d.body || null,
+          publishedAt: d.published_at ?? null,
+        };
+      }
+    }
+  } catch {
+    /* Tags als Rückfallebene versuchen */
+  }
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/tags?per_page=100`, { headers, cache: "no-store" });
     if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      count: data.ahead_by ?? 0,
-      commits: (data.commits ?? [])
-        .map((c: { commit: { message: string } }) => c.commit.message.split("\n")[0])
-        .reverse()
-        .slice(0, 10),
-    };
+    const tags = (await res.json()) as Array<{ name: string; commit: { sha: string } }>;
+    const sorted = tags
+      .map((t) => ({ tag: t.name, sha: t.commit.sha, sv: parseSemver(t.name) }))
+      .filter((t): t is { tag: string; sha: string; sv: Semver } => t.sv !== null)
+      .sort((a, b) => compareSemver(b.sv, a.sv));
+    if (sorted.length === 0) return null;
+    return { version: sorted[0].tag.replace(/^v/, ""), tag: sorted[0].tag, sha: sorted[0].sha, notes: null, publishedAt: null };
   } catch {
     return null;
   }

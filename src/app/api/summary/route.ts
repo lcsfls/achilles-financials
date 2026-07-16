@@ -58,6 +58,44 @@ export async function GET() {
     .prepare("SELECT * FROM transactions ORDER BY booking_date DESC, id DESC LIMIT 9")
     .all();
 
+  // Durchschnitt über abgeschlossene Monate — der laufende Monat ist noch nicht
+  // vorbei und würde den Schnitt nach unten ziehen.
+  const avgRow = d
+    .prepare(
+      `SELECT AVG(spent) AS avg_spent FROM (
+         SELECT strftime('%Y-%m', booking_date) AS m, SUM(-amount) AS spent
+         FROM transactions
+         WHERE amount < 0 AND pending = 0
+           AND strftime('%Y-%m', booking_date) < strftime('%Y-%m', 'now')
+           AND booking_date >= date('now', '-6 months')
+         GROUP BY m
+       )`
+    )
+    .get() as { avg_spent: number | null };
+
+  // Wiederkehrende Fixkosten des laufenden Monats
+  const fixedRow = d
+    .prepare(
+      `SELECT SUM(-amount) AS total FROM transactions
+       WHERE amount < 0 AND pending = 0
+         AND category IN ('Abos & Dienste', 'Wohnen & Nebenkosten')
+         AND strftime('%Y-%m', booking_date) = strftime('%Y-%m', 'now')`
+    )
+    .get() as { total: number | null };
+
+  const largestRow = d
+    .prepare(
+      // ORDER BY auf die Spalte, nicht auf das Alias: 'amount' wäre sonst der
+      // negierte Wert und würde die kleinste statt der größten Ausgabe liefern.
+      `SELECT merchant, description, -amount AS amount FROM transactions
+       WHERE amount < 0 AND pending = 0
+         AND strftime('%Y-%m', booking_date) = strftime('%Y-%m', 'now')
+       ORDER BY transactions.amount ASC LIMIT 1`
+    )
+    .get() as { merchant: string | null; description: string | null; amount: number } | undefined;
+
+  const txCount = (d.prepare("SELECT COUNT(*) AS c FROM transactions").get() as { c: number }).c;
+
   const metals = await getMetalHoldings().catch(() => ({ holdings: [], spot: [], totalValue: 0, totalCost: 0 }));
 
   const investments = d.prepare("SELECT * FROM investments").all() as Array<{ units: number; buy_price_eur: number; current_price_eur: number | null }>;
@@ -76,6 +114,19 @@ export async function GET() {
     thisMonthCats,
     thisMonth: { spent: thisMonth.spent ?? 0, earned: thisMonth.earned ?? 0 },
     lastMonthSpent: lastMonth.spent ?? 0,
+    stats: {
+      // Sparquote nur bei vorhandenen Einnahmen — sonst wäre sie bedeutungslos
+      savingsRatePct:
+        (thisMonth.earned ?? 0) > 0
+          ? (((thisMonth.earned ?? 0) - (thisMonth.spent ?? 0)) / (thisMonth.earned ?? 1)) * 100
+          : null,
+      cashflow: (thisMonth.earned ?? 0) - (thisMonth.spent ?? 0),
+      avgSpent: avgRow.avg_spent,
+      fixedCosts: fixedRow.total ?? 0,
+      largestExpense: largestRow ?? null,
+      topCategory: (thisMonthCats as Array<{ category: string; total: number }>)[0] ?? null,
+      txCount,
+    },
     recent,
     metals: { totalValue: metals.totalValue, totalCost: metals.totalCost, holdings: metals.holdings.map((h) => ({ metal: h.metal, name: h.name, color: h.color, totalGrams: h.totalGrams, currentValue: h.currentValue, totalCost: h.totalCost })) },
     investments: { value: invValue, cost: invCost, count: investments.length },

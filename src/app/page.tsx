@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
-import { Wallet, Gem, TrendingUp, ArrowDownRight, QrCode, Sparkles, RefreshCw, PiggyBank } from "lucide-react";
+import { Wallet, Gem, TrendingUp, ArrowDownRight, ArrowUpRight, QrCode, Sparkles, RefreshCw, PiggyBank, PiggyBank as Pig, Percent, Repeat, Receipt, Flame } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,15 @@ type Summary = {
   investments: { value: number; cost: number; count: number };
   pension: { value: number; lastDate: string | null };
   emergency: { accountId: string; accountName: string; balance: number; target: number; pct: number | null } | null;
+  stats: {
+    savingsRatePct: number | null;
+    cashflow: number;
+    avgSpent: number | null;
+    fixedCosts: number;
+    largestExpense: { merchant: string | null; description: string | null; amount: number } | null;
+    topCategory: { category: string; total: number } | null;
+    txCount: number;
+  };
   netWorth: number;
   demoMode: boolean;
   lastSync: string | null;
@@ -160,6 +169,59 @@ export default function OverviewPage() {
                 <Icon className="h-5 w-5" style={{ color: accent }} strokeWidth={1.8} />
               </div>
             </div>
+          </Card>
+        ))}
+      </div>
+
+
+      {/* Kennzahlen des Monats — Zahlen, die vorher nirgends sichtbar waren */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+        {[
+          {
+            icon: ArrowUpRight, label: t("Einnahmen"), value: fmtEUR0(data.thisMonth.earned),
+            sub: t("diesen Monat"), accent: "#34d399",
+          },
+          {
+            icon: Percent, label: t("Sparquote"),
+            value: data.stats.savingsRatePct !== null ? `${Math.round(data.stats.savingsRatePct)} %` : "—",
+            sub: data.stats.savingsRatePct !== null ? t("von den Einnahmen") : t("keine Einnahmen erfasst"),
+            accent: data.stats.savingsRatePct !== null && data.stats.savingsRatePct >= 20 ? "#34d399" : "#fbbf24",
+          },
+          {
+            icon: Wallet, label: t("Cashflow"),
+            value: `${data.stats.cashflow >= 0 ? "+" : ""}${fmtEUR0(data.stats.cashflow)}`,
+            sub: t("Einnahmen − Ausgaben"),
+            accent: data.stats.cashflow >= 0 ? "#34d399" : "#fb7185",
+            valueColor: data.stats.cashflow >= 0 ? "#34d399" : "#fb7185",
+          },
+          {
+            icon: Repeat, label: t("Fixkosten"), value: fmtEUR0(data.stats.fixedCosts),
+            sub: t("Wohnen & Abos"), accent: "#fb923c",
+          },
+          {
+            icon: ArrowDownRight, label: t("Ø Ausgaben"),
+            value: data.stats.avgSpent !== null ? fmtEUR0(data.stats.avgSpent) : "—",
+            sub: data.stats.avgSpent !== null ? t("6-Monats-Schnitt") : t("noch kein voller Monat"),
+            accent: "#38bdf8",
+          },
+          {
+            icon: Receipt, label: t("Größte Ausgabe"),
+            value: data.stats.largestExpense ? fmtEUR0(data.stats.largestExpense.amount) : "—",
+            sub: data.stats.largestExpense
+              ? (data.stats.largestExpense.merchant || data.stats.largestExpense.description || "—").slice(0, 22)
+              : t("diesen Monat"),
+            accent: "#a78bfa",
+          },
+        ].map(({ icon: Icon, label, value, sub, accent, valueColor }) => (
+          <Card key={label} className="glass-hover rise rise-2 p-4">
+            <div className="flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: accent }} strokeWidth={2} />
+              <span className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-2">{label}</span>
+            </div>
+            <div className="num mt-1.5 text-lg font-semibold tracking-tight" style={valueColor ? { color: valueColor } : undefined}>
+              {value}
+            </div>
+            <div className="mt-0.5 truncate text-[10px] text-muted-2">{sub}</div>
           </Card>
         ))}
       </div>

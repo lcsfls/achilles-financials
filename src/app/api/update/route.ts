@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import {
-  BRANCH, FIX_PERMISSIONS_COMMAND, REPO, controlState, fetchBehind, fetchRemoteHead,
-  getUpdateStatus, getVersion, requestUpdate,
+  BRANCH, FIX_PERMISSIONS_COMMAND, REPO, compareSemver, controlState, fetchLatestRelease,
+  getUpdateStatus, getVersion, parseSemver, requestUpdate,
 } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
-/** Versions- und Update-Status inkl. Prüfung gegen GitHub. */
+/** Versions- und Update-Status inkl. Prüfung gegen die neueste Release-Version. */
 export async function GET() {
   const version = getVersion();
   const status = getUpdateStatus();
   const control = controlState();
 
-  const remote = await fetchRemoteHead();
-  let behind: { count: number; commits: string[] } | null = null;
-  if (remote && version.sha && remote.sha !== version.sha) {
-    behind = await fetchBehind(version.sha, remote.sha);
-  }
+  const latest = await fetchLatestRelease();
 
-  const upToDate = Boolean(remote && version.sha && remote.sha === version.sha);
+  const installedSv = parseSemver(version.version);
+  const latestSv = parseSemver(latest?.version);
+
+  // Ohne bekannte installierte Version lässt sich nichts vergleichen — dann
+  // lieber nichts behaupten, statt fälschlich ein Update anzubieten.
+  const updateAvailable =
+    installedSv !== null && latestSv !== null ? compareSemver(latestSv, installedSv) > 0 : null;
 
   return NextResponse.json({
     repo: REPO,
@@ -28,11 +30,11 @@ export async function GET() {
     canUpdate: control === "ok",
     control,
     fixCommand: control === "readonly" ? FIX_PERMISSIONS_COMMAND : null,
-    remote: remote ? { sha: remote.sha, shortSha: remote.sha.slice(0, 7), date: remote.date, message: remote.message } : null,
-    behind,
-    upToDate,
-    // Fallback, wenn der Control-Kanal nicht gemountet ist
-    shellCommand: `cd /opt/achilles-financials && ./deploy/update.sh`,
+    latest: latest ? { version: latest.version, tag: latest.tag, notes: latest.notes, publishedAt: latest.publishedAt } : null,
+    updateAvailable,
+    upToDate: updateAvailable === false,
+    releasesUrl: `https://github.com/${REPO}/releases`,
+    shellCommand: "cd /opt/achilles-financials && ./deploy/update.sh",
   });
 }
 
@@ -56,6 +58,7 @@ export async function POST() {
       { status: 501 }
     );
   }
+
   const status = getUpdateStatus();
   if (status.state === "requested" || status.state === "running") {
     return NextResponse.json({ error: "Es läuft bereits ein Update." }, { status: 409 });

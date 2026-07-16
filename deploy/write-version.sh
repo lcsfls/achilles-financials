@@ -6,11 +6,18 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/achilles-financials}"
 cd "$APP_DIR"
 
+# Version kommt aus package.json — eine Quelle der Wahrheit, dieselbe, die auch
+# getaggt wird. Der Commit dient nur noch der Diagnose.
+VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)"
+SHA="$(git rev-parse HEAD)"
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+# Steht der Commit auf einem Tag, ist das die verlässlichere Angabe
+TAG="$(git describe --tags --exact-match 2>/dev/null || echo '')"
+[[ -n "$TAG" ]] && VERSION="${TAG#v}"
+
 mkdir -p control
-printf '{"sha":"%s","deployedAt":"%s","branch":"%s"}\n' \
-  "$(git rev-parse HEAD)" \
-  "$(date -Iseconds)" \
-  "$(git rev-parse --abbrev-ref HEAD)" \
+printf '{"version":"%s","sha":"%s","deployedAt":"%s","branch":"%s"}\n' \
+  "$VERSION" "$SHA" "$(date -Iseconds)" "$BRANCH" \
   > control/version.json
 
 # uid 1001 = App-Nutzer im Container (siehe Dockerfile). Muss stimmen, bevor

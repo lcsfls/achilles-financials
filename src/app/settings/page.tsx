@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
@@ -15,14 +16,15 @@ type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: 
 type UpdateInfo = {
   repo: string;
   branch: string;
-  version: { sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
+  version: { version: string | null; sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
   status: { state: "idle" | "requested" | "running" | "success" | "error"; message?: string; finishedAt?: string; toSha?: string };
   canUpdate: boolean;
   control: "ok" | "missing" | "readonly";
   fixCommand: string | null;
-  remote: { sha: string; shortSha: string; date: string | null; message: string | null } | null;
-  behind: { count: number; commits: string[] } | null;
+  latest: { version: string; tag: string; notes: string | null; publishedAt: string | null } | null;
+  updateAvailable: boolean | null;
   upToDate: boolean;
+  releasesUrl: string;
   shellCommand: string;
 };
 
@@ -41,6 +43,8 @@ export default function SettingsPage() {
   const [updError, setUpdError] = useState<string | null>(null);
   const [updFix, setUpdFix] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [demoWarning, setDemoWarning] = useState(false);
+  const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
   // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
   const [redirectUrl, setRedirectUrl] = useState("…/api/bank/callback");
@@ -99,7 +103,17 @@ export default function SettingsPage() {
     setBusy(true);
     await fetch("/api/demo", { method: on ? "POST" : "DELETE" });
     setBusy(false);
+    setDemoWarning(false);
     load();
+  };
+
+  // Vor dem Warnhinweis nachsehen, was tatsächlich schon da ist — eine
+  // konkrete Zahl wiegt schwerer als eine allgemeine Warnung.
+  const openDemoWarning = async () => {
+    setDemoCounts(null);
+    setDemoWarning(true);
+    const s = await fetch("/api/summary").then((r) => r.json()).catch(() => null);
+    if (s) setDemoCounts({ accounts: (s.accounts ?? []).filter((a: { id: string }) => a.id !== "demo-main").length, netWorth: s.netWorth ?? 0 });
   };
 
   return (
@@ -213,7 +227,7 @@ export default function SettingsPage() {
           {settings?.demoMode && <Badge color="#a78bfa">{t("Aktiv")}</Badge>}
         </CardHeader>
         <CardContent className="flex gap-3">
-          <Button variant="glass" disabled={busy} onClick={() => toggleDemo(true)}>{t("Demo-Daten laden")}</Button>
+          <Button variant="glass" disabled={busy} onClick={openDemoWarning}>{t("Demo-Daten laden")}</Button>
           <Button variant="destructive" disabled={busy || !settings?.demoMode} onClick={() => toggleDemo(false)}>{t("Demo-Daten entfernen")}</Button>
         </CardContent>
       </Card>
@@ -235,10 +249,8 @@ export default function SettingsPage() {
           </div>
           {upd && (upd.upToDate
             ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktuell")}</Badge>
-            : upd.behind && upd.behind.count > 0
-              ? <Badge color="#fbbf24">
-                  {upd.behind.count === 1 ? t("1 Update verfügbar") : t("{n} Updates verfügbar", { n: upd.behind.count })}
-                </Badge>
+            : upd.updateAvailable && upd.latest
+              ? <Badge color="#fbbf24">{t("Version {v} verfügbar", { v: upd.latest.version })}</Badge>
               : null)}
         </CardHeader>
         <CardContent className="space-y-4">
@@ -246,13 +258,21 @@ export default function SettingsPage() {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-2">
             <span>
               {t("Installiert")}:{" "}
-              <span className="num text-foreground">{upd?.version.shortSha ?? t("unbekannt")}</span>
+              <span className="num font-semibold text-foreground">
+                {upd?.version.version ? `v${upd.version.version}` : t("unbekannt")}
+              </span>
+              {upd?.version.shortSha && <span className="num ml-1.5 opacity-60">({upd.version.shortSha})</span>}
               {upd?.version.deployedAt && ` · ${fmtDateTime(upd.version.deployedAt)}`}
             </span>
-            {upd?.remote && (
+            {upd?.latest && (
               <span>
-                {t("Neueste")}: <span className="num text-foreground">{upd.remote.shortSha}</span>
+                {t("Neueste")}: <span className="num text-foreground">v{upd.latest.version}</span>
               </span>
+            )}
+            {upd && (
+              <a href={upd.releasesUrl} target="_blank" rel="noreferrer" className="text-gold-bright hover:underline">
+                {t("Alle Versionen →")}
+              </a>
             )}
           </div>
 
@@ -298,22 +318,14 @@ export default function SettingsPage() {
           )}
 
           {/* Changelog */}
-          {upd?.behind && upd.behind.count > 0 && (
+          {upd?.updateAvailable && upd.latest?.notes && (
             <div className="glass-inset rounded-xl p-4">
-              <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-2">{t("Neu seit deiner Version")}</div>
-              <ul className="space-y-1.5">
-                {upd.behind.commits.map((c, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-muted">
-                    <span className="text-gold-bright">·</span>
-                    <span className="min-w-0 flex-1">{c}</span>
-                  </li>
-                ))}
-              </ul>
-              {upd.behind.count > upd.behind.commits.length && (
-                <div className="mt-2 text-[11px] text-muted-2">
-                  {t("… und {n} weitere", { n: upd.behind.count - upd.behind.commits.length })}
-                </div>
-              )}
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-2">
+                {t("Neu in v{v}", { v: upd.latest.version })}
+              </div>
+              <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted">
+                {upd.latest.notes}
+              </pre>
             </div>
           )}
 
@@ -322,9 +334,10 @@ export default function SettingsPage() {
             <Button variant="glass" onClick={loadUpdate} disabled={running}>
               <RefreshCw className={cn("h-4 w-4", running && "animate-spin")} /> {t("Nach Updates suchen")}
             </Button>
-            {upd?.canUpdate && !upd.upToDate && upd.remote && (
+            {upd?.canUpdate && upd.updateAvailable && upd.latest && (
               <Button onClick={startUpdate} disabled={updBusy || running}>
-                <Download className="h-4 w-4" /> {updBusy ? t("Starte …") : t("Update installieren")}
+                <Download className="h-4 w-4" />
+                {updBusy ? t("Starte …") : t("Auf v{v} aktualisieren", { v: upd.latest.version })}
               </Button>
             )}
           </div>
@@ -371,6 +384,49 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Warnung vor dem Laden von Demo-Daten */}
+      <Dialog open={demoWarning} onOpenChange={setDemoWarning}>
+        <DialogContent>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            {t("Demo-Daten laden?")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("Demo-Daten landen in derselben Datenbank wie deine echten Daten — nicht in einem getrennten Modus.")}
+          </DialogDescription>
+
+          <div className="mt-5 space-y-3">
+            {demoCounts && demoCounts.accounts > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {t("Du hast bereits {n} echtes Konto verbunden.", { n: demoCounts.accounts })}{" "}
+                  {t("Die Demo-Buchungen mischen sich in deine Transaktionsliste und verfälschen Auswertungen wie Sparquote und Kategorien.")}
+                </span>
+              </div>
+            )}
+
+            <div className="glass-inset space-y-2 rounded-xl p-4 text-xs leading-relaxed">
+              <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-2">{t("Was passiert")}</div>
+              <ul className="space-y-1.5 text-muted">
+                <li className="flex gap-2"><span className="text-amber-400">·</span>{t("Ein Demo-Konto und rund 300 Buchungen aus 8 Monaten werden angelegt.")}</li>
+                <li className="flex gap-2"><span className="text-amber-400">·</span>{t("Edelmetalle, Investments, Vorsorge und FIRE-Szenarien werden nur angelegt, wenn dort noch nichts steht — deine eigenen Einträge bleiben unangetastet.")}</li>
+                <li className="flex gap-2"><span className="text-emerald-soft">·</span>{t("Alles Demo-Erzeugte ist markiert und lässt sich über „Demo-Daten entfernen“ rückstandsfrei löschen.")}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={() => setDemoWarning(false)} disabled={busy}>
+              {t("Abbrechen")}
+            </Button>
+            <Button className="flex-1" onClick={() => toggleDemo(true)} disabled={busy}>
+              {busy ? t("Lade …") : t("Trotzdem laden")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
