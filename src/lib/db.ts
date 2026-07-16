@@ -55,7 +55,8 @@ function migrate(d: Database.Database) {
       purchase_price_eur REAL NOT NULL, -- total paid for this lot
       purchase_date TEXT NOT NULL,
       vendor TEXT,
-      note TEXT
+      note TEXT,
+      demo INTEGER DEFAULT 0            -- 1 = aus dem Demo-Seed, wird beim Entfernen gelöscht
     );
 
     CREATE TABLE IF NOT EXISTS investments (
@@ -66,7 +67,8 @@ function migrate(d: Database.Database) {
       buy_price_eur REAL NOT NULL,      -- per unit
       current_price_eur REAL,           -- per unit
       kind TEXT DEFAULT 'stock',        -- stock | etf | crypto | other
-      updated_at TEXT
+      updated_at TEXT,
+      demo INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS price_cache (
@@ -98,9 +100,23 @@ function migrate(d: Database.Database) {
       statement_date TEXT NOT NULL,
       balance_eur REAL NOT NULL,
       contribution_eur REAL,
-      note TEXT
+      note TEXT,
+      demo INTEGER DEFAULT 0
     );
   `);
+
+  // Bestehende Datenbanken nachziehen — CREATE TABLE IF NOT EXISTS ändert
+  // vorhandene Tabellen nicht, die demo-Spalte muss nachgerüstet werden.
+  for (const table of ["metal_lots", "investments", "pension_statements"]) {
+    addColumnIfMissing(d, table, "demo", "INTEGER DEFAULT 0");
+  }
+}
+
+function addColumnIfMissing(d: Database.Database, table: string, column: string, definition: string) {
+  const cols = d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === column)) {
+    d.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 export function getSetting(key: string): string | null {

@@ -1,4 +1,4 @@
-import { db, setSetting } from "./db";
+import { db, deleteSetting, getSetting, setSetting } from "./db";
 import { categorize } from "./categorize";
 
 /** Seed realistischer Demo-Daten, solange noch keine Bank verbunden ist. */
@@ -78,11 +78,12 @@ export function seedDemoData() {
   });
   txAll();
 
-  // Edelmetall-Demo-Käufe (nur wenn noch keine vorhanden)
+  // Edelmetalle, Investments und Vorsorge nur anlegen, wenn dort noch nichts
+  // steht — sonst würde der Demo-Modus echte Bestände verwässern.
   const lotCount = (d.prepare("SELECT COUNT(*) AS c FROM metal_lots").get() as { c: number }).c;
   if (lotCount === 0) {
     const lots = d.prepare(
-      "INSERT INTO metal_lots (metal, grams, purchase_price_eur, purchase_date, vendor, note) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO metal_lots (metal, grams, purchase_price_eur, purchase_date, vendor, note, demo) VALUES (?, ?, ?, ?, ?, ?, 1)"
     );
     lots.run("XAU", 31.1, 2350, "2024-03-12", "Philoro", "1 oz Krügerrand");
     lots.run("XAU", 20, 1610, "2024-09-02", "Degussa", "20g Barren");
@@ -95,7 +96,7 @@ export function seedDemoData() {
   const invCount = (d.prepare("SELECT COUNT(*) AS c FROM investments").get() as { c: number }).c;
   if (invCount === 0) {
     const inv = d.prepare(
-      "INSERT INTO investments (name, symbol, units, buy_price_eur, current_price_eur, kind, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO investments (name, symbol, units, buy_price_eur, current_price_eur, kind, updated_at, demo) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
     );
     const ts = now.toISOString();
     inv.run("iShares Core MSCI World", "IWDA.AS", 148, 82.4, 101.2, "etf", ts);
@@ -104,12 +105,72 @@ export function seedDemoData() {
     inv.run("Bitcoin", "BTC-EUR", 0.18, 38200, 61800, "crypto", ts);
   }
 
+  const penCount = (d.prepare("SELECT COUNT(*) AS c FROM pension_statements").get() as { c: number }).c;
+  if (penCount === 0) {
+    const pen = d.prepare(
+      "INSERT INTO pension_statements (statement_date, balance_eur, contribution_eur, note, demo) VALUES (?, ?, ?, ?, 1)"
+    );
+    pen.run("2024-01-15", 9840.2, 1800, "Jahresmitteilung 2023");
+    pen.run("2025-01-15", 12130.5, 1800, "Jahresmitteilung 2024");
+    pen.run("2026-01-15", 14250.8, 1800, "Jahresmitteilung 2025");
+    setSetting("pension_provider", "Muster Direktversicherung (Demo)");
+    setSetting("pension_monthly", "150");
+  }
+
   setSetting("demo_mode", "1");
+}
+
+/**
+ * Vor Einführung der demo-Spalte angelegte Demo-Daten tragen keine Markierung
+ * und blieben beim Entfernen liegen. Sie werden hier an ihren exakten
+ * Seed-Werten erkannt und nachträglich markiert — nur bei aktivem Demo-Modus,
+ * damit zufällig identische echte Positionen nicht getroffen werden.
+ */
+function backfillDemoFlags() {
+  if (getSetting("demo_mode") !== "1") return;
+  const d = db();
+
+  const lots: Array<[string, number, number, string]> = [
+    ["XAU", 31.1, 2350, "2024-03-12"],
+    ["XAU", 20, 1610, "2024-09-02"],
+    ["XAU", 10, 905, "2025-05-20"],
+    ["XAG", 500, 480, "2024-06-15"],
+    ["XAG", 311, 340, "2025-02-10"],
+    ["XPT", 31.1, 980, "2025-08-01"],
+  ];
+  const markLot = d.prepare(
+    "UPDATE metal_lots SET demo = 1 WHERE demo = 0 AND metal = ? AND grams = ? AND purchase_price_eur = ? AND purchase_date = ?"
+  );
+  for (const l of lots) markLot.run(...l);
+
+  // Symbole allein reichen nicht — die könnte man echt besitzen. Erst Stückzahl
+  // und Einstandskurs zusammen identifizieren eine Demo-Position eindeutig.
+  const invs: Array<[string, number, number]> = [
+    ["IWDA.AS", 148, 82.4],
+    ["VWCE.DE", 52, 104.1],
+    ["AAPL", 12, 168.0],
+    ["BTC-EUR", 0.18, 38200],
+  ];
+  const markInv = d.prepare(
+    "UPDATE investments SET demo = 1 WHERE demo = 0 AND symbol = ? AND units = ? AND buy_price_eur = ?"
+  );
+  for (const i of invs) markInv.run(...i);
 }
 
 export function clearDemoData() {
   const d = db();
-  d.prepare("DELETE FROM transactions WHERE account_id = 'demo-main'").run();
-  d.prepare("DELETE FROM accounts WHERE id = 'demo-main'").run();
-  setSetting("demo_mode", "0");
+  backfillDemoFlags();
+  const tx = d.transaction(() => {
+    d.prepare("DELETE FROM transactions WHERE account_id = 'demo-main'").run();
+    d.prepare("DELETE FROM accounts WHERE id = 'demo-main'").run();
+    d.prepare("DELETE FROM metal_lots WHERE demo = 1").run();
+    d.prepare("DELETE FROM investments WHERE demo = 1").run();
+    d.prepare("DELETE FROM pension_statements WHERE demo = 1").run();
+    if (getSetting("pension_provider") === "Muster Direktversicherung (Demo)") {
+      deleteSetting("pension_provider");
+      deleteSetting("pension_monthly");
+    }
+    setSetting("demo_mode", "0");
+  });
+  tx();
 }
