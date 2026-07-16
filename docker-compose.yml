@@ -1,0 +1,16 @@
+services:
+  achilles:
+    build: .
+    container_name: achilles-financials
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # WICHTIG: Auf die URL setzen, unter der das Dashboard vom Smartphone
+      # erreichbar ist (LAN-IP oder Domain) — wird für den QR-Code-Redirect benutzt.
+      - APP_URL=${APP_URL:-http://192.168.1.100:3000}
+    volumes:
+      - achilles-data:/data
+
+volumes:
+  achilles-data:
