@@ -212,7 +212,9 @@ export default function SettingsPage() {
           {upd && (upd.upToDate
             ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktuell")}</Badge>
             : upd.behind && upd.behind.count > 0
-              ? <Badge color="#fbbf24">{t("{n} Updates verfügbar", { n: upd.behind.count })}</Badge>
+              ? <Badge color="#fbbf24">
+                  {upd.behind.count === 1 ? t("1 Update verfügbar") : t("{n} Updates verfügbar", { n: upd.behind.count })}
+                </Badge>
               : null)}
         </CardHeader>
         <CardContent className="space-y-4">

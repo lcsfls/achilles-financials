@@ -297,6 +297,7 @@ const EN: Record<string, string> = {
   // Updates
   "Updates": "Updates",
   "Aktuell": "Up to date",
+  "1 Update verfügbar": "1 update available",
   "{n} Updates verfügbar": "{n} updates available",
   "Installiert": "Installed",
   "unbekannt": "unknown",
