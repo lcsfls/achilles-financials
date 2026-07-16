@@ -188,8 +188,74 @@ const EN: Record<string, string> = {
   "Beitrag: {amount}": "Contribution: {amount}",
   "Lade Vorsorge …": "Loading pension …",
 
+  // Watchlist (eigene Seite)
+  "Lade Watchlist …": "Loading watchlist …",
+  "{n} Werte": "{n} symbols",
+  "{n} im Plus": "{n} up",
+  "{n} im Minus": "{n} down",
+  "Symbol, z. B. NVDA, VWCE.DE, BTC-EUR, ^GSPC": "Symbol, e.g. NVDA, VWCE.DE, BTC-EUR, ^GSPC",
+
+  // Notgroschen
+  "Notgroschen": "Emergency fund",
+  "Kein Konto zugewiesen": "No account assigned",
+  "Einrichten": "Set up",
+  "Notgroschen einrichten": "Set up emergency fund",
+  "Weise ein Konto als Notgroschen zu. Es wird dann aus dem FIRE-Startkapital ausgenommen — zweckgebundenes Geld sollte nicht als investierbares Vermögen zählen.":
+    "Assign an account as your emergency fund. It's then excluded from FIRE starting capital — earmarked money shouldn't count as investable wealth.",
+  "Das gewählte Konto gilt als zweckgebunden und wird aus dem FIRE-Startkapital herausgerechnet.":
+    "The selected account counts as earmarked and is excluded from FIRE starting capital.",
+  "Konto": "Account",
+  "— keines —": "— none —",
+  "Noch keine Konten vorhanden — verbinde zuerst eine Bank oder importiere eine CSV.":
+    "No accounts yet — connect a bank or import a CSV first.",
+  "Monatsausgaben abdecken": "Months of expenses to cover",
+  "{n} Monate": "{n} months",
+  "Zielbetrag (€)": "Target amount (€)",
+  "Vorschlag aus deinen Ausgaben: {amount} ({n} × {monthly}) — übernehmen":
+    "Suggested from your spending: {amount} ({n} × {monthly}) — use this",
+  "Ziel {amount}": "Target {amount}",
+  "Ziel erreicht": "Target reached",
+  "Deckt {n} Monate deiner aktuellen Ausgaben": "Covers {n} months of your current spending",
+  "Notgroschen ({amount}) ist ausgenommen": "Emergency fund ({amount}) is excluded",
+
+  // Fondsaufteilung Vorsorge
+  "Fondsaufteilung": "Fund allocation",
+  "Worin deine Vorsorge angelegt ist": "What your pension is invested in",
+  "Einzahlungen seit": "Contributing since",
+  "Eingezahlt (geschätzt)": "Contributed (estimated)",
+  "in {n} Monaten": "over {n} months",
+  "Wertzuwachs": "gain",
+  "Guthaben": "Balance",
+  "ETF-Symbol (Yahoo-Format)": "ETF symbol (Yahoo format)",
+  "Gewicht %": "Weight %",
+  "Noch {n} % nicht zugeordnet.": "{n} % still unallocated.",
+  "Gewichtung übersteigt 100 %.": "Weights exceed 100 %.",
+  "Trage die Fonds deiner Vorsorge mit ihrer Gewichtung ein — der Anteil am Guthaben und die Live-Kurse erscheinen dann hier.":
+    "Add the funds your pension holds with their weights — their share of the balance and live prices appear here.",
+
   // FIRE
   "FIRE-Simulator": "FIRE Simulator",
+  "Financial Independence, Retire Early — alle Werte inflationsbereinigt in heutiger Kaufkraft.":
+    "Financial Independence, Retire Early — all values inflation-adjusted in today's purchasing power.",
+  "Szenario anlegen": "New scenario",
+  "Szenario bearbeiten": "Edit scenario",
+  "Neues Szenario": "New scenario",
+  "Szenario wirklich löschen?": "Really delete this scenario?",
+  "Das letzte Szenario kann nicht gelöscht werden.": "The last scenario can't be deleted.",
+  "Parameter anpassen — die Vorschau rechnet live mit.": "Adjust the parameters — the preview updates live.",
+  "z. B. Optimistisch, Sparsam, Basis": "e.g. Optimistic, Frugal, Base",
+  "Bearbeiten": "Edit",
+  "Abbrechen": "Cancel",
+  "Welches Vermögen zählt ins Startkapital?": "Which assets count toward starting capital?",
+  "Summe Startkapital": "Starting capital total",
+  "aus gewählten Bausteinen": "from selected assets",
+  "Welche Bausteine zählen, legst du je Szenario fest — über „Bearbeiten“.":
+    "Which assets count is set per scenario — via “Edit”.",
+  "Realrendite": "Real return",
+  "nach Inflation": "after inflation",
+  "FIRE-Zahl {amount}": "FIRE number {amount}",
+  "Mon.": "mo",
+  "Rendite": "return",
   "Financial Independence, Retire Early — alle Werte inflationsbereinigt in heutiger Kaufkraft (Realrendite {pct} % p. a.).":
     "Financial Independence, Retire Early — all values inflation-adjusted in today's purchasing power (real return {pct} % p.a.).",
   "Aktuelles Alter": "Current age",

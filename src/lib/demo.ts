@@ -115,6 +115,27 @@ export function seedDemoData() {
     pen.run("2026-01-15", 14250.8, 1800, "Jahresmitteilung 2025");
     setSetting("pension_provider", "Muster Direktversicherung (Demo)");
     setSetting("pension_monthly", "150");
+    setSetting("pension_start_date", "2019-04-01");
+  }
+
+  const allocCount = (d.prepare("SELECT COUNT(*) AS c FROM pension_allocation").get() as { c: number }).c;
+  if (allocCount === 0) {
+    const alloc = d.prepare("INSERT INTO pension_allocation (symbol, name, weight_pct, demo) VALUES (?, ?, ?, 1)");
+    alloc.run("IWDA.AS", "iShares Core MSCI World", 60);
+    alloc.run("EMIM.AS", "iShares Core MSCI EM IMI", 25);
+    alloc.run("AGGH.MI", "iShares Global Aggregate Bond", 15);
+  }
+
+  // Zwei zusätzliche Szenarien, damit der Vergleich im Demo sichtbar ist.
+  // Das automatisch angelegte Basis-Szenario ist Nutzer-Konfiguration und
+  // bleibt deshalb unmarkiert.
+  const scenCount = (d.prepare("SELECT COUNT(*) AS c FROM fire_scenarios WHERE demo = 1").get() as { c: number }).c;
+  if (scenCount === 0) {
+    const scen = d.prepare("INSERT INTO fire_scenarios (name, params, created_at, sort_order, demo) VALUES (?, ?, ?, ?, 1)");
+    const ts = now.toISOString();
+    const base = { age: 33, monthlyExpenses: 2500, inflationPct: 2, startNetWorth: null, include: { cash: true, metals: true, investments: true, pension: true } };
+    scen.run("Sparsam (Demo)", JSON.stringify({ ...base, monthlySavings: 900, annualReturnPct: 5, withdrawalRatePct: 3.5 }), ts, 1);
+    scen.run("Optimistisch (Demo)", JSON.stringify({ ...base, monthlySavings: 2500, annualReturnPct: 8, withdrawalRatePct: 4 }), ts, 2);
   }
 
   setSetting("demo_mode", "1");
@@ -166,9 +187,12 @@ export function clearDemoData() {
     d.prepare("DELETE FROM metal_lots WHERE demo = 1").run();
     d.prepare("DELETE FROM investments WHERE demo = 1").run();
     d.prepare("DELETE FROM pension_statements WHERE demo = 1").run();
+    d.prepare("DELETE FROM pension_allocation WHERE demo = 1").run();
+    d.prepare("DELETE FROM fire_scenarios WHERE demo = 1").run();
     if (getSetting("pension_provider") === "Muster Direktversicherung (Demo)") {
       deleteSetting("pension_provider");
       deleteSetting("pension_monthly");
+      deleteSetting("pension_start_date");
     }
     setSetting("demo_mode", "0");
   });

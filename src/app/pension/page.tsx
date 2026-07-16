@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { PensionAllocation } from "@/components/pension-allocation";
 import { useI18n } from "@/lib/i18n";
 import { fmtEUR, fmtEUR0, fmtDate } from "@/lib/utils";
 
@@ -205,6 +206,8 @@ export default function PensionPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PensionAllocation onChange={load} />
 
       {/* Statements table */}
       <Card className="rise rise-5 overflow-hidden">

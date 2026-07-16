@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_COLORS } from "@/lib/categorize";
+import { EmergencyFund } from "@/components/emergency-fund";
 import { useI18n } from "@/lib/i18n";
 import { cn, fmtEUR, fmtEUR0, fmtDate, fmtPct } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ type Summary = {
   metals: { totalValue: number; totalCost: number; holdings: Array<{ metal: string; name: string; color: string; totalGrams: number; currentValue: number | null; totalCost: number }> };
   investments: { value: number; cost: number; count: number };
   pension: { value: number; lastDate: string | null };
+  emergency: { accountId: string; accountName: string; balance: number; target: number; pct: number | null } | null;
   netWorth: number;
   demoMode: boolean;
   lastSync: string | null;
@@ -256,7 +258,9 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
 
-        <Card className="rise rise-5 xl:col-span-2">
+        <div className="space-y-4 xl:col-span-2">
+        <EmergencyFund monthlySpending={data.thisMonth.spent} onChange={load} />
+        <Card className="rise rise-5">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>{t("Edelmetall-Allokation")}</CardTitle>
             <Link href="/metals" className="text-xs text-gold-bright hover:underline">{t("Details →")}</Link>
@@ -289,6 +293,7 @@ export default function OverviewPage() {
             })}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

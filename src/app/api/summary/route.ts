@@ -10,6 +10,13 @@ export async function GET() {
   const accounts = d.prepare("SELECT * FROM accounts").all() as Array<{ id: string; name: string; balance: number; currency: string; last_synced: string | null; iban: string | null }>;
   const cashTotal = accounts.reduce((s, a) => s + a.balance, 0);
 
+  // Notgroschen ist zweckgebunden und zählt deshalb nicht als frei verfügbare
+  // Liquidität — weder im FIRE-Startkapital noch als Sparpotenzial.
+  const emergencyId = getSetting("emergency_account_id");
+  const emergencyAccount = emergencyId ? accounts.find((a) => a.id === emergencyId) : undefined;
+  const emergencyTarget = Number(getSetting("emergency_target_eur") || 0);
+  const emergencyBalance = emergencyAccount?.balance ?? 0;
+
   // Monatliche Ausgaben/Einnahmen der letzten 8 Monate
   const monthly = d
     .prepare(
@@ -73,6 +80,22 @@ export async function GET() {
     metals: { totalValue: metals.totalValue, totalCost: metals.totalCost, holdings: metals.holdings.map((h) => ({ metal: h.metal, name: h.name, color: h.color, totalGrams: h.totalGrams, currentValue: h.currentValue, totalCost: h.totalCost })) },
     investments: { value: invValue, cost: invCost, count: investments.length },
     pension: { value: pensionValue, lastDate: pensionRow?.statement_date ?? null },
+    emergency: emergencyAccount
+      ? {
+          accountId: emergencyAccount.id,
+          accountName: emergencyAccount.name,
+          balance: emergencyBalance,
+          target: emergencyTarget,
+          pct: emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : null,
+        }
+      : null,
+    // Bausteine für das FIRE-Startkapital, einzeln wählbar
+    assets: {
+      cash: cashTotal - emergencyBalance,
+      metals: metals.totalValue,
+      investments: invValue,
+      pension: pensionValue,
+    },
     netWorth: cashTotal + metals.totalValue + invValue + pensionValue,
     demoMode: getSetting("demo_mode") === "1",
     lastSync: getSetting("eb_last_sync"),

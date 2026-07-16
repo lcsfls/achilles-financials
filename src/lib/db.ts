@@ -103,6 +103,26 @@ function migrate(d: Database.Database) {
       note TEXT,
       demo INTEGER DEFAULT 0
     );
+
+    -- Fondsaufteilung der Altersvorsorge: welche ETFs mit welcher Gewichtung
+    CREATE TABLE IF NOT EXISTS pension_allocation (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      symbol TEXT NOT NULL,             -- Yahoo-Format, für Live-Kurse
+      name TEXT,
+      weight_pct REAL NOT NULL,
+      demo INTEGER DEFAULT 0
+    );
+
+    -- Gespeicherte FIRE-Szenarien; params als JSON, damit neue Parameter
+    -- keine Migration brauchen
+    CREATE TABLE IF NOT EXISTS fire_scenarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      params TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      demo INTEGER DEFAULT 0
+    );
   `);
 
   // Bestehende Datenbanken nachziehen — CREATE TABLE IF NOT EXISTS ändert

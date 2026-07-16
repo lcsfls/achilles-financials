@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, TrendingUp, Pencil, RefreshCw, Eye } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Pencil, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -24,58 +24,27 @@ const KIND_LABEL: Record<string, { label: string; color: string }> = {
 
 const EMPTY = { name: "", symbol: "", units: "", buy_price_eur: "", current_price_eur: "", kind: "etf" };
 
-type WatchItem = {
-  id: number; symbol: string; label: string | null;
-  quote: { name: string | null; price: number; changePct: number | null; currency: string; priceEur: number | null; stale: boolean } | null;
-};
-
 export default function InvestmentsPage() {
   const { t } = useI18n();
   const [invs, setInvs] = useState<Inv[] | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [priceEdit, setPriceEdit] = useState<{ id: number; value: string } | null>(null);
-  const [watchlist, setWatchlist] = useState<WatchItem[]>([]);
-  const [wlSymbol, setWlSymbol] = useState("");
-  const [wlBusy, setWlBusy] = useState(false);
-  const [wlError, setWlError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshInfo, setRefreshInfo] = useState<string | null>(null);
 
   const load = () => fetch("/api/investments").then((r) => r.json()).then((d) => setInvs(d.investments));
-  const loadWatchlist = (refresh = false) =>
-    fetch(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then((d) => setWatchlist(d.watchlist));
-  useEffect(() => { load(); loadWatchlist(); }, []);
+  useEffect(() => { load(); }, []);
 
   const refreshPrices = async () => {
     setRefreshing(true);
     setRefreshInfo(null);
     const res = await fetch("/api/investments/refresh", { method: "POST" });
     const d = await res.json();
-    await Promise.all([load(), loadWatchlist(true)]);
+    await load();
     setRefreshing(false);
     setRefreshInfo(t("{n} Kurse aktualisiert", { n: d.updated }));
     setTimeout(() => setRefreshInfo(null), 5000);
-  };
-
-  const addWatch = async () => {
-    if (!wlSymbol.trim()) return;
-    setWlBusy(true);
-    setWlError(null);
-    const res = await fetch("/api/watchlist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol: wlSymbol }),
-    });
-    setWlBusy(false);
-    if (!res.ok) { setWlError(t((await res.json()).error)); return; }
-    setWlSymbol("");
-    loadWatchlist();
-  };
-
-  const removeWatch = async (id: number) => {
-    await fetch(`/api/watchlist?id=${id}`, { method: "DELETE" });
-    loadWatchlist();
   };
 
   const num = (s: string) => parseFloat(s.replace(",", "."));
@@ -260,75 +229,6 @@ export default function InvestmentsPage() {
         </Card>
       )}
 
-      {/* Watchlist */}
-      <Card className="rise rise-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 p-6 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-soft/10 border border-sky-soft/20">
-              <Eye className="h-5 w-5 text-sky-soft" strokeWidth={1.7} />
-            </div>
-            <div>
-              <div className="text-base font-semibold">{t("Watchlist")}</div>
-              <div className="text-xs text-muted-2">{t("Live-Kurse via Yahoo Finance · 5-Minuten-Cache")}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder={t("Symbol, z. B. NVDA, VWCE.DE")}
-              className="h-9 w-56 text-xs"
-              value={wlSymbol}
-              onChange={(e) => { setWlSymbol(e.target.value); setWlError(null); }}
-              onKeyDown={(e) => e.key === "Enter" && addWatch()}
-            />
-            <Button variant="glass" size="sm" disabled={wlBusy} onClick={addWatch}>
-              {wlBusy ? t("Prüfe …") : <><Plus className="h-3.5 w-3.5" /> {t("Hinzufügen")}</>}
-            </Button>
-          </div>
-        </div>
-        {wlError && <div className="px-6 pb-2 text-xs text-rose-soft">{wlError}</div>}
-        <div className="px-2 pb-3">
-          {watchlist.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-2">
-              {t("Noch leer — füge Symbole hinzu, um Kurse zu beobachten (Yahoo-Format: AAPL, VWCE.DE, IWDA.AS, BTC-EUR, ^GSPC).")}
-            </div>
-          ) : (
-            <div className="divide-y divide-white/[0.04]">
-              {watchlist.map((w) => (
-                <div key={w.id} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{w.label || w.quote?.name || w.symbol}</span>
-                      <span className="text-[11px] text-muted-2">{w.symbol}</span>
-                      {w.quote?.stale && <span className="text-[10px] text-amber-400">{t("letzter bekannter Kurs")}</span>}
-                    </div>
-                  </div>
-                  {w.quote ? (
-                    <>
-                      <div className="num text-right text-sm font-semibold">
-                        {fmtNum(w.quote.price)} {w.quote.currency}
-                        {w.quote.priceEur !== null && w.quote.currency !== "EUR" && (
-                          <div className="text-[11px] font-normal text-muted-2">{fmtEUR(w.quote.priceEur)}</div>
-                        )}
-                      </div>
-                      <div
-                        className="num w-20 shrink-0 text-right text-sm font-medium"
-                        style={{ color: (w.quote.changePct ?? 0) >= 0 ? "#34d399" : "#fb7185" }}
-                      >
-                        {w.quote.changePct !== null ? fmtPct(w.quote.changePct) : "—"}
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-2">{t("kein Kurs")}</span>
-                  )}
-                  <button onClick={() => removeWatch(w.id)} className="rounded-lg p-1.5 text-muted-2 transition-colors hover:bg-rose-soft/10 hover:text-rose-soft cursor-pointer" title={t("Entfernen")}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }
