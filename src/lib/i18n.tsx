@@ -375,6 +375,10 @@ const EN: Record<string, string> = {
   "Update installieren": "Install update",
   "Starte …": "Starting …",
   "In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:": "In-app updates aren't set up here. Update via shell:",
+  "Keine Schreibrechte im Control-Verzeichnis — einmalig auf dem Host reparieren:":
+    "No write access to the control directory — fix it once on the host:",
+  "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren:":
+    "No write access to the control directory — the files are owned by root while the app runs as uid 1001. Fix it once on the host:",
   "Kopieren": "Copy",
   "Kopiert": "Copied",
   "Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten.":

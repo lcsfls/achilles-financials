@@ -18,6 +18,8 @@ type UpdateInfo = {
   version: { sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
   status: { state: "idle" | "requested" | "running" | "success" | "error"; message?: string; finishedAt?: string; toSha?: string };
   canUpdate: boolean;
+  control: "ok" | "missing" | "readonly";
+  fixCommand: string | null;
   remote: { sha: string; shortSha: string; date: string | null; message: string | null } | null;
   behind: { count: number; commits: string[] } | null;
   upToDate: boolean;
@@ -37,6 +39,7 @@ export default function SettingsPage() {
   const [upd, setUpd] = useState<UpdateInfo | null>(null);
   const [updBusy, setUpdBusy] = useState(false);
   const [updError, setUpdError] = useState<string | null>(null);
+  const [updFix, setUpdFix] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
@@ -62,7 +65,12 @@ export default function SettingsPage() {
     setUpdError(null);
     const res = await fetch("/api/update", { method: "POST" });
     setUpdBusy(false);
-    if (!res.ok) { setUpdError((await res.json()).error); return; }
+    if (!res.ok) {
+      const d = await res.json();
+      setUpdError(d.error);
+      setUpdFix(d.fixCommand ?? null);
+      return;
+    }
     loadUpdate();
   };
 
@@ -272,8 +280,20 @@ export default function SettingsPage() {
             </div>
           )}
           {updError && (
-            <div className="flex items-center gap-3 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
-              <AlertTriangle className="h-4 w-4 shrink-0" /> {updError}
+            <div className="rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> <span>{updError}</span>
+              </div>
+              {updFix && (
+                <div className="mt-2 flex items-center gap-2">
+                  <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-black/40 px-3 py-2 text-[11px] text-gold-bright">
+                    {updFix}
+                  </code>
+                  <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(updFix)}>
+                    {t("Kopieren")}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -314,16 +334,18 @@ export default function SettingsPage() {
             <div className="glass-inset rounded-xl p-4">
               <div className="flex items-center gap-2 text-xs text-muted">
                 <Terminal className="h-3.5 w-3.5 shrink-0 text-muted-2" />
-                {t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
+                {upd.control === "readonly"
+                  ? t("Keine Schreibrechte im Control-Verzeichnis — einmalig auf dem Host reparieren:")
+                  : t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-black/40 px-3 py-2 text-[11px] text-gold-bright">
-                  {upd.shellCommand}
+                  {upd.fixCommand ?? upd.shellCommand}
                 </code>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { navigator.clipboard.writeText(upd.shellCommand); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  onClick={() => { navigator.clipboard.writeText(upd.fixCommand ?? upd.shellCommand); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                 >
                   {copied ? t("Kopiert") : t("Kopieren")}
                 </Button>

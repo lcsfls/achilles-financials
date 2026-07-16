@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
-  BRANCH, REPO, fetchBehind, fetchRemoteHead, getUpdateStatus, getVersion, requestUpdate, updatesAvailable,
+  BRANCH, FIX_PERMISSIONS_COMMAND, REPO, controlState, fetchBehind, fetchRemoteHead,
+  getUpdateStatus, getVersion, requestUpdate,
 } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const version = getVersion();
   const status = getUpdateStatus();
-  const canUpdate = updatesAvailable();
+  const control = controlState();
 
   const remote = await fetchRemoteHead();
   let behind: { count: number; commits: string[] } | null = null;
@@ -24,7 +25,9 @@ export async function GET() {
     branch: BRANCH,
     version,
     status,
-    canUpdate,
+    canUpdate: control === "ok",
+    control,
+    fixCommand: control === "readonly" ? FIX_PERMISSIONS_COMMAND : null,
     remote: remote ? { sha: remote.sha, shortSha: remote.sha.slice(0, 7), date: remote.date, message: remote.message } : null,
     behind,
     upToDate,
@@ -35,7 +38,19 @@ export async function GET() {
 
 /** Update anstoßen — der Host-Watcher übernimmt den eigentlichen Rebuild. */
 export async function POST() {
-  if (!updatesAvailable()) {
+  const control = controlState();
+  if (control === "readonly") {
+    // Der häufigste Fall im Betrieb: update.sh lief als root und hat die
+    // Statusdatei root-eigen hinterlassen.
+    return NextResponse.json(
+      {
+        error: "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren:",
+        fixCommand: FIX_PERMISSIONS_COMMAND,
+      },
+      { status: 403 }
+    );
+  }
+  if (control === "missing") {
     return NextResponse.json(
       { error: "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren." },
       { status: 501 }

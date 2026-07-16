@@ -34,13 +34,57 @@ function readJson<T>(file: string): T | null {
   }
 }
 
-/** Ist der Control-Kanal gemountet und beschreibbar? Nur dann kann die App updaten. */
-export function updatesAvailable(): boolean {
+/**
+ * Ist der Control-Kanal gemountet und wirklich beschreibbar?
+ *
+ * Das Verzeichnis allein zu prüfen genügt nicht: update.sh läuft als root und
+ * hinterlässt root-eigene Dateien. Dann ist das Verzeichnis schreibbar, die
+ * Statusdatei aber nicht — und der Schreibversuch scheitert erst beim Klick.
+ */
+export type ControlState = "ok" | "missing" | "readonly";
+
+/**
+ * Warum genau kann die App nicht updaten? "fehlt" und "keine Rechte" brauchen
+ * völlig verschiedene Hilfestellungen — die Unterscheidung gehört hierher und
+ * nicht in eine Sammelmeldung.
+ */
+export function controlState(): ControlState {
+  if (!fs.existsSync(CONTROL_DIR)) return "missing";
   try {
     fs.accessSync(CONTROL_DIR, fs.constants.W_OK);
-    return true;
   } catch {
-    return false;
+    return "readonly";
+  }
+  for (const file of ["update-status.json", "update-requested"]) {
+    const p = path.join(CONTROL_DIR, file);
+    try {
+      fs.accessSync(p, fs.constants.W_OK);
+    } catch (e) {
+      // Nicht vorhanden ist in Ordnung — die legen wir an. Vorhanden und nicht
+      // beschreibbar heißt: root hat sie angelegt.
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") return "readonly";
+    }
+  }
+  return "ok";
+}
+
+export function updatesAvailable(): boolean {
+  return controlState() === "ok";
+}
+
+/** Ein-Zeilen-Reparatur für den Rechtefall, passend zum Installationspfad. */
+export const FIX_PERMISSIONS_COMMAND = "chown -R 1001:1001 /opt/achilles-financials/control";
+
+/** Erklärt den Rechtefehler statt ihn roh durchzureichen. */
+export class ControlWriteError extends Error {
+  constructor(cause: NodeJS.ErrnoException) {
+    super(
+      cause.code === "EACCES" || cause.code === "EPERM"
+        ? `Keine Schreibrechte im Control-Verzeichnis (${cause.path ?? CONTROL_DIR}). ` +
+          `Die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren: ` +
+          `chown -R 1001:1001 /opt/achilles-financials/control`
+        : `Update konnte nicht angefordert werden: ${cause.message}`
+    );
   }
 }
 
@@ -60,11 +104,17 @@ export function getUpdateStatus(): UpdateStatus {
 }
 
 export function requestUpdate(): void {
-  fs.writeFileSync(path.join(CONTROL_DIR, "update-requested"), new Date().toISOString());
-  fs.writeFileSync(
-    path.join(CONTROL_DIR, "update-status.json"),
-    JSON.stringify({ state: "requested", startedAt: new Date().toISOString() } satisfies UpdateStatus)
-  );
+  try {
+    fs.writeFileSync(
+      path.join(CONTROL_DIR, "update-status.json"),
+      JSON.stringify({ state: "requested", startedAt: new Date().toISOString() } satisfies UpdateStatus)
+    );
+    // Flag zuletzt: Der Watcher startet, sobald es existiert — der Status soll
+    // dann schon stimmen.
+    fs.writeFileSync(path.join(CONTROL_DIR, "update-requested"), new Date().toISOString());
+  } catch (e) {
+    throw new ControlWriteError(e as NodeJS.ErrnoException);
+  }
 }
 
 /** Neueste Commits auf dem Branch — ohne Token (60 Requests/h pro IP genügen). */

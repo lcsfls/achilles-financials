@@ -29,6 +29,18 @@ STARTED_AT="$(date -Iseconds)"
 FROM_SHA=""
 TO_SHA=""
 
+# Der Container läuft als uid 1001 (siehe Dockerfile) und muss in dieses
+# Verzeichnis schreiben können. Dieses Script läuft dagegen als root (systemd),
+# erzeugt also root-eigene Dateien — deshalb nach JEDEM Schreiben zurückgeben,
+# nicht erst am Ende: sonst sperrt schon ein fehlgeschlagenes Update die GUI aus.
+APP_UID="${APP_UID:-1001}"
+APP_GID="${APP_GID:-1001}"
+
+fix_owner() {
+  chown -R "${APP_UID}:${APP_GID}" "$CONTROL_DIR" 2>/dev/null || true
+  chmod 775 "$CONTROL_DIR" 2>/dev/null || true
+}
+
 write_status() {
   [[ -d "$CONTROL_DIR" ]] || return 0
   local state="$1" msg="${2:-}"
@@ -38,6 +50,7 @@ write_status() {
 {"state":"${state}","startedAt":"${STARTED_AT}","finishedAt":"$(date -Iseconds)","fromSha":"${FROM_SHA}","toSha":"${TO_SHA}","message":"${msg}"}
 EOF
   mv -f "${CONTROL_DIR}/.status.tmp" "${CONTROL_DIR}/update-status.json"
+  fix_owner
 }
 
 fail() {
@@ -53,7 +66,10 @@ rm -f "$CONTROL_DIR/update-requested" 2>/dev/null || true
 cd "$APP_DIR" || fail "Kann nicht nach $APP_DIR wechseln."
 command -v docker >/dev/null 2>&1 || fail "Docker ist nicht installiert."
 
+# Verzeichnis kann von Docker als root angelegt worden sein (Bind-Mount ohne
+# vorhandenes Quellverzeichnis) — Besitzer daher immer zuerst geradeziehen.
 mkdir -p "$CONTROL_DIR"
+fix_owner
 write_status "running" "Update gestartet"
 
 FROM_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
@@ -101,7 +117,6 @@ cat > "${CONTROL_DIR}/.version.tmp" <<EOF
 {"sha":"${TO_SHA}","deployedAt":"$(date -Iseconds)","branch":"${BRANCH}"}
 EOF
 mv -f "${CONTROL_DIR}/.version.tmp" "${CONTROL_DIR}/version.json"
-chown -R 1001:1001 "$CONTROL_DIR" 2>/dev/null || true
 
 write_status "success" "Update auf ${TO_SHA:0:7} abgeschlossen"
 echo "=== $(date -Iseconds) — update ok: ${FROM_SHA:0:7} -> ${TO_SHA:0:7} ===" >> "$LOG_FILE"
