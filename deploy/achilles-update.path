@@ -1,0 +1,10 @@
+[Unit]
+Description=Achilles Financials — watch for in-app update requests
+
+[Path]
+# Die App schreibt diese Datei, wenn in den Einstellungen "Update starten" geklickt wird
+PathExists=/opt/achilles-financials/control/update-requested
+Unit=achilles-update.service
+
+[Install]
+WantedBy=multi-user.target

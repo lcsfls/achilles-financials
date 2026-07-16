@@ -1,14 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { cn, fmtDateTime } from "@/lib/utils";
 
 type Settings = { gcConfigured: boolean; gcSecretIdMasked: string | null; country: string; demoMode: boolean; language: string };
+
+type UpdateInfo = {
+  repo: string;
+  branch: string;
+  version: { sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
+  status: { state: "idle" | "requested" | "running" | "success" | "error"; message?: string; finishedAt?: string; toSha?: string };
+  canUpdate: boolean;
+  remote: { sha: string; shortSha: string; date: string | null; message: string | null } | null;
+  behind: { count: number; commits: string[] } | null;
+  upToDate: boolean;
+  shellCommand: string;
+};
 
 export default function SettingsPage() {
   const { t, lang, setLang } = useI18n();
@@ -19,8 +32,33 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const [upd, setUpd] = useState<UpdateInfo | null>(null);
+  const [updBusy, setUpdBusy] = useState(false);
+  const [updError, setUpdError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); });
-  useEffect(() => { load(); }, []);
+  const loadUpdate = () => fetch("/api/update").then((r) => r.json()).then(setUpd).catch(() => {});
+  useEffect(() => { load(); loadUpdate(); }, []);
+
+  // Während ein Update läuft, Status pollen — der Container startet dabei neu,
+  // fehlgeschlagene Requests sind also erwartbar.
+  const running = upd?.status.state === "requested" || upd?.status.state === "running";
+  useEffect(() => {
+    if (!running) return;
+    const iv = setInterval(loadUpdate, 4000);
+    return () => clearInterval(iv);
+  }, [running]);
+
+  const startUpdate = async () => {
+    if (!confirm(t("Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten."))) return;
+    setUpdBusy(true);
+    setUpdError(null);
+    const res = await fetch("/api/update", { method: "POST" });
+    setUpdBusy(false);
+    if (!res.ok) { setUpdError((await res.json()).error); return; }
+    loadUpdate();
+  };
 
   const save = async () => {
     setBusy(true);
@@ -156,7 +194,128 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Updates */}
       <Card className="rise rise-4">
+        <CardHeader className="flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-soft/10 border border-emerald-soft/20">
+              <Download className="h-5 w-5 text-emerald-soft" strokeWidth={1.7} />
+            </div>
+            <div>
+              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Updates")}</CardTitle>
+              <div className="flex items-center gap-1.5 text-xs text-muted-2">
+                <GitBranch className="h-3 w-3" />
+                {upd?.repo ?? "…"} · {upd?.branch ?? ""}
+              </div>
+            </div>
+          </div>
+          {upd && (upd.upToDate
+            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktuell")}</Badge>
+            : upd.behind && upd.behind.count > 0
+              ? <Badge color="#fbbf24">{t("{n} Updates verfügbar", { n: upd.behind.count })}</Badge>
+              : null)}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Versionszeile */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-2">
+            <span>
+              {t("Installiert")}:{" "}
+              <span className="num text-foreground">{upd?.version.shortSha ?? t("unbekannt")}</span>
+              {upd?.version.deployedAt && ` · ${fmtDateTime(upd.version.deployedAt)}`}
+            </span>
+            {upd?.remote && (
+              <span>
+                {t("Neueste")}: <span className="num text-foreground">{upd.remote.shortSha}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Laufendes Update */}
+          {running && (
+            <div className="flex items-center gap-3 rounded-xl border border-gold/25 bg-gold/8 px-4 py-3 text-sm text-gold-bright">
+              <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />
+              {t("Update läuft — der Container wird neu gebaut. Die Seite ist gleich kurz nicht erreichbar; danach einfach neu laden.")}
+            </div>
+          )}
+
+          {/* Ergebnis des letzten Updates */}
+          {!running && upd?.status.state === "success" && upd.status.message && (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-soft/25 bg-emerald-soft/8 px-4 py-3 text-sm text-emerald-soft">
+              <CheckCircle2 className="h-4 w-4 shrink-0" /> {upd.status.message}
+            </div>
+          )}
+          {!running && upd?.status.state === "error" && (
+            <div className="flex items-start gap-3 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <div>{t("Letztes Update fehlgeschlagen")}</div>
+                {upd.status.message && <div className="mt-0.5 text-xs opacity-80">{upd.status.message}</div>}
+              </div>
+            </div>
+          )}
+          {updError && (
+            <div className="flex items-center gap-3 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> {updError}
+            </div>
+          )}
+
+          {/* Changelog */}
+          {upd?.behind && upd.behind.count > 0 && (
+            <div className="glass-inset rounded-xl p-4">
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-2">{t("Neu seit deiner Version")}</div>
+              <ul className="space-y-1.5">
+                {upd.behind.commits.map((c, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-muted">
+                    <span className="text-gold-bright">·</span>
+                    <span className="min-w-0 flex-1">{c}</span>
+                  </li>
+                ))}
+              </ul>
+              {upd.behind.count > upd.behind.commits.length && (
+                <div className="mt-2 text-[11px] text-muted-2">
+                  {t("… und {n} weitere", { n: upd.behind.count - upd.behind.commits.length })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Aktionen */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="glass" onClick={loadUpdate} disabled={running}>
+              <RefreshCw className={cn("h-4 w-4", running && "animate-spin")} /> {t("Nach Updates suchen")}
+            </Button>
+            {upd?.canUpdate && !upd.upToDate && upd.remote && (
+              <Button onClick={startUpdate} disabled={updBusy || running}>
+                <Download className="h-4 w-4" /> {updBusy ? t("Starte …") : t("Update installieren")}
+              </Button>
+            )}
+          </div>
+
+          {/* Fallback ohne Control-Kanal */}
+          {upd && !upd.canUpdate && (
+            <div className="glass-inset rounded-xl p-4">
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <Terminal className="h-3.5 w-3.5 shrink-0 text-muted-2" />
+                {t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-black/40 px-3 py-2 text-[11px] text-gold-bright">
+                  {upd.shellCommand}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { navigator.clipboard.writeText(upd.shellCommand); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                >
+                  {copied ? t("Kopiert") : t("Kopieren")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="rise rise-5">
         <CardHeader className="flex-row items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-soft/10 border border-sky-soft/20">
             <Database className="h-5 w-5 text-sky-soft" strokeWidth={1.7} />

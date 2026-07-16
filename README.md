@@ -26,6 +26,7 @@ zwischen Deutsch und Englisch.
 | 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, FIRE number, years to financial independence — interactive sliders, seeded from your real net worth. |
 | 🐷 **Occupational pension** | Log the balances from your pension statements; the latest balance feeds into net worth and the FIRE simulation. |
 | 🌍 **Bilingual** | German and English, chosen in the first-run setup wizard, switchable anytime. |
+| ⬆️ **Self-updating** | Settings → Updates shows the changelog since your version and installs it with one click (pulls this repo and rebuilds). Or one line in the shell. |
 | 🔒 **Private by design** | Everything lives in a single SQLite file on your server. The only outbound calls are public price/FX APIs — no personal data ever leaves your box. |
 
 ## Screenshots
@@ -78,6 +79,33 @@ file is a full backup:
 docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
   tar czf /backup/achilles-backup.tar.gz /data
 ```
+
+## Updating
+
+**In the app:** *Settings → Updates* checks this repo, lists what's new since your version, and
+installs it on click. The app writes a request to `control/`, a systemd watcher on the host runs
+`deploy/update.sh`, which pulls and rebuilds. Your database is untouched. The Proxmox installer sets
+this up automatically.
+
+**In the shell** — one line, from inside the LXC/host:
+
+```bash
+/opt/achilles-financials/deploy/update.sh
+```
+
+Or straight from the Proxmox host (replace `120` with your CTID):
+
+```bash
+pct exec 120 -- /opt/achilles-financials/deploy/update.sh
+```
+
+The script is idempotent: it exits early if you're already on the latest commit, and writes its log
+to `control/update.log`.
+
+> **Note on in-app updates:** they only work when `./control` is bind-mounted and the systemd watcher
+> is installed (the Proxmox installer does both). Without it, the app still *checks* for updates and
+> shows you the shell command to copy — it just won't run it itself. The app never gets access to the
+> Docker socket.
 
 ## Connecting Revolut
 

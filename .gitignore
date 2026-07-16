@@ -9,4 +9,11 @@ data/
 .DS_Store
 npm-debug.log*
 
+# Laufzeit-Status des Update-Kanals (wird auf dem Host erzeugt)
+control/
+
 .claude/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+next-env.d.ts

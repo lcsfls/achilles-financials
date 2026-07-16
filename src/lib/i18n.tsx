@@ -294,6 +294,30 @@ const EN: Record<string, string> = {
   "Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.app — es verlassen keine persönlichen Daten deinen Server.":
     "All data lives in a SQLite database at /data/achilles.db inside the container volume. Backing up that file is all you need. Spot prices and FX rates come from gold-api.com, Yahoo Finance and frankfurter.app — no personal data ever leaves your server.",
 
+  // Updates
+  "Updates": "Updates",
+  "Aktuell": "Up to date",
+  "{n} Updates verfügbar": "{n} updates available",
+  "Installiert": "Installed",
+  "unbekannt": "unknown",
+  "Neueste": "Latest",
+  "Update läuft — der Container wird neu gebaut. Die Seite ist gleich kurz nicht erreichbar; danach einfach neu laden.":
+    "Update running — the container is rebuilding. This page will be briefly unavailable; just reload afterwards.",
+  "Letztes Update fehlgeschlagen": "Last update failed",
+  "Neu seit deiner Version": "New since your version",
+  "… und {n} weitere": "… and {n} more",
+  "Nach Updates suchen": "Check for updates",
+  "Update installieren": "Install update",
+  "Starte …": "Starting …",
+  "In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:": "In-app updates aren't set up here. Update via shell:",
+  "Kopieren": "Copy",
+  "Kopiert": "Copied",
+  "Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten.":
+    "Install the update now? The container will rebuild and restart — your data is preserved.",
+  "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.":
+    "In-app updates aren't set up (control directory missing). Please update via shell.",
+  "Es läuft bereits ein Update.": "An update is already running.",
+
   // Setup
   "Willkommen · Welcome": "Willkommen · Welcome",
   "Sprache wählen / Choose your language": "Sprache wählen / Choose your language",

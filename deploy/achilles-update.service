@@ -1,0 +1,13 @@
+[Unit]
+Description=Achilles Financials — pull from Git and rebuild
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/achilles-financials
+Environment=APP_DIR=/opt/achilles-financials
+ExecStart=/opt/achilles-financials/deploy/update.sh --from-app
+TimeoutStartSec=1800
+StandardOutput=journal
+StandardError=journal

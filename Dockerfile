@@ -17,8 +17,13 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/data
+ENV CONTROL_DIR=/control
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+
+# Fallback-Version, falls control/version.json fehlt (update.sh schreibt sie sonst)
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m achilles \
     && mkdir -p /data && chown achilles:nodejs /data
