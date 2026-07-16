@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { useI18n, type Lang } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string };
+type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null };
 
 type UpdateInfo = {
   repo: string;
@@ -44,6 +44,11 @@ export default function SettingsPage() {
   const [updFix, setUpdFix] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [demoWarning, setDemoWarning] = useState(false);
+  const [authUser, setAuthUser] = useState("");
+  const [authPass, setAuthPass] = useState("");
+  const [authCurrent, setAuthCurrent] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSaved, setAuthSaved] = useState(false);
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
   // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
@@ -99,6 +104,32 @@ export default function SettingsPage() {
     load();
   };
 
+  const saveAuth = async (disable = false) => {
+    setBusy(true);
+    setAuthError(null);
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        auth: disable
+          ? { disable: true, currentPassword: authCurrent }
+          : { username: authUser, password: authPass, currentPassword: authCurrent },
+      }),
+    });
+    setBusy(false);
+    if (!res.ok) { setAuthError(t((await res.json()).error)); return; }
+    setAuthPass("");
+    setAuthCurrent("");
+    setAuthSaved(true);
+    setTimeout(() => setAuthSaved(false), 3000);
+    load();
+  };
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  };
+
   const toggleDemo = async (on: boolean) => {
     setBusy(true);
     await fetch("/api/demo", { method: on ? "POST" : "DELETE" });
@@ -148,6 +179,93 @@ export default function SettingsPage() {
               {label}
             </button>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Login */}
+      <Card className="rise rise-2">
+        <CardHeader className="flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-soft/10 border border-rose-soft/20">
+              <Lock className="h-5 w-5 text-rose-soft" strokeWidth={1.7} />
+            </div>
+            <div>
+              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Login")}</CardTitle>
+              <div className="text-xs text-muted-2">{t("Schützt das Dashboard mit Benutzername und Passwort")}</div>
+            </div>
+          </div>
+          {settings?.authEnabled
+            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktiv")} ({settings.authUser})</Badge>
+            : <Badge color="#fb7185">{t("Kein Schutz")}</Badge>}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!settings?.authEnabled && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-400/8 px-4 py-3 text-xs leading-relaxed text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              {t("Ohne Login kann jeder im Netzwerk deine Finanzdaten sehen und deine Bank-Zugangsdaten auslesen.")}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>{t("Benutzername")}</Label>
+              <Input
+                autoComplete="username"
+                placeholder={settings?.authUser ?? "achilles"}
+                value={authUser}
+                onChange={(e) => { setAuthUser(e.target.value); setAuthError(null); }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{settings?.authEnabled ? t("Neues Passwort") : t("Passwort")}</Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder={t("mindestens 8 Zeichen")}
+                value={authPass}
+                onChange={(e) => { setAuthPass(e.target.value); setAuthError(null); }}
+              />
+            </div>
+          </div>
+
+          {settings?.authEnabled && (
+            <div className="space-y-1.5 sm:w-1/2">
+              <Label>{t("Aktuelles Passwort")}</Label>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={authCurrent}
+                onChange={(e) => { setAuthCurrent(e.target.value); setAuthError(null); }}
+              />
+            </div>
+          )}
+
+          {authError && (
+            <div className="flex items-center gap-2 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-3 py-2.5 text-xs text-rose-soft">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {authError}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => saveAuth(false)} disabled={busy || !authUser || !authPass}>
+              {settings?.authEnabled ? t("Zugangsdaten ändern") : t("Login aktivieren")}
+            </Button>
+            {settings?.authEnabled && (
+              <>
+                <Button variant="destructive" onClick={() => saveAuth(true)} disabled={busy || !authCurrent}>
+                  {t("Login deaktivieren")}
+                </Button>
+                <Button variant="ghost" onClick={logout}>
+                  <LogOut className="h-4 w-4" /> {t("Abmelden")}
+                </Button>
+              </>
+            )}
+            {authSaved && <span className="flex items-center gap-1.5 text-sm text-emerald-soft"><CheckCircle2 className="h-4 w-4" /> {t("Gespeichert")}</span>}
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-muted-2">
+            {t("Passkeys sind noch nicht umgesetzt — bis dahin schützt das Passwort. Für Zugriff von außerhalb des LAN gehört ohnehin ein Reverse-Proxy mit HTTPS davor.")}
+          </p>
         </CardContent>
       </Card>
 

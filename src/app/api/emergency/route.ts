@@ -13,19 +13,28 @@ export async function GET() {
   const target = Number(getSetting("emergency_target_eur") || 0);
   const account = accounts.find((a) => a.id === accountId) ?? null;
 
+  // Ohne verknüpftes Konto zählt der manuell gepflegte Stand — nicht jeder
+  // Notgroschen liegt auf einem Konto, das die App überhaupt sieht
+  // (Tagesgeld bei einer anderen Bank, Bausparer, Bargeld).
+  const manualBalance = Number(getSetting("emergency_manual_balance") || 0);
+  const configured = Boolean(account) || target > 0 || manualBalance > 0;
+
   return NextResponse.json({
     accounts,
-    accountId: account ? accountId : null, // verwaistes Konto (z. B. neu verbunden) nicht melden
+    accountId: account ? accountId : null, // verwaistes Konto nicht melden
+    manual: !account,
+    manualBalance,
     target,
-    balance: account?.balance ?? 0,
+    balance: account ? account.balance : manualBalance,
+    configured,
     monthsOfExpenses: Number(getSetting("emergency_months") || 0),
   });
 }
 
 export async function POST(req: NextRequest) {
-  const { accountId, target, monthsOfExpenses } = await req.json();
+  const { accountId, target, monthsOfExpenses, manualBalance } = await req.json();
 
-  if (accountId === null) {
+  if (accountId === null || accountId === "") {
     deleteSetting("emergency_account_id");
   } else if (accountId !== undefined) {
     const exists = db().prepare("SELECT 1 FROM accounts WHERE id = ?").get(String(accountId));
@@ -38,6 +47,10 @@ export async function POST(req: NextRequest) {
     setSetting("emergency_target_eur", String(Number(target)));
   }
   if (monthsOfExpenses !== undefined) setSetting("emergency_months", String(Number(monthsOfExpenses) || 0));
+  if (manualBalance !== undefined) {
+    if (!(Number(manualBalance) >= 0)) return NextResponse.json({ error: "Stand muss eine positive Zahl sein" }, { status: 400 });
+    setSetting("emergency_manual_balance", String(Number(manualBalance)));
+  }
 
   return NextResponse.json({ ok: true });
 }

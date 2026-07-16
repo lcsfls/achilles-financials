@@ -28,6 +28,7 @@ stays on your own server.
 | 🐷 **Pension tracking** | Log balances from your pension statements; the latest one feeds into net worth and the FIRE simulation. |
 | 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
 | ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |
+| 🔐 **Login** | Username + password (scrypt), enabled in Settings. Off by default so a fresh install can't lock you out — turn it on before anyone else can reach the host. |
 | 🔒 **Private by design** | One SQLite file on your server. Outbound calls go only to public price/FX APIs and your bank's PSD2 endpoint — no analytics, no cloud, no middleman holding your data. |
 
 ## Quick start (local)
@@ -93,13 +94,26 @@ what a personal dashboard needs.
 
 1. Create an account at [enablebanking.com](https://enablebanking.com)
 2. Register an application in the Control Panel. Set the redirect URL to
-   `http://<your-host>:3000/api/bank/callback` (Settings shows the exact URL for your install).
+   `https://<your-host>/api/bank/callback` (Settings shows the exact URL for your install).
    You'll get an **Application ID** and a **private key** (`.pem`).
 3. Paste both into the setup wizard or under **Settings**. They're stored only in your local SQLite.
 4. **Connect** → pick country → search your bank → scan the QR code → approve in your banking app → **Sync**
 
 Access is read-only, valid for up to 180 days, and revocable in your banking app at any time.
 Prefer not to register at all? Use the **CSV import** on the Connect page.
+
+### Two things production access requires
+
+**HTTPS.** Enable Banking rejects a plain `http://192.168.x.x:3000` redirect URL, so a LAN-only
+install can't complete the QR flow as-is. You need a reachable HTTPS URL — a reverse proxy with a
+real certificate (Caddy + Let's Encrypt via DNS-01), a Cloudflare Tunnel, or Tailscale with
+`tailscale serve`. Whatever you pick has to be reachable from the phone you scan the code with.
+
+**A privacy policy and terms of service.** Activating a production application requires a link to
+each, plus a data protection contact email — and Enable Banking monitors that those links stay
+reachable. For a personal instance that means publishing two short pages somewhere public.
+
+Neither applies to the CSV import, which is why it exists.
 
 > **Note:** one bank at a time. Multiple accounts *within* that bank all sync; connecting several
 > different banks in parallel isn't supported yet.

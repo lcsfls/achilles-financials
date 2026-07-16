@@ -15,7 +15,11 @@ export async function GET() {
   const emergencyId = getSetting("emergency_account_id");
   const emergencyAccount = emergencyId ? accounts.find((a) => a.id === emergencyId) : undefined;
   const emergencyTarget = Number(getSetting("emergency_target_eur") || 0);
-  const emergencyBalance = emergencyAccount?.balance ?? 0;
+  // Ohne verknüpftes Konto zählt der manuell gepflegte Stand. Der ist aber
+  // nicht Teil von cashTotal und darf deshalb dort auch nicht abgezogen werden.
+  const emergencyManual = Number(getSetting("emergency_manual_balance") || 0);
+  const emergencyBalance = emergencyAccount ? emergencyAccount.balance : emergencyManual;
+  const emergencyInCash = emergencyAccount ? emergencyAccount.balance : 0;
 
   // Monatliche Ausgaben/Einnahmen der letzten 8 Monate
   const monthly = d
@@ -131,18 +135,19 @@ export async function GET() {
     metals: { totalValue: metals.totalValue, totalCost: metals.totalCost, holdings: metals.holdings.map((h) => ({ metal: h.metal, name: h.name, color: h.color, totalGrams: h.totalGrams, currentValue: h.currentValue, totalCost: h.totalCost })) },
     investments: { value: invValue, cost: invCost, count: investments.length },
     pension: { value: pensionValue, lastDate: pensionRow?.statement_date ?? null },
-    emergency: emergencyAccount
-      ? {
-          accountId: emergencyAccount.id,
-          accountName: emergencyAccount.name,
-          balance: emergencyBalance,
-          target: emergencyTarget,
-          pct: emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : null,
-        }
-      : null,
+    emergency:
+      emergencyAccount || emergencyTarget > 0 || emergencyManual > 0
+        ? {
+            accountId: emergencyAccount?.id ?? null,
+            accountName: emergencyAccount?.name ?? null,
+            balance: emergencyBalance,
+            target: emergencyTarget,
+            pct: emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : null,
+          }
+        : null,
     // Bausteine für das FIRE-Startkapital, einzeln wählbar
     assets: {
-      cash: cashTotal - emergencyBalance,
+      cash: cashTotal - emergencyInCash,
       metals: metals.totalValue,
       investments: invValue,
       pension: pensionValue,

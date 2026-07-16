@@ -18,6 +18,7 @@ const EN: Record<string, string> = {
   "Investments": "Investments",
   "Vorsorge": "Pension",
   "FIRE": "FIRE",
+  "Notgroschen": "Emergency fund",
   "Verbinden": "Connect",
   "Einstellungen": "Settings",
 
@@ -208,7 +209,26 @@ const EN: Record<string, string> = {
   "Symbol, z. B. NVDA, VWCE.DE, BTC-EUR, ^GSPC": "Symbol, e.g. NVDA, VWCE.DE, BTC-EUR, ^GSPC",
 
   // Notgroschen
-  "Notgroschen": "Emergency fund",
+  "Lade Notgroschen …": "Loading emergency fund …",
+  "Zweckgebundene Rücklage für den Notfall. Sie wird aus dem FIRE-Startkapital herausgerechnet — dieses Geld soll nicht investiert werden.":
+    "Earmarked reserve for emergencies. It's excluded from FIRE starting capital — this money isn't meant to be invested.",
+  "Ziel": "Target",
+  "kein Ziel gesetzt": "no target set",
+  "Reichweite": "Coverage",
+  "bei Ø {amount}/Monat": "at avg. {amount}/month",
+  "keine Ausgaben erfasst": "no spending recorded",
+  "manuell gepflegt": "entered manually",
+  "noch nichts erfasst": "nothing recorded yet",
+  "Einrichtung": "Setup",
+  "Woher der Stand kommt und wie hoch das Ziel ist": "Where the balance comes from and what the target is",
+  "Quelle des Stands": "Source of the balance",
+  "Betrag selbst eintragen": "Enter the amount yourself",
+  "Für Rücklagen, die die App nicht sieht — Tagesgeld bei einer anderen Bank, Bargeld, Bausparer.":
+    "For reserves the app can't see — savings at another bank, cash, building society accounts.",
+  "Konto zuweisen": "Assign an account",
+  "Der Stand kommt automatisch vom Konto und wird aus der Liquidität herausgerechnet.":
+    "The balance comes from the account automatically and is excluded from liquidity.",
+  "Aktueller Stand (€)": "Current balance (€)",
   "Kein Konto zugewiesen": "No account assigned",
   "Einrichten": "Set up",
   "Notgroschen einrichten": "Set up emergency fund",
@@ -350,6 +370,30 @@ const EN: Record<string, string> = {
   // Einstellungen
   "API-Zugänge, Sprache und Daten verwalten.": "Manage API access, language and data.",
   "Sprache": "Language",
+  "Benutzername": "Username",
+  "Login": "Login",
+  "Schützt das Dashboard mit Benutzername und Passwort": "Protects the dashboard with a username and password",
+  "Kein Schutz": "Unprotected",
+  "Ohne Login kann jeder im Netzwerk deine Finanzdaten sehen und deine Bank-Zugangsdaten auslesen.":
+    "Without a login, anyone on your network can see your finances and read your banking credentials.",
+  "Neues Passwort": "New password",
+  "Aktuelles Passwort": "Current password",
+  "mindestens 8 Zeichen": "at least 8 characters",
+  "Zugangsdaten ändern": "Change credentials",
+  "Login aktivieren": "Enable login",
+  "Login deaktivieren": "Disable login",
+  "Abmelden": "Sign out",
+  "Aktuelles Passwort ist falsch.": "Current password is incorrect.",
+  "Das Passwort muss mindestens 8 Zeichen haben.": "The password must be at least 8 characters.",
+  "Benutzername und Passwort erforderlich": "Username and password required",
+  "Passkeys sind noch nicht umgesetzt — bis dahin schützt das Passwort. Für Zugriff von außerhalb des LAN gehört ohnehin ein Reverse-Proxy mit HTTPS davor.":
+    "Passkeys aren't implemented yet — the password protects you until then. For access from outside your LAN you want a reverse proxy with HTTPS in front anyway.",
+  "Passwort": "Password",
+  "Anmelden": "Sign in",
+  "Anmelden …": "Signing in …",
+  "Benutzername oder Passwort ist falsch.": "Incorrect username or password.",
+  "Passwort vergessen? Es lässt sich nur direkt in der Datenbank zurücksetzen — siehe README.":
+    "Forgot your password? It can only be reset directly in the database — see the README.",
   "Sprache der Oberfläche und Zahlenformate": "Interface language and number formats",
   "PSD2-Schnittstelle zu 2.700+ Banken in Europa": "PSD2 interface to 2,700+ banks across Europe",
   "Konfiguriert": "Configured",

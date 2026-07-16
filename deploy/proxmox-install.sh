@@ -37,6 +37,11 @@ NET_GW="${NET_GW:-}"                # nur bei statischer IP nötig
 APP_PORT="${APP_PORT:-3000}"
 APP_DIR="/opt/achilles-financials"
 
+# Ohne --password hat root im Container gar kein Passwort — Zugang ginge nur
+# über `pct enter` vom Host. Deshalb eins erzeugen und am Ende anzeigen.
+# CT_PASSWORD=<eigenes> setzt ein selbst gewähltes.
+CT_PASSWORD="${CT_PASSWORD:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 20)}"
+
 C_GOLD='\033[1;33m'; C_GREEN='\033[1;32m'; C_RED='\033[1;31m'; C_OFF='\033[0m'
 log()  { echo -e "${C_GOLD}[achilles]${C_OFF} $*"; }
 ok()   { echo -e "${C_GREEN}[achilles]${C_OFF} $*"; }
@@ -152,6 +157,7 @@ NET0="name=eth0,bridge=${BRIDGE},ip=${NET_IP}"
 log "Erstelle LXC $CTID ($HOSTNAME_CT): ${CORES} Cores, ${MEMORY_MB} MB RAM, ${DISK_GB} GB Disk …"
 pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
   --hostname "$HOSTNAME_CT" \
+  --password "$CT_PASSWORD" \
   --unprivileged 1 \
   --features nesting=1,keyctl=1 \
   --cores "$CORES" \
@@ -206,6 +212,15 @@ ok ""
 ok "   Dashboard:  ${APP_URL}"
 ok "   Container:  LXC ${CTID} (${HOSTNAME_CT})"
 ok "   Daten:      Docker-Volume 'achilles-data'"
+ok ""
+ok " ┌─ Container-Zugang ─────────────────────────────────"
+ok " │  Benutzer:  root"
+ok " │  Passwort:  ${CT_PASSWORD}"
+ok " │"
+ok " │  Jetzt notieren — es wird nicht erneut angezeigt."
+ok " │  Ändern:    pct exec ${CTID} -- passwd"
+ok " │  Ohne Passwort rein:  pct enter ${CTID}"
+ok " └────────────────────────────────────────────────────"
 ok ""
 ok " Beim ersten Aufruf führt dich der Setup-Assistent"
 ok " durch Sprache, Revolut-Verbindung und Demo-Daten."

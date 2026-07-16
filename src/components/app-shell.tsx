@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, Flame, PiggyBank } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, ShieldCheck, Flame, PiggyBank } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/investments", label: "Investments", icon: TrendingUp },
   { href: "/watchlist", label: "Watchlist", icon: Eye },
   { href: "/pension", label: "Vorsorge", icon: PiggyBank },
+  { href: "/emergency", label: "Notgroschen", icon: ShieldCheck },
   { href: "/fire", label: "FIRE", icon: Flame },
   { href: "/connect", label: "Verbinden", icon: QrCode },
   { href: "/settings", label: "Einstellungen", icon: Settings },
@@ -37,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  if (pathname === "/setup") {
+  if (pathname === "/setup" || pathname === "/login") {
     return (
       <div className="min-h-screen">
         <div className="aurora" />
