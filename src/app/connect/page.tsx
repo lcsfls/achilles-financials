@@ -4,20 +4,32 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { QrCode, RefreshCw, CheckCircle2, AlertTriangle, Smartphone, Link2, FileUp, Search, Building2 } from "lucide-react";
+import { QrCode, RefreshCw, CheckCircle2, AlertTriangle, Smartphone, Link2, FileUp, Search, Building2, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
-import { COUNTRIES } from "@/lib/countries";
+import { COUNTRIES, countryName } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
 type Status = {
   hasCreds: boolean; status: string | null; accounts: number;
   aspsp: string | null; country: string; lastSync: string | null; linkedAt: string | null; error?: string;
 };
-type Aspsp = { name: string; country: string; logo?: string };
+type Aspsp = { name: string; country: string; logo?: string; beta?: boolean };
+
+/**
+ * Banken, die nicht unter dem Land ihrer IBAN geführt werden, sondern unter dem
+ * Sitz der Lizenz. Revolut ist der prominenteste Fall: deutsche IBAN, aber die
+ * Bank ist die litauische Revolut Bank UAB, Deutschland nur Zweigniederlassung.
+ */
+const LICENSED_ELSEWHERE: Array<{ match: RegExp; country: string }> = [
+  { match: /revolut/i, country: "LT" },
+  { match: /\bn26\b/i, country: "DE" },
+  { match: /wise/i, country: "BE" },
+  { match: /bunq/i, country: "NL" },
+];
 
 function ConnectInner() {
   const { t, lang } = useI18n();
@@ -30,6 +42,7 @@ function ConnectInner() {
 
   const [country, setCountry] = useState("DE");
   const [aspsps, setAspsps] = useState<Aspsp[] | null>(null);
+  const [isSandbox, setIsSandbox] = useState(false);
   const [aspspQuery, setAspspQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -55,6 +68,7 @@ function ConnectInner() {
     setBusy(null);
     if (!res.ok) { setMessage({ kind: "err", text: data.error }); return; }
     setAspsps(data.aspsps);
+    setIsSandbox(Boolean(data.sandbox));
   }, []);
 
   const createQr = async (aspspName: string) => {
@@ -101,6 +115,18 @@ function ConnectInner() {
   const linked = Boolean(status?.linkedAt) && status?.status !== "EXPIRED";
   const filtered = (aspsps ?? []).filter((a) => a.name.toLowerCase().includes(aspspQuery.toLowerCase()));
   const noCreds = status !== null && !status.hasCreds;
+
+  // Sichtbar begrenzen, damit tausend Banken den Browser nicht ausbremsen —
+  // aber nie stillschweigend: wie viele ausgeblendet sind, steht darunter.
+  const VISIBLE = 60;
+  const shown = filtered.slice(0, VISIBLE);
+  const hidden = filtered.length - shown.length;
+
+  // Gesuchte Bank ist in einem anderen Land lizenziert? Dann dorthin lotsen,
+  // statt den Nutzer eine leere Liste durchsuchen zu lassen.
+  const elsewhere = aspspQuery.trim().length >= 3 && filtered.length === 0
+    ? LICENSED_ELSEWHERE.find((e) => e.match.test(aspspQuery) && e.country !== country)
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -196,13 +222,33 @@ function ConnectInner() {
                         onChange={(e) => setAspspQuery(e.target.value)}
                       />
                     </div>
+                    {isSandbox && (
+                      <div className="flex items-start gap-2 rounded-xl border border-amber-400/25 bg-amber-400/8 px-3 py-2.5 text-[11px] leading-relaxed text-amber-300">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {t("Diese Liste kommt aus der Sandbox-Umgebung — echte Banken wie Revolut fehlen dort. Registriere im Control Panel eine Anwendung in der Produktionsumgebung (Sandbox-Apps lassen sich nicht umstellen).")}
+                      </div>
+                    )}
+
                     <div className="max-h-[280px] space-y-1 overflow-y-auto">
-                      {filtered.length === 0 && (
+                      {filtered.length === 0 && !elsewhere && (
                         <div className="py-6 text-center text-xs text-muted-2">{t("Keine Bank gefunden.")}</div>
                       )}
-                      {filtered.slice(0, 100).map((a) => (
+                      {elsewhere && (
                         <button
-                          key={a.name}
+                          onClick={() => { setCountry(elsewhere.country); setAspsps(null); }}
+                          className="flex w-full cursor-pointer items-start gap-2 rounded-xl border border-gold/25 bg-gold/8 px-3 py-3 text-left text-[11px] leading-relaxed text-gold-bright hover:bg-gold/12"
+                        >
+                          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            {t("Diese Bank ist in {country} lizenziert und dort gelistet — auch wenn deine IBAN aus einem anderen Land stammt. Zum Wechseln hier klicken.", {
+                              country: countryName(elsewhere.country, lang),
+                            })}
+                          </span>
+                        </button>
+                      )}
+                      {shown.map((a) => (
+                        <button
+                          key={`${a.country}-${a.name}`}
                           onClick={() => createQr(a.name)}
                           disabled={busy === "qr"}
                           className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/[0.06] disabled:opacity-50"
@@ -212,9 +258,15 @@ function ConnectInner() {
                             ? <img src={a.logo} alt="" className="h-6 w-6 shrink-0 rounded object-contain" />
                             : <Building2 className="h-5 w-5 shrink-0 text-muted-2" />}
                           <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                          {a.beta && <span className="shrink-0 text-[10px] text-muted-2">beta</span>}
                         </button>
                       ))}
                     </div>
+                    {hidden > 0 && (
+                      <div className="text-center text-[11px] text-muted-2">
+                        {t("{n} weitere ausgeblendet — tippe oben, um zu suchen.", { n: hidden })}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

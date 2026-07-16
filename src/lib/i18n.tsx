@@ -237,6 +237,11 @@ const EN: Record<string, string> = {
   "Lade Banken …": "Loading banks …",
   "{n} Banken durchsuchen …": "Search {n} banks …",
   "Keine Bank gefunden.": "No bank found.",
+  "{n} weitere ausgeblendet — tippe oben, um zu suchen.": "{n} more hidden — type above to search.",
+  "Diese Bank ist in {country} lizenziert und dort gelistet — auch wenn deine IBAN aus einem anderen Land stammt. Zum Wechseln hier klicken.":
+    "This bank is licensed in {country} and listed there — even if your IBAN is from another country. Click here to switch.",
+  "Diese Liste kommt aus der Sandbox-Umgebung — echte Banken wie Revolut fehlen dort. Registriere im Control Panel eine Anwendung in der Produktionsumgebung (Sandbox-Apps lassen sich nicht umstellen).":
+    "This list comes from the sandbox environment — real banks like Revolut aren't in it. Register an application in the production environment in the Control Panel (sandbox apps can't be switched over).",
   "Andere Bank wählen": "Choose a different bank",
   "QR-Code": "QR code",
   "QR-Code · Smartphone": "QR code · Smartphone",

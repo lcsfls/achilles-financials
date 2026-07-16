@@ -72,15 +72,27 @@ async function ebFetch(path: string, init: RequestInit = {}) {
   return body;
 }
 
-export type Aspsp = { name: string; country: string; logo?: string; psu_types?: string[] };
+export type Aspsp = {
+  name: string;
+  country: string;
+  logo?: string;
+  psu_types?: string[];
+  beta?: boolean;
+  /** Nur in der Sandbox-Umgebung gesetzt — verrät, dass die App eine Sandbox-App ist. */
+  sandbox?: unknown;
+};
 
-/** Banken eines Landes — Basis für die Auswahl auf der Verbinden-Seite. */
+/**
+ * Banken eines Landes — Basis für die Auswahl auf der Verbinden-Seite.
+ *
+ * Bewusst ohne Filterung: psu_types ist je nach Bank unterschiedlich gepflegt,
+ * und eine still fehlende Bank ist deutlich schlimmer als eine zu viel in der
+ * Liste. Die Auswahl trifft ohnehin der Nutzer.
+ */
 export async function listAspsps(country: string): Promise<Aspsp[]> {
   const data = await ebFetch(`/aspsps?country=${encodeURIComponent(country)}`);
-  const list: Aspsp[] = (data.aspsps ?? []).filter(
-    (a: Aspsp) => !a.psu_types || a.psu_types.includes("personal")
-  );
-  return list.sort((a, b) => a.name.localeCompare(b.name));
+  const list: Aspsp[] = data.aspsps ?? [];
+  return [...list].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Startet die Autorisierung; liefert die URL, die als QR-Code angezeigt wird. */
