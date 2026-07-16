@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -49,6 +49,11 @@ export default function SettingsPage() {
   const [authCurrent, setAuthCurrent] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSaved, setAuthSaved] = useState(false);
+  const [bakPass, setBakPass] = useState("");
+  const [bakBusy, setBakBusy] = useState<string | null>(null);
+  const [bakError, setBakError] = useState<string | null>(null);
+  const [bakInfo, setBakInfo] = useState<string | null>(null);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
   // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
@@ -128,6 +133,46 @@ export default function SettingsPage() {
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
+  };
+
+  const downloadBackup = async () => {
+    setBakBusy("backup");
+    setBakError(null);
+    setBakInfo(null);
+    const res = await fetch("/api/backup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: bakPass }),
+    });
+    if (!res.ok) { setBakBusy(null); setBakError(t((await res.json()).error)); return; }
+
+    const blob = await res.blob();
+    const name = res.headers.get("Content-Disposition")?.match(/filename="(.+?)"/)?.[1] ?? "achilles.achillesbak";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBakBusy(null);
+    setBakInfo(t("Backup heruntergeladen: {name}", { name }));
+  };
+
+  const doRestore = async () => {
+    if (!restoreFile) return;
+    if (!confirm(t("Wiederherstellen? Alle aktuellen Daten werden durch den Inhalt des Backups ersetzt — auch Login und Bank-Zugangsdaten."))) return;
+    setBakBusy("restore");
+    setBakError(null);
+    setBakInfo(null);
+    const form = new FormData();
+    form.append("file", restoreFile);
+    form.append("password", bakPass);
+    const res = await fetch("/api/backup/restore", { method: "POST", body: form });
+    setBakBusy(null);
+    if (!res.ok) { setBakError(t((await res.json()).error)); return; }
+    const d = await res.json();
+    setBakInfo(t("Wiederhergestellt: {n} Tabellen. Seite wird neu geladen …", { n: d.tables }));
+    setTimeout(() => window.location.reload(), 1500);
   };
 
   const toggleDemo = async (on: boolean) => {
@@ -466,7 +511,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 text-xs text-muted">
                 <Terminal className="h-3.5 w-3.5 shrink-0 text-muted-2" />
                 {upd.control === "readonly"
-                  ? t("Keine Schreibrechte im Control-Verzeichnis — einmalig auf dem Host reparieren:")
+                  ? t("Keine Schreibrechte im Control-Verzeichnis — einmalig in der Proxmox-Shell ausführen (kein Container-Passwort nötig):")
                   : t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
               </div>
               <div className="mt-2 flex items-center gap-2">
@@ -486,7 +531,83 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Backup */}
       <Card className="rise rise-5">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
+            <Archive className="h-5 w-5 text-gold" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Backup")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Verschlüsselte Sicherung aller Daten (.achillesbak)")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted-2">
+            {t("Die Datei enthält alles: Konten, Buchungen, Bestände, Szenarien — und deinen Bank-Private-Key. Sie wird mit AES-256 aus deinem Passwort verschlüsselt. Ohne dieses Passwort ist sie nicht wiederherstellbar; es gibt keine Hintertür.")}
+          </p>
+
+          <div className="space-y-1.5 sm:w-2/3">
+            <Label>{t("Backup-Passwort")}</Label>
+            <Input
+              type="password"
+              autoComplete="off"
+              placeholder={t("mindestens 8 Zeichen")}
+              value={bakPass}
+              onChange={(e) => { setBakPass(e.target.value); setBakError(null); }}
+            />
+          </div>
+
+          {bakError && (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-3 py-2.5 text-xs text-rose-soft">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {bakError}
+            </div>
+          )}
+          {bakInfo && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-soft/25 bg-emerald-soft/8 px-3 py-2.5 text-xs text-emerald-soft">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> {bakInfo}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={downloadBackup} disabled={bakBusy !== null || bakPass.length < 8}>
+              <Download className="h-4 w-4" /> {bakBusy === "backup" ? t("Erstelle …") : t("Backup herunterladen")}
+            </Button>
+          </div>
+
+          <div className="hairline" />
+
+          <div>
+            <div className="mb-2 text-sm font-medium">{t("Wiederherstellen")}</div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label>
+                <input
+                  type="file"
+                  accept=".achillesbak"
+                  className="hidden"
+                  onChange={(e) => { setRestoreFile(e.target.files?.[0] ?? null); setBakError(null); }}
+                />
+                <span className="glass inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm transition-colors hover:border-white/20">
+                  <Upload className="h-3.5 w-3.5" />
+                  {restoreFile ? restoreFile.name : t("Datei auswählen")}
+                </span>
+              </label>
+              <Button
+                variant="destructive"
+                onClick={doRestore}
+                disabled={bakBusy !== null || !restoreFile || bakPass.length < 8}
+              >
+                {bakBusy === "restore" ? t("Stelle wieder her …") : t("Wiederherstellen")}
+              </Button>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-2">
+              {t("Ersetzt alle aktuellen Daten durch den Inhalt des Backups. Nutze oben dasselbe Passwort, mit dem die Datei erstellt wurde.")}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rise">
         <CardHeader className="flex-row items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-soft/10 border border-sky-soft/20">
             <Database className="h-5 w-5 text-sky-soft" strokeWidth={1.7} />

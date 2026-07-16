@@ -29,6 +29,7 @@ stays on your own server.
 | 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
 | ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |
 | 🔐 **Login** | Username + password (scrypt), enabled in Settings. Off by default so a fresh install can't lock you out — turn it on before anyone else can reach the host. |
+| 💾 **Encrypted backup** | Settings → Backup downloads a password-protected `.achillesbak` (AES-256-GCM). It contains your banking private key, so it's never written in the clear — and never restorable without the password. |
 | 🔒 **Private by design** | One SQLite file on your server. Outbound calls go only to public price/FX APIs and your bank's PSD2 endpoint — no analytics, no cloud, no middleman holding your data. |
 
 ## Quick start (local)
@@ -83,6 +84,9 @@ file is a full backup:
 docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
   tar czf /backup/achilles-backup.tar.gz /data
 ```
+
+Or use **Settings → Backup** for an encrypted `.achillesbak` you can download and restore from the
+browser — no shell needed.
 
 ## Connecting your bank
 

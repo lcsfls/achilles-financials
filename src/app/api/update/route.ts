@@ -46,7 +46,7 @@ export async function POST() {
     // Statusdatei root-eigen hinterlassen.
     return NextResponse.json(
       {
-        error: "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren:",
+        error: "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig in der Proxmox-Shell ausführen (<CTID> durch deine Container-ID ersetzen, ein Container-Passwort brauchst du dafür nicht):",
         fixCommand: FIX_PERMISSIONS_COMMAND,
       },
       { status: 403 }

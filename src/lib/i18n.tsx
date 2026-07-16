@@ -424,6 +424,26 @@ const EN: Record<string, string> = {
     "Everything the demo creates is flagged and can be removed completely via “Remove demo data”.",
   "Trotzdem laden": "Load anyway",
   "Lade …": "Loading …",
+  "Backup": "Backup",
+  "Verschlüsselte Sicherung aller Daten (.achillesbak)": "Encrypted backup of everything (.achillesbak)",
+  "Die Datei enthält alles: Konten, Buchungen, Bestände, Szenarien — und deinen Bank-Private-Key. Sie wird mit AES-256 aus deinem Passwort verschlüsselt. Ohne dieses Passwort ist sie nicht wiederherstellbar; es gibt keine Hintertür.":
+    "The file holds everything: accounts, transactions, holdings, scenarios — and your banking private key. It's encrypted with AES-256 derived from your password. Without that password it cannot be restored; there is no back door.",
+  "Backup-Passwort": "Backup password",
+  "Backup herunterladen": "Download backup",
+  "Erstelle …": "Creating …",
+  "Backup heruntergeladen: {name}": "Backup downloaded: {name}",
+  "Wiederherstellen": "Restore",
+  "Datei auswählen": "Choose file",
+  "Stelle wieder her …": "Restoring …",
+  "Ersetzt alle aktuellen Daten durch den Inhalt des Backups. Nutze oben dasselbe Passwort, mit dem die Datei erstellt wurde.":
+    "Replaces all current data with the backup's contents. Use the same password the file was created with.",
+  "Wiederherstellen? Alle aktuellen Daten werden durch den Inhalt des Backups ersetzt — auch Login und Bank-Zugangsdaten.":
+    "Restore? All current data will be replaced by the backup's contents — including the login and banking credentials.",
+  "Wiederhergestellt: {n} Tabellen. Seite wird neu geladen …": "Restored: {n} tables. Reloading …",
+  "Das Backup-Passwort muss mindestens 8 Zeichen haben.": "The backup password must be at least 8 characters.",
+  "Entschlüsselung fehlgeschlagen — falsches Passwort oder beschädigte Datei.":
+    "Decryption failed — wrong password or a corrupted file.",
+  "Das ist keine Achilles-Backup-Datei (.achillesbak).": "That is not an Achilles backup file (.achillesbak).",
   "Daten & Hosting": "Data & Hosting",
   "Alles bleibt bei dir": "Everything stays with you",
   "Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.app — es verlassen keine persönlichen Daten deinen Server.":
@@ -450,10 +470,10 @@ const EN: Record<string, string> = {
   "Update installieren": "Install update",
   "Starte …": "Starting …",
   "In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:": "In-app updates aren't set up here. Update via shell:",
-  "Keine Schreibrechte im Control-Verzeichnis — einmalig auf dem Host reparieren:":
-    "No write access to the control directory — fix it once on the host:",
-  "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren:":
-    "No write access to the control directory — the files are owned by root while the app runs as uid 1001. Fix it once on the host:",
+  "Keine Schreibrechte im Control-Verzeichnis — einmalig in der Proxmox-Shell ausführen (kein Container-Passwort nötig):":
+    "No write access to the control directory — run this once in the Proxmox shell (no container password needed):",
+  "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig in der Proxmox-Shell ausführen (<CTID> durch deine Container-ID ersetzen, ein Container-Passwort brauchst du dafür nicht):":
+    "No write access to the control directory — the files are owned by root while the app runs as uid 1001. Run this once in the Proxmox shell (replace <CTID> with your container ID; no container password needed):",
   "Kopieren": "Copy",
   "Kopiert": "Copied",
   "Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten.":

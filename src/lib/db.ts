@@ -3,16 +3,23 @@ import fs from "fs";
 import path from "path";
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+export const DATA_FILE = path.join(DATA_DIR, "achilles.db");
 
 let _db: Database.Database | null = null;
 
 export function db(): Database.Database {
   if (_db) return _db;
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  _db = new Database(path.join(DATA_DIR, "achilles.db"));
+  _db = new Database(DATA_FILE);
   _db.pragma("journal_mode = WAL");
   migrate(_db);
   return _db;
+}
+
+/** Nur für den Restore: Verbindung lösen, damit die Datei ersetzt werden kann. */
+export function closeDb() {
+  _db?.close();
+  _db = null;
 }
 
 function migrate(d: Database.Database) {

@@ -67,8 +67,13 @@ export function updatesAvailable(): boolean {
   return controlState() === "ok";
 }
 
-/** Ein-Zeilen-Reparatur für den Rechtefall, passend zum Installationspfad. */
-export const FIX_PERMISSIONS_COMMAND = "chown -R 1001:1001 /opt/achilles-financials/control";
+/**
+ * Reparatur für den Rechtefall — bewusst in der pct-exec-Form.
+ * "Auf dem Host ausführen" war missverständlich: Gemeint ist die Proxmox-Shell,
+ * nicht der Container. Von dort braucht es kein Container-Passwort.
+ */
+export const FIX_PERMISSIONS_COMMAND =
+  "pct exec <CTID> -- chown -R 1001:1001 /opt/achilles-financials/control";
 
 /** Erklärt den Rechtefehler statt ihn roh durchzureichen. */
 export class ControlWriteError extends Error {
@@ -76,8 +81,8 @@ export class ControlWriteError extends Error {
     super(
       cause.code === "EACCES" || cause.code === "EPERM"
         ? `Keine Schreibrechte im Control-Verzeichnis (${cause.path ?? CONTROL_DIR}). ` +
-          `Die Dateien gehören root, die App läuft als uid 1001. Einmalig auf dem Host reparieren: ` +
-          `${FIX_PERMISSIONS_COMMAND}`
+          `Die Dateien gehören root, die App läuft als uid 1001. Einmalig in der Proxmox-Shell ` +
+          `reparieren (kein Container-Passwort nötig): ${FIX_PERMISSIONS_COMMAND}`
         : `Update konnte nicht angefordert werden: ${cause.message}`
     );
   }
