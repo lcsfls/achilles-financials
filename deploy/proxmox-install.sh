@@ -11,6 +11,10 @@
 #  Einzeiler:
 #    bash <(curl -fsSL https://raw.githubusercontent.com/lcsfls/achilles-financials/main/deploy/proxmox-install.sh)
 #
+#  Der Storage wird automatisch erkannt: Gibt es nur einen, wird er genommen,
+#  bei mehreren fragt das Script nach. Vorgeben geht per STORAGE=<name>
+#  (Namen anzeigen mit: pvesm status --content rootdir).
+#
 #  Anpassbar per Umgebungsvariablen, z. B.:
 #    CTID=120 STORAGE=local-zfs NET_IP=192.168.1.50/24 NET_GW=192.168.1.1 \
 #      bash <(curl -fsSL .../proxmox-install.sh)
@@ -21,7 +25,8 @@ REPO_SLUG="${REPO_SLUG:-lcsfls/achilles-financials}"
 REPO_URL="${REPO_URL:-https://github.com/${REPO_SLUG}.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 HOSTNAME_CT="${HOSTNAME_CT:-achilles}"
-STORAGE="${STORAGE:-local-lvm}"
+STORAGE="${STORAGE:-}"                  # leer = automatisch erkennen / nachfragen
+TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-}"
 BRIDGE="${BRIDGE:-vmbr0}"
 DISK_GB="${DISK_GB:-8}"
 MEMORY_MB="${MEMORY_MB:-2048}"
@@ -40,6 +45,90 @@ die()  { echo -e "${C_RED}[achilles] FEHLER:${C_OFF} $*" >&2; exit 1; }
 command -v pct >/dev/null 2>&1 || die "Dieses Script muss auf einem Proxmox-VE-Host laufen (pct nicht gefunden)."
 [[ $EUID -eq 0 ]] || die "Bitte als root ausführen."
 
+# ---- Storage-Auswahl --------------------------------------------------------
+# Storage-Namen sind pro Host verschieden (local-lvm, local-zfs, tank, …),
+# deshalb nichts raten: aktive Storages abfragen und ggf. nachfragen.
+
+# Liest auch, wenn das Script via Prozess-Substitution läuft; bei `curl | bash`
+# ist stdin die Pipe, dann über /dev/tty.
+read_tty() {
+  if [[ -t 0 ]]; then read -r "$@"
+  elif [[ -r /dev/tty ]]; then read -r "$@" < /dev/tty
+  else return 1
+  fi
+}
+
+# Aktive Storages, die den gewünschten Inhaltstyp können (rootdir | vztmpl)
+list_storages() {
+  pvesm status --content "$1" 2>/dev/null | awk 'NR>1 && $3=="active" {print $1}'
+}
+
+storage_table() {
+  pvesm status --content "$1" 2>/dev/null | awk 'NR==1 || $3=="active"'
+}
+
+# choose_storage <content> <label> <vorgabe>  → gewählter Storage auf stdout
+choose_storage() {
+  local content="$1" label="$2" preset="${3:-}"
+  local -a opts=()
+  while IFS= read -r line; do [[ -n "$line" ]] && opts+=("$line"); done < <(list_storages "$content")
+
+  if [[ ${#opts[@]} -eq 0 ]]; then
+    die "Kein aktiver Storage für ${label} gefunden (Inhaltstyp '${content}').
+       Prüfen mit:  pvesm status --content ${content}
+       In der Proxmox-UI: Datacenter → Storage → Storage bearbeiten → Content '${content}' aktivieren."
+  fi
+
+  # Explizit gesetzt → nur prüfen, ob es ihn gibt
+  if [[ -n "$preset" ]]; then
+    local s
+    for s in "${opts[@]}"; do
+      [[ "$s" == "$preset" ]] && { echo "$preset"; return 0; }
+    done
+    die "Storage '${preset}' existiert nicht oder kann kein '${content}'.
+       Verfügbar: ${opts[*]}"
+  fi
+
+  # Genau einer → nehmen
+  if [[ ${#opts[@]} -eq 1 ]]; then
+    echo "${opts[0]}"
+    return 0
+  fi
+
+  # Mehrere → fragen
+  {
+    echo
+    echo -e "${C_GOLD}[achilles]${C_OFF} Mehrere Storages für ${label} verfügbar:"
+    echo
+    storage_table "$content" | sed 's/^/    /'
+    echo
+  } >&2
+
+  local i choice
+  for i in "${!opts[@]}"; do
+    echo -e "    $((i + 1))) ${opts[$i]}" >&2
+  done
+  echo >&2
+
+  while true; do
+    echo -ne "${C_GOLD}[achilles]${C_OFF} Nummer wählen [1-${#opts[@]}] (Enter = 1): " >&2
+    if ! read_tty choice; then
+      die "Keine Eingabe möglich (kein Terminal). Storage direkt angeben, z. B.:
+       STORAGE=${opts[0]} bash <(curl -fsSL .../proxmox-install.sh)"
+    fi
+    [[ -z "$choice" ]] && choice=1
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#opts[@]} )); then
+      echo "${opts[$((choice - 1))]}"
+      return 0
+    fi
+    echo -e "${C_RED}    Ungültige Eingabe.${C_OFF}" >&2
+  done
+}
+
+STORAGE="$(choose_storage rootdir "den Container (rootfs)" "$STORAGE")"
+TEMPLATE_STORAGE="$(choose_storage vztmpl "das Debian-Template" "$TEMPLATE_STORAGE")"
+ok "Storage: ${STORAGE} (rootfs) · ${TEMPLATE_STORAGE} (Template)"
+
 # ---- CTID bestimmen ---------------------------------------------------------
 if [[ -z "${CTID:-}" ]]; then
   CTID=$(pvesh get /cluster/nextid)
@@ -51,7 +140,6 @@ log "Suche Debian-12-Template …"
 pveam update >/dev/null
 TEMPLATE=$(pveam available --section system | awk '/debian-12-standard/ {print $2}' | sort -V | tail -1)
 [[ -n "$TEMPLATE" ]] || die "Kein debian-12-standard-Template gefunden."
-TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
 if ! pveam list "$TEMPLATE_STORAGE" 2>/dev/null | grep -q "$TEMPLATE"; then
   log "Lade Template $TEMPLATE herunter …"
   pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"

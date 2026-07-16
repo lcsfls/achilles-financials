@@ -56,7 +56,13 @@ bash <(curl -fsSL https://raw.githubusercontent.com/lcsfls/achilles-financials/m
 ```
 
 The script creates an unprivileged Debian 12 LXC (with `nesting=1`), installs Docker, clones this
-repo, builds the image and starts the app. Defaults are overridable via environment variables:
+repo, builds the image and starts the app.
+
+Storage is detected automatically — if your host has exactly one container storage it's used, and if
+there are several the script lists them (with free space) and asks. Pass `STORAGE=<name>` to skip the
+question; run `pvesm status --content rootdir` to see the names on your host.
+
+All defaults are overridable via environment variables:
 
 ```bash
 CTID=120 STORAGE=local-zfs BRIDGE=vmbr0 NET_IP=192.168.1.50/24 NET_GW=192.168.1.1 \
