@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_COLORS } from "@/lib/categorize";
 import { EmergencyFund } from "@/components/emergency-fund";
+import { ChartTooltip } from "@/components/chart-tooltip";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
 
@@ -41,12 +42,11 @@ type Summary = {
   lastSync: string | null;
 };
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
-  if (!active || !payload?.length) return null;
+function CashflowTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   return (
-    <div className="glass-float rounded-xl px-4 py-3 text-xs">
+    <ChartTooltip active={active && Boolean(payload?.length)} width={240}>
       <div className="mb-1.5 font-medium text-muted">{label}</div>
-      {payload.map((p) => (
+      {(payload ?? []).map((p) => (
         <div key={p.name} className="flex items-center justify-between gap-6">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
@@ -55,7 +55,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
           <span className="num font-semibold">{fmtEUR(p.value)}</span>
         </div>
       ))}
-    </div>
+    </ChartTooltip>
   );
 }
 
@@ -257,7 +257,7 @@ export default function OverviewPage() {
                 <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} dy={8} />
                 <YAxis axisLine={false} tickLine={false} width={54} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip content={<CashflowTooltip />} />
                 <Area type="monotone" dataKey="earned" name={t("Einnahmen")} stroke="#d4af37" strokeWidth={2} fill="url(#gEarn)" />
                 <Area type="monotone" dataKey="spent" name={t("Ausgaben")} stroke="#fb7185" strokeWidth={2} fill="url(#gSpend)" />
               </AreaChart>

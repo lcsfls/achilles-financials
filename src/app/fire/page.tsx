@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ChartTooltip } from "@/components/chart-tooltip";
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_PARAMS, project, startCapital, type Assets, type FireParams } from "@/lib/fire";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
@@ -293,11 +294,10 @@ export default function FirePage() {
               />
               <Tooltip
                 content={({ active: a, payload }) => {
-                  if (!a || !payload?.length) return null;
                   return (
-                    <div className="glass-float rounded-xl px-4 py-3 text-xs">
-                      <div className="mb-1 text-muted">{t("Alter {age}", { age: Math.round(payload[0].payload.age) })}</div>
-                      {payload.map((pl) => (
+                    <ChartTooltip active={a && Boolean(payload?.length)} width={230}>
+                      <div className="mb-1 text-muted">{t("Alter {age}", { age: Math.round(payload?.[0]?.payload?.age ?? 0) })}</div>
+                      {(payload ?? []).map((pl) => (
                         <div key={String(pl.name)} className="flex items-center justify-between gap-4">
                           <span className="flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full" style={{ background: pl.stroke }} />
@@ -306,7 +306,7 @@ export default function FirePage() {
                           <span className="num font-semibold">{fmtEUR0(Number(pl.value))}</span>
                         </div>
                       ))}
-                    </div>
+                    </ChartTooltip>
                   );
                 }}
               />

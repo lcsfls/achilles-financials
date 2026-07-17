@@ -3,6 +3,20 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.9] — 2026-07-17
+
+### Fixed
+- **Real glassmorphism on the floating surfaces.** 1.0.6 made them near-opaque so the text would stop
+  competing with the chart lines behind it — which covered up the very blur it was meant to carry.
+  The right fix was to make `backdrop-filter` work rather than to work around it: chart tooltips now
+  portal to the body, so no `transform` sits above them creating a backdrop root with nothing behind
+  it. With the whole page behind them, the blur applies, and the base is translucent again
+  (45 % over a 28px blur) so it is visible. Chart lines now pass behind the panel as a soft haze
+  instead of running through the numbers or disappearing entirely.
+- **The chart tooltip could fail to appear.** It only learned the cursor position from a listener
+  that started when the tooltip did, so it stayed invisible until the mouse moved again. The
+  position is now tracked continuously and is known on the first render.
+
 ## [1.0.8] — 2026-07-17
 
 ### Added

@@ -70,29 +70,24 @@ body {
 /*
  * Schwebende Flächen: Chart-Tooltips und die Kurs-Hover-Karte.
  *
- * Diese können sich nicht auf backdrop-filter verlassen. Ein transform im
- * Elternbaum erzeugt einen Backdrop Root, und geblurrt wird nur, was
- * INNERHALB dieses Roots hinter dem Element liegt. Recharts positioniert
- * seinen Tooltip genau über ein transform auf dem Wrapper — der enthält aber
- * nichts außer dem Tooltip selbst. Es gibt dort buchstäblich nichts zu
- * blurren, das Panel blieb durchsichtig und die Chartlinien liefen durch die
- * Zahlen. Das transform gehört Recharts und lässt sich nicht entfernen, ohne
- * die Positionierung zu verlieren.
- *
- * Deshalb trägt hier eine echte, weitgehend deckende Grundfläche den Look,
- * statt eines Effekts, der je nach Elternbaum da ist oder nicht. Der Blur
- * bleibt drin: Wo er greift (die Hover-Karte hängt am body), legt er sich
- * zusätzlich darüber.
+ * Die Grundfläche ist bewusst durchscheinend — sonst deckt sie den Blur zu,
+ * den sie tragen soll. Damit backdrop-filter überhaupt greifen kann, MÜSSEN
+ * diese Flächen per Portal am Body hängen: Ein transform im Elternbaum
+ * erzeugt einen Backdrop Root, und geblurrt wird nur, was innerhalb dieses
+ * Roots hinter dem Element liegt. Recharts positioniert seinen Tooltip über
+ * genau so ein transform auf einem Wrapper, der nichts außer dem Tooltip
+ * enthält — dort ist Blur wirkungslos, egal welches CSS hier steht.
+ * Siehe src/components/chart-tooltip.tsx.
  */
 .glass-float {
   background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.022) 55%, rgba(255, 255, 255, 0.012)),
-    rgba(12, 14, 20, 0.93);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    linear-gradient(160deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.02)),
+    rgba(10, 12, 18, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 1px 0 rgba(255, 255, 255, 0.09) inset,
     0 24px 48px -20px rgba(0, 0, 0, 0.8);
 }
 

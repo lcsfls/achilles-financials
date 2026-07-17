@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { PensionAllocation } from "@/components/pension-allocation";
+import { ChartTooltip } from "@/components/chart-tooltip";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, fmtEUR, fmtEUR0, fmtDate } from "@/lib/utils";
 
@@ -161,14 +162,13 @@ export default function PensionPage() {
                   <YAxis axisLine={false} tickLine={false} width={60} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
                   <Tooltip
                     content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const p = payload[0].payload as Statement & { label: string };
+                      const p = payload?.[0]?.payload as (Statement & { label: string }) | undefined;
                       return (
-                        <div className="glass-float rounded-xl px-4 py-3 text-xs">
-                          <div className="mb-1 text-muted">{p.label}</div>
-                          <div className="num text-sm font-semibold">{fmtEUR(p.balance_eur)}</div>
-                          {p.contribution_eur != null && <div className="mt-0.5 text-muted-2">{t("Beitrag: {amount}", { amount: fmtEUR(p.contribution_eur) })}</div>}
-                        </div>
+                        <ChartTooltip active={active && Boolean(p)} width={180} height={90}>
+                          <div className="mb-1 text-muted">{p?.label}</div>
+                          <div className="num text-sm font-semibold">{fmtEUR(p?.balance_eur ?? 0)}</div>
+                          {p?.contribution_eur != null && <div className="mt-0.5 text-muted-2">{t("Beitrag: {amount}", { amount: fmtEUR(p.contribution_eur) })}</div>}
+                        </ChartTooltip>
                       );
                     }}
                   />
