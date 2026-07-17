@@ -3,6 +3,22 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.7] — 2026-07-17
+
+### Added
+- **Pin symbols to the top of the watchlist.** The pin sits next to the delete button on each card
+  and keeps pinned entries ahead of the rest, so the ones you actually watch stay in the first row.
+  The order is decided in the database rather than in the browser, so it is the same on every device,
+  and pinned cards keep a gold pin and border once the cursor leaves — otherwise there would be no
+  way to tell why a card sits at the front.
+
+### Changed
+- **The watchlist uses the full window width.** The 1400px cap is a reading width: right for tables
+  and text, wrong for a grid of tiles, which gains from every column that fits. The watchlist now
+  opts out of it, and its grid fills the available width by itself (`auto-fill` from a 300px minimum)
+  instead of switching between a fixed number of columns at guessed breakpoints. A 1920px screen
+  shows five columns where it previously showed three and left the right-hand side empty.
+
 ## [1.0.6] — 2026-07-17
 
 ### Fixed

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus } from "lucide-react";
+import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus, Pin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, displayCurrency, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
 
 type WatchItem = {
-  id: number; symbol: string; label: string | null; added_at: string;
+  id: number; symbol: string; label: string | null; added_at: string; pinned: boolean;
   priceAtAdd: number | null; priceEurAtAdd: number | null; currencyAtAdd: string | null;
   quote: {
     name: string | null; price: number; prevClose: number | null; changePct: number | null;
@@ -46,6 +46,22 @@ export default function WatchlistPage() {
     if (!res.ok) { setError(t((await res.json()).error)); return; }
     setSymbol("");
     load();
+  };
+
+  const togglePin = async (w: WatchItem) => {
+    // Sofort umsortieren und erst danach speichern: Ein Pin ist eine winzige
+    // Änderung, auf die man nicht auf den Server warten möchte. Dieselbe
+    // Sortierung wie im Backend, damit das Ergebnis nicht springt.
+    setItems((prev) =>
+      (prev ?? [])
+        .map((i) => (i.id === w.id ? { ...i, pinned: !i.pinned } : i))
+        .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.added_at.localeCompare(b.added_at))
+    );
+    await fetch("/api/watchlist", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: w.id, pinned: !w.pinned }),
+    });
   };
 
   const remove = async (id: number) => {
@@ -115,7 +131,11 @@ export default function WatchlistPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        // auto-fill statt fester Spalten je Breakpoint: Das Raster legt so viele
+        // Spalten an, wie bei mindestens 300px Kachelbreite hineinpassen, und
+        // verteilt den Rest. Damit stimmt es auf jeder Fensterbreite, auch auf
+        // Größen, für die ich sonst einen Breakpoint hätte raten müssen.
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
           {items.map((w, i) => {
             const q = w.quote;
             const dayUp = (q?.changePct ?? 0) >= 0;
@@ -126,7 +146,7 @@ export default function WatchlistPage() {
             return (
               <Card
                 key={w.id}
-                className={cn("glass-hover rise group p-5", `rise-${(i % 5) + 1}`)}
+                className={cn("glass-hover rise group p-5", `rise-${(i % 5) + 1}`, w.pinned && "border-gold/25")}
                 // hovered auch bei jeder Bewegung setzen, nicht nur bei Enter:
                 // bleibt das Enter-Event aus (schneller Wechsel, synthetische
                 // Events), zeigte die Karte sonst den vorigen Wert weiter.
@@ -142,13 +162,29 @@ export default function WatchlistPage() {
                       {q?.stale && <span className="text-amber-400">{t("letzter bekannter Kurs")}</span>}
                     </div>
                   </div>
-                  <button
-                    onClick={() => remove(w.id)}
-                    className="shrink-0 rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-rose-soft/10 hover:text-rose-soft group-hover:opacity-100 cursor-pointer"
-                    title={t("Entfernen")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    {/* Angepinnt bleibt sichtbar — sonst wäre nicht erkennbar,
+                        warum eine Kachel vorn steht. */}
+                    <button
+                      onClick={() => togglePin(w)}
+                      className={cn(
+                        "rounded-lg p-1.5 transition-all cursor-pointer",
+                        w.pinned
+                          ? "text-gold hover:bg-gold/10"
+                          : "text-muted-2 opacity-0 hover:bg-white/5 hover:text-foreground group-hover:opacity-100"
+                      )}
+                      title={w.pinned ? t("Nicht mehr anpinnen") : t("Anpinnen")}
+                    >
+                      <Pin className={cn("h-3.5 w-3.5", w.pinned && "fill-current")} />
+                    </button>
+                    <button
+                      onClick={() => remove(w.id)}
+                      className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-rose-soft/10 hover:text-rose-soft group-hover:opacity-100 cursor-pointer"
+                      title={t("Entfernen")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {q ? (

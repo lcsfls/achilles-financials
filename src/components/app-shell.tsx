@@ -20,6 +20,9 @@ const NAV = [
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
 
+/** Seiten, die statt der Lesebreite die ganze Fensterbreite bekommen. */
+const FULL_WIDTH = new Set(["/watchlist"]);
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -125,7 +128,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <main className="min-w-0 flex-1 px-4 pb-16 pt-20 sm:px-6 lg:ml-64 lg:px-10 lg:pt-8">
-        <div className={cn("mx-auto max-w-[1400px]", !checked && "opacity-0")}>{children}</div>
+        {/* 1400px sind eine Lesebreite — sinnvoll für Tabellen und Text.
+            Ein Kachelraster gewinnt dagegen mit jeder Spalte, die draufpasst,
+            und darf die volle Fensterbreite nutzen. */}
+        <div className={cn("mx-auto", FULL_WIDTH.has(pathname) ? "max-w-none" : "max-w-[1400px]", !checked && "opacity-0")}>
+          {children}
+        </div>
       </main>
     </div>
   );

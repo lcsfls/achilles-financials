@@ -95,7 +95,8 @@ function migrate(d: Database.Database) {
       -- Wert wäre er später nicht mehr rekonstruierbar.
       price_at_add REAL,
       price_eur_at_add REAL,
-      currency_at_add TEXT
+      currency_at_add TEXT,
+      pinned INTEGER DEFAULT 0        -- angepinnt: steht vor allen anderen
     );
 
     CREATE TABLE IF NOT EXISTS quote_cache (
@@ -143,7 +144,7 @@ function migrate(d: Database.Database) {
   for (const table of ["metal_lots", "investments", "pension_statements"]) {
     addColumnIfMissing(d, table, "demo", "INTEGER DEFAULT 0");
   }
-  for (const [col, def] of [["price_at_add", "REAL"], ["price_eur_at_add", "REAL"], ["currency_at_add", "TEXT"]]) {
+  for (const [col, def] of [["price_at_add", "REAL"], ["price_eur_at_add", "REAL"], ["currency_at_add", "TEXT"], ["pinned", "INTEGER DEFAULT 0"]]) {
     addColumnIfMissing(d, "watchlist", col, def);
   }
   // Unterscheidet importierte von handgepflegten Positionen — nur so kann ein

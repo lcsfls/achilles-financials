@@ -183,6 +183,8 @@ const EN: Record<string, string> = {
   "Noch leer — füge Symbole hinzu, um Kurse zu beobachten (Yahoo-Format: AAPL, VWCE.DE, IWDA.AS, BTC-EUR, ^GSPC).":
     "Empty — add symbols to watch prices (Yahoo format: AAPL, VWCE.DE, IWDA.AS, BTC-EUR, ^GSPC).",
   "Entfernen": "Remove",
+  "Anpinnen": "Pin to top",
+  "Nicht mehr anpinnen": "Unpin",
   "Lade Investments …": "Loading investments …",
 
   // Vorsorge

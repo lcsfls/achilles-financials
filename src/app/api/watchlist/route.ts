@@ -7,11 +7,14 @@ export const dynamic = "force-dynamic";
 type Row = {
   id: number; symbol: string; label: string | null; added_at: string;
   price_at_add: number | null; price_eur_at_add: number | null; currency_at_add: string | null;
+  pinned: number;
 };
 
 export async function GET(req: NextRequest) {
   const force = new URL(req.url).searchParams.get("refresh") === "1";
-  const rows = db().prepare("SELECT * FROM watchlist ORDER BY added_at").all() as Row[];
+  // Angepinnte zuerst — die Reihenfolge kommt aus der Datenbank, damit sie
+  // auf jedem Gerät gleich ist und nicht erst im Browser entsteht.
+  const rows = db().prepare("SELECT * FROM watchlist ORDER BY pinned DESC, added_at").all() as Row[];
   const quotes = await getQuotes(rows.map((r) => r.symbol), force);
 
   return NextResponse.json({
@@ -43,6 +46,7 @@ export async function GET(req: NextRequest) {
         symbol: r.symbol,
         label: r.label,
         added_at: r.added_at,
+        pinned: r.pinned === 1,
         priceAtAdd: r.price_at_add,
         priceEurAtAdd: r.price_eur_at_add,
         currencyAtAdd: r.currency_at_add,
@@ -73,6 +77,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Symbol ist bereits auf der Watchlist" }, { status: 409 });
   }
   return NextResponse.json({ ok: true, quote });
+}
+
+/** Anpinnen / lösen. */
+export async function PATCH(req: NextRequest) {
+  const { id, pinned } = await req.json();
+  if (typeof id !== "number") return NextResponse.json({ error: "id erforderlich" }, { status: 400 });
+  db().prepare("UPDATE watchlist SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, id);
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest) {
