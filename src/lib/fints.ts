@@ -1,4 +1,5 @@
-import { PinTanClient } from "fints-lib";
+import { PinTanClient, type Holding, type SEPAAccount } from "fints-lib";
+import { guessKind, upsertPositions, type IncomingPosition, type UpsertResult } from "./positions";
 import { db, getSetting, setSetting } from "./db";
 import { categorize } from "./categorize";
 
@@ -180,4 +181,81 @@ export async function syncAccounts(): Promise<{ accounts: number; transactions: 
 
   setSetting("fints_last_sync", new Date().toISOString());
   return { accounts: accounts.length, transactions: txCount };
+}
+
+/**
+ * Depotbestände abrufen (FinTS-Geschäftsvorfall HKWPD).
+ *
+ * PSD2 — und damit Enable Banking — deckt ausdrücklich nur Zahlungskonten ab;
+ * Wertpapierdepots sind nicht im Geltungsbereich. FinTS kann sie dagegen
+ * liefern, sofern die Bank HKWPD anbietet. Deshalb ist das hier der einzige
+ * Weg, an ein Depot zu kommen, ohne es von Hand zu pflegen.
+ */
+export async function syncHoldings(): Promise<UpsertResult & { depots: number }> {
+  const c = client();
+
+  let caps;
+  try {
+    caps = await c.capabilities();
+  } catch (e) {
+    throw explain(e);
+  }
+  // Vorher fragen statt blind versuchen: Sonst käme ein roher Bankfehler an,
+  // aus dem nicht hervorgeht, dass die Bank das schlicht nicht anbietet.
+  if (!caps.supportsHoldings) {
+    throw new FinTsError(
+      "Diese Bank bietet über FinTS keine Depotaufstellung an (der Geschäftsvorfall HKWPD fehlt in ihren Angaben). Depotbestände lassen sich hier nur per CSV-Import oder von Hand pflegen."
+    );
+  }
+
+  let accounts: SEPAAccount[];
+  try {
+    accounts = await c.accounts();
+  } catch (e) {
+    throw explain(e);
+  }
+
+  const holdings: Holding[] = [];
+  let depots = 0;
+  for (const a of accounts) {
+    // Welches Konto ein Depot ist, sagt die Bank nicht verlässlich — also
+    // jedes fragen. Für ein Girokonto kommt eine leere Liste oder ein Fehler
+    // zurück; beides bedeutet hier nur "kein Depot" und darf den Abruf der
+    // übrigen Konten nicht abbrechen.
+    try {
+      const h = await c.holdings(a);
+      if (h.length > 0) { depots++; holdings.push(...h); }
+    } catch {
+      continue;
+    }
+  }
+
+  if (holdings.length === 0) {
+    throw new FinTsError("Es wurde kein Depot mit Beständen gefunden.");
+  }
+
+  const positions: IncomingPosition[] = holdings
+    // Ohne Stückzahl ist es keine Position, die sich führen ließe
+    .filter((h) => (h.pieces ?? 0) > 0)
+    .map((h) => {
+      const name = h.name?.trim() || h.isin || "Unbekannt";
+      const symbol = h.isin?.trim() || null;
+      const pieces = h.pieces!;
+      // Marktpreis notfalls aus dem Gesamtwert ableiten
+      const current = h.marketPrice ?? (h.totalValue ? h.totalValue / pieces : null);
+      return {
+        name,
+        symbol,
+        units: pieces,
+        // Nicht jede Bank liefert einen Einstandskurs. Dann bleibt er unbekannt
+        // statt geraten — upsertPositions meldet das zurück.
+        buyPricePerUnit: h.acquisitionPrice ?? null,
+        currentPrice: current,
+        currency: (h.currency || "EUR").toUpperCase().slice(0, 3),
+        kind: guessKind(name, symbol),
+      };
+    });
+
+  const result = await upsertPositions(positions, "fints");
+  return { ...result, depots };
 }

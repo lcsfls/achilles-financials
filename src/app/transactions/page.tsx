@@ -23,9 +23,11 @@ export default function TransactionsPage() {
   const { t, lang } = useI18n();
   const [txs, setTxs] = useState<Tx[]>([]);
   const [months, setMonths] = useState<string[]>([]);
+  const [accounts, setAccounts] = useState<Array<{ id: string; name: string; n: number }>>([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [month, setMonth] = useState("");
+  const [account, setAccount] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -34,10 +36,11 @@ export default function TransactionsPage() {
     if (q) params.set("q", q);
     if (category) params.set("category", category);
     if (month) params.set("month", month);
-    apiJson<{ transactions: Tx[]; months: string[] }>(`/api/transactions?${params}`)
-      .then((d) => { setTxs(d.transactions); setMonths(d.months); })
+    if (account) params.set("account", account);
+    apiJson<{ transactions: Tx[]; months: string[]; accounts: typeof accounts }>(`/api/transactions?${params}`)
+      .then((d) => { setTxs(d.transactions); setMonths(d.months); setAccounts(d.accounts); })
       .finally(() => setLoading(false));
-  }, [q, category, month]);
+  }, [q, category, month, account]);
 
   useEffect(() => {
     const timer = setTimeout(load, q ? 250 : 0);
@@ -85,6 +88,16 @@ export default function TransactionsPage() {
             <option value="">{t("Alle Monate")}</option>
             {months.map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
           </Select>
+          {/* Erst ab zwei Konten: Bei nur einem wäre der Filter ein Auswahlfeld
+              ohne Auswahl. */}
+          {accounts.length > 1 && (
+            <Select value={account} onChange={(e) => setAccount(e.target.value)} className="w-full sm:w-56">
+              <option value="">{t("Alle Konten")}</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name} ({a.n})</option>
+              ))}
+            </Select>
+          )}
         </div>
       </Card>
 

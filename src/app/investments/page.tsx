@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, TrendingUp, Pencil, RefreshCw, Upload, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Pencil, RefreshCw, Upload, AlertTriangle, Landmark } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -11,11 +11,16 @@ import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtPct, fmtNum } from "@/lib/utils";
 
 type ImportResult = {
-  inserted: number; updated: number; skipped: number;
-  mode: "positions" | "transactions";
-  detected: { delimiter: string; headerRow: number; mapping: Record<string, string> };
+  inserted: number; updated: number;
+  skipped?: number;
+  /** Nur beim CSV-Import gesetzt — der Depotabruf hat kein Dateiformat. */
+  mode?: "positions" | "transactions";
+  detected?: { delimiter: string; headerRow: number; mapping: Record<string, string> };
   convertedFrom: string[];
   noQuoteSymbols: string[];
+  withoutCostBasis: string[];
+  /** Nur beim FinTS-Abruf. */
+  depots?: number;
 };
 
 type Inv = {
@@ -44,9 +49,15 @@ export default function InvestmentsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [fintsAvailable, setFintsAvailable] = useState(false);
 
   const load = () => apiJson<{ investments: Inv[] }>("/api/investments").then((d) => setInvs(d.investments));
   useEffect(() => { load(); }, []);
+  // Den Depotabruf nur zeigen, wenn FinTS eingerichtet ist — ein Knopf, der
+  // sicher scheitert, ist keine Funktion.
+  useEffect(() => {
+    apiJson<{ available: boolean }>("/api/investments/fints").then((d) => setFintsAvailable(d.available)).catch(() => {});
+  }, []);
 
   const refreshPrices = async () => {
     setRefreshing(true);
@@ -68,6 +79,18 @@ export default function InvestmentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ csv: await file.text() }),
     });
+    const d = await res.json();
+    setImporting(false);
+    if (!res.ok) { setImportError(t(d.error)); return; }
+    setImportResult(d);
+    load();
+  };
+
+  const fetchFints = async () => {
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    const res = await fetch("/api/investments/fints", { method: "POST" });
     const d = await res.json();
     setImporting(false);
     if (!res.ok) { setImportError(t(d.error)); return; }
@@ -144,6 +167,11 @@ export default function InvestmentsPage() {
           <Button variant="glass" size="sm" disabled={importing} onClick={() => fileRef.current?.click()}>
             <Upload className="h-3.5 w-3.5" /> {importing ? t("Importiere …") : t("CSV importieren")}
           </Button>
+          {fintsAvailable && (
+            <Button variant="glass" size="sm" disabled={importing} onClick={fetchFints}>
+              <Landmark className="h-3.5 w-3.5" /> {t("Depot abrufen")}
+            </Button>
+          )}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-4 w-4" /> {t("Position hinzufügen")}</Button>
@@ -276,16 +304,18 @@ export default function InvestmentsPage() {
           ) : importResult ? (
             <>
               <DialogDescription>
-                {importResult.mode === "transactions"
-                  ? t("Orderliste erkannt — Käufe und Verkäufe wurden zu Positionen verrechnet.")
-                  : t("Bestandsliste erkannt.")}
+                {importResult.depots !== undefined
+                  ? t("{n} Depot(s) über FinTS abgerufen.", { n: importResult.depots })
+                  : importResult.mode === "transactions"
+                    ? t("Orderliste erkannt — Käufe und Verkäufe wurden zu Positionen verrechnet.")
+                    : t("Bestandsliste erkannt.")}
               </DialogDescription>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 {[
                   { n: importResult.inserted, label: t("neu") },
                   { n: importResult.updated, label: t("aktualisiert") },
-                  { n: importResult.skipped, label: t("übersprungen") },
+                  { n: importResult.skipped ?? 0, label: t("übersprungen") },
                 ].map((x) => (
                   <div key={x.label} className="rounded-xl border border-white/10 px-3 py-2.5">
                     <div className="num text-xl font-semibold">{x.n}</div>
@@ -312,12 +342,22 @@ export default function InvestmentsPage() {
                 </div>
               )}
 
+              {importResult.withoutCostBasis.length > 0 && (
+                <div className="mt-3 flex gap-2.5 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <div className="text-xs text-muted">
+                    {t("Für {n} keinen Einstandskurs erhalten — als Platzhalter steht dort der aktuelle Kurs, die Wertentwicklung zeigt deshalb 0 %. Bitte den echten Kaufkurs nachtragen.", { n: importResult.withoutCostBasis.join(", ") })}
+                  </div>
+                </div>
+              )}
+
               {/* Erkannte Zuordnung offenlegen, damit ein unbekannter Export
                   überprüfbar ist statt nur geglaubt werden zu müssen */}
+              {importResult.detected && (
               <div className="mt-4">
                 <div className="text-[11px] uppercase tracking-wider text-muted-2">{t("Erkannte Spalten")}</div>
                 <div className="mt-1.5 space-y-1">
-                  {Object.entries(importResult.detected.mapping).map(([k, v]) => (
+                  {Object.entries(importResult.detected!.mapping).map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-3 text-xs">
                       <span className="text-muted-2">{k}</span>
                       <span className="num truncate text-foreground">{v}</span>
@@ -325,6 +365,7 @@ export default function InvestmentsPage() {
                   ))}
                 </div>
               </div>
+              )}
             </>
           ) : null}
         </DialogContent>

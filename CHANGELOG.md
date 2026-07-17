@@ -3,6 +3,37 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.8] — 2026-07-17
+
+### Added
+- **The connect page lists the linked accounts** with balance, entry count, shortened IBAN and last
+  sync, instead of only counting them. A number does not tell you whether the right account is
+  among them. The list comes from the database rather than another call to the bank.
+- **Filter transactions by account.** The selector appears only from two accounts upwards — with one
+  it would be a choice without a choice — and offers only accounts that actually have entries.
+- **Fetch portfolio holdings over FinTS** (Investments → Fetch portfolio). German banks that support
+  the HKWPD transaction return their depot holdings: name, ISIN, units, market price and, where the
+  bank sends one, the cost basis. The button only appears when FinTS is configured, and the app asks
+  the bank up front whether it supports HKWPD, so an unsupported bank gets a plain explanation
+  rather than a raw FinTS error.
+
+### Notes and limits of the portfolio fetch
+- **This cannot work for Revolut, and no setting will change that.** PSD2 — and with it Enable
+  Banking — covers *payment accounts* only; securities are outside its scope, so stock and crypto
+  positions are not exposed. Revolut has no public read API for its trading positions either, and
+  FinTS does not reach it. For Revolut, the CSV import remains the way.
+- Banks identify securities by **ISIN**, which Yahoo Finance cannot price. Imports merge into an
+  existing position by name where possible so the ticker survives; where they do not, the dialog says
+  that "Refresh prices" will skip those positions.
+- Not every bank sends a cost basis. Where it is missing, the current price stands in as a
+  placeholder and performance reads 0 % — the dialog names those positions instead of passing an
+  invented cost basis off as real. A cost basis already recorded is never overwritten by a fetch.
+
+### Changed
+- The CSV import and the FinTS fetch now share one path into the portfolio (`src/lib/positions.ts`):
+  currency conversion, merging and the ticker check are decided in one place rather than drifting
+  apart in two.
+
 ## [1.0.7] — 2026-07-17
 
 ### Added

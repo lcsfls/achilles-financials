@@ -93,6 +93,7 @@ const EN: Record<string, string> = {
   "Händler oder Beschreibung suchen …": "Search merchant or description …",
   "Alle Kategorien": "All categories",
   "Alle Monate": "All months",
+  "Alle Konten": "All accounts",
   "Lade Transaktionen …": "Loading transactions …",
   "Keine Transaktionen gefunden.": "No transactions found.",
   "ausstehend": "pending",
@@ -165,6 +166,16 @@ const EN: Record<string, string> = {
   "aktualisiert": "updated",
   "übersprungen": "skipped",
   "Erkannte Spalten": "Detected columns",
+  "Depot abrufen": "Fetch portfolio",
+  "{n} Depot(s) über FinTS abgerufen.": "Fetched {n} portfolio account(s) via FinTS.",
+  "Für {n} keinen Einstandskurs erhalten — als Platzhalter steht dort der aktuelle Kurs, die Wertentwicklung zeigt deshalb 0 %. Bitte den echten Kaufkurs nachtragen.":
+    "No cost basis was supplied for {n} — the current price stands in as a placeholder, so performance reads 0 %. Please enter the actual purchase price.",
+  "Die FinTS-Integration ist nicht aktiviert oder nicht vollständig eingerichtet. Siehe Einstellungen → Integrationen.":
+    "The FinTS integration is not enabled or not fully configured. See Settings → Integrations.",
+  "Diese Bank bietet über FinTS keine Depotaufstellung an (der Geschäftsvorfall HKWPD fehlt in ihren Angaben). Depotbestände lassen sich hier nur per CSV-Import oder von Hand pflegen.":
+    "This bank does not offer a portfolio statement over FinTS (it does not advertise the HKWPD transaction). Holdings can only be added here by CSV import or by hand.",
+  "Es wurde kein Depot mit Beständen gefunden.": "No portfolio account with holdings was found.",
+  "Der Depotabruf ist fehlgeschlagen.": "Fetching the portfolio failed.",
   "{sym} sind WKN oder ISIN. Der Kursabruf läuft über Yahoo Finance, das nur Kürzel kennt — „Kurse aktualisieren“ lässt diese Positionen aus. Trage das Yahoo-Symbol nach (z. B. AAPL statt 865985).":
     "{sym} are WKN or ISIN identifiers. Price lookups go through Yahoo Finance, which only knows tickers — “Refresh prices” will skip these positions. Add the Yahoo symbol (e.g. AAPL instead of 865985).",
   "Beträge in {cur} wurden zum heutigen Kurs in Euro umgerechnet. Für aktuelle Kurse stimmt das — der Einstand eines älteren Kaufs wird dadurch aber falsch, weil im Export kein historischer Wechselkurs steht. Prüfe diese Positionen.":

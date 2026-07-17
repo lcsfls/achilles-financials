@@ -7,6 +7,8 @@
  * jedes Merkmal aus den Daten erkannt.
  */
 
+import { guessKind, type IncomingPosition } from "./positions";
+
 export type ParsedRow = {
   date: string;          // ISO
   amount: number;        // mit Vorzeichen
@@ -294,15 +296,8 @@ export function parseStatementCsv(text: string): ParseResult {
 
 /* ---------- Depot-/Broker-Exporte ---------- */
 
-export type ParsedPosition = {
-  name: string;
-  symbol: string | null;
-  units: number;
-  buyPricePerUnit: number;   // in der Währung der Datei
-  currentPrice: number | null;
-  currency: string;
-  kind: "stock" | "etf" | "crypto" | "other";
-};
+/** Aus der Datei gelesene Position — Übernahme ins Depot: src/lib/positions.ts */
+export type ParsedPosition = IncomingPosition;
 
 export type PositionsResult = {
   positions: ParsedPosition[];
@@ -314,14 +309,6 @@ export type PositionsResult = {
   mapping: Record<string, string>;
   currencies: string[];
 };
-
-/** Anlageart raten — nur eine Vorbelegung, in der Oberfläche änderbar. */
-function guessKind(name: string, symbol: string | null): ParsedPosition["kind"] {
-  const s = `${name} ${symbol ?? ""}`.toLowerCase();
-  if (/\b(btc|eth|xrp|sol|ada|doge|bitcoin|ethereum)\b/.test(s) || /-(eur|usd)$/i.test(symbol ?? "")) return "crypto";
-  if (/\betf\b|ucits|index|msci|s&p|ftse/.test(s)) return "etf";
-  return "stock";
-}
 
 /** Kopfzeile eines Depot-Exports: braucht Stückzahl und irgendeine Kennung. */
 function findPositionsHeader(lines: string[], delimiter: string): number {

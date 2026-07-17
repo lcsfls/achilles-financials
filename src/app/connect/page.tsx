@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { apiJson, cn, fmtDateTime } from "@/lib/utils";
+import { apiJson, cn, fmtDateTime, fmtEUR } from "@/lib/utils";
 
 type Status = {
   hasCreds: boolean; status: string | null; accounts: number;
+  list?: Array<{ id: string; provider: string; name: string | null; iban: string | null; currency: string | null; balance: number; last_synced: string | null; txCount: number }>;
   aspsp: string | null; country: string; lastSync: string | null; linkedAt: string | null; error?: string;
 };
 type Aspsp = { name: string; country: string; logo?: string; beta?: boolean };
@@ -310,6 +311,31 @@ function ConnectInner() {
                 {busy === "sync" ? t("Läuft …") : t("Jetzt syncen")}
               </Button>
             </div>
+
+            {/* Die verknüpften Konten einzeln auflisten — eine Zahl allein sagt
+                nicht, ob das richtige Konto dabei ist. */}
+            {status?.list && status.list.length > 0 && (
+              <>
+                <div className="hairline my-4" />
+                <div className="space-y-2">
+                  {status.list.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] px-3.5 py-2.5">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm">{a.name || a.iban || a.id}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-2">
+                          {/* IBAN gekürzt: zum Wiedererkennen reichen die letzten
+                              Stellen, und sie steht damit nicht voll auf dem Schirm. */}
+                          {a.iban && <span className="num">···{a.iban.slice(-6)}</span>}
+                          <span>{t("{n} Buchungen", { n: a.txCount })}</span>
+                          {a.last_synced && <span>· {fmtDateTime(a.last_synced)}</span>}
+                        </div>
+                      </div>
+                      <div className="num shrink-0 text-sm font-semibold">{fmtEUR(a.balance)}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </Card>
 
           <Card className="rise rise-5 p-6">

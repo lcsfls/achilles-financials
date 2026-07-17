@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q");
   const category = searchParams.get("category");
   const month = searchParams.get("month"); // YYYY-MM
+  const account = searchParams.get("account");
   const limit = Math.min(Number(searchParams.get("limit") || 200), 1000);
 
   let sql = "SELECT * FROM transactions WHERE 1=1";
@@ -25,6 +26,10 @@ export async function GET(req: NextRequest) {
     sql += " AND strftime('%Y-%m', booking_date) = ?";
     params.push(month);
   }
+  if (account) {
+    sql += " AND account_id = ?";
+    params.push(account);
+  }
   sql += " ORDER BY booking_date DESC, id DESC LIMIT ?";
   params.push(limit);
 
@@ -34,7 +39,17 @@ export async function GET(req: NextRequest) {
     .prepare("SELECT DISTINCT strftime('%Y-%m', booking_date) AS m FROM transactions ORDER BY m DESC LIMIT 24")
     .all() as Array<{ m: string }>;
 
-  return NextResponse.json({ transactions: rows, months: months.map((r) => r.m) });
+  // Nur Konten anbieten, zu denen es auch Buchungen gibt — ein Filter, der
+  // garantiert nichts findet, ist keine Hilfe.
+  const accounts = db()
+    .prepare(
+      `SELECT a.id, COALESCE(a.name, a.iban, a.id) AS name, COUNT(t.id) AS n
+         FROM accounts a JOIN transactions t ON t.account_id = a.id
+        GROUP BY a.id ORDER BY n DESC`
+    )
+    .all() as Array<{ id: string; name: string; n: number }>;
+
+  return NextResponse.json({ transactions: rows, months: months.map((r) => r.m), accounts });
 }
 
 export async function PATCH(req: NextRequest) {
