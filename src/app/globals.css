@@ -154,16 +154,6 @@ body {
   animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/*
- * A finished `.rise` animation keeps holding transform: translateY(0), and CSS
- * animations override inline styles — so a tile's drag transform (lift, tilt,
- * or the target's make-room scale) would be silently ignored. Switching the
- * animation off frees `transform` back to the inline style.
- */
-.rise-off {
-  animation: none !important;
-}
-
 .rise-1 { animation-delay: 0.05s; }
 .rise-2 { animation-delay: 0.12s; }
 .rise-3 { animation-delay: 0.19s; }

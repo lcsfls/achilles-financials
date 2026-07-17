@@ -19,6 +19,11 @@ type WatchItem = {
   since: { pct: number; abs: number; currency: string } | null;
 };
 
+type XY = { x: number; y: number };
+
+/** Duration of the swap slide; the array reorder is committed after it. */
+const SLIDE_MS = 300;
+
 export default function WatchlistPage() {
   const { t } = useI18n();
   const [items, setItems] = useState<WatchItem[] | null>(null);
@@ -37,7 +42,19 @@ export default function WatchlistPage() {
   const dragRef = useRef<{ id: number; pinned: boolean; startX: number; startY: number; engaged: boolean } | null>(null);
   const [drag, setDrag] = useState<{ id: number; pinned: boolean } | null>(null);
   const [offset, setOffset] = useState({ dx: 0, dy: 0 });
+  // Both a ref and state: endDrag reads the ref (its closure's state would be
+  // stale if the last move and the release land in the same tick), the state
+  // drives the target's highlight.
+  const overIdRef = useRef<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
+
+  // Live references to the tile elements, used to measure their positions so a
+  // swap can slide the two tiles toward each other instead of snapping.
+  const cardRefs = useRef<Map<number, HTMLElement>>(new Map());
+  // The swap in flight: the two ids and how far each must travel. Driven through
+  // React state and a CSS transition (no requestAnimationFrame), so it can't get
+  // stuck the way an imperative FLIP would if a frame never fires.
+  const [sliding, setSliding] = useState<{ a: number; b: number; aShift: XY; bShift: XY } | null>(null);
 
   const load = useCallback((refresh = false) =>
     apiJson<{ watchlist: WatchItem[] }>(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((d) => setItems(d.watchlist)), []);
@@ -75,16 +92,45 @@ export default function WatchlistPage() {
     const target = items.find((i) => i.id === targetId);
     if (!src || !target || src.pinned !== target.pinned) return;
 
-    const next = [...items];
-    const a = next.findIndex((i) => i.id === srcId);
-    const b = next.findIndex((i) => i.id === targetId);
-    [next[a], next[b]] = [next[b], next[a]];
-    setItems(next);
+    // Slide the two tiles toward each other first, then commit the reorder.
+    // Both cells stay occupied throughout (only a transform moves), so nothing
+    // reflows and the page is never reloaded.
+    const ra = cardRefs.current.get(srcId)?.getBoundingClientRect();
+    const rb = cardRefs.current.get(targetId)?.getBoundingClientRect();
+    if (ra && rb) {
+      setSliding({
+        a: srcId,
+        b: targetId,
+        aShift: { x: rb.left - ra.left, y: rb.top - ra.top },
+        bShift: { x: ra.left - rb.left, y: ra.top - rb.top },
+      });
+      // After the slide, swap the array (the tiles are now visually in their new
+      // cells) and drop the transforms in the same commit — no jump.
+      window.setTimeout(() => {
+        const next = [...items];
+        const a = next.findIndex((i) => i.id === srcId);
+        const b = next.findIndex((i) => i.id === targetId);
+        [next[a], next[b]] = [next[b], next[a]];
+        setItems(next);
+        setSliding(null);
+      }, SLIDE_MS);
+    } else {
+      // No measurements (e.g. a tile off-screen) — reorder without the slide.
+      const next = [...items];
+      const a = next.findIndex((i) => i.id === srcId);
+      const b = next.findIndex((i) => i.id === targetId);
+      [next[a], next[b]] = [next[b], next[a]];
+      setItems(next);
+    }
 
+    const order = [...items].map((i) => i.id);
+    const ia = order.indexOf(srcId);
+    const ib = order.indexOf(targetId);
+    [order[ia], order[ib]] = [order[ib], order[ia]];
     await fetch("/api/watchlist", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order: next.map((i) => i.id) }),
+      body: JSON.stringify({ order }),
     });
   };
 
@@ -95,6 +141,9 @@ export default function WatchlistPage() {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("button")) return;
     dragRef.current = { id: w.id, pinned: w.pinned, startX: e.clientX, startY: e.clientY, engaged: false };
+    // Drop the price hover card the instant the tile is grabbed — before the
+    // drag even engages — so it doesn't hang in the air over the moving tile.
+    setHovered(null);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
@@ -118,16 +167,17 @@ export default function WatchlistPage() {
     // tile underneath — that is the swap target.
     const under = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-watch-id]") as HTMLElement | null;
     const tid = under ? Number(under.dataset.watchId) : null;
-    setOverId(tid && tid !== d.id ? tid : null);
+    const next = tid && tid !== d.id ? tid : null;
+    overIdRef.current = next;
+    setOverId(next);
   };
 
   const endDrag = () => {
     const d = dragRef.current;
     dragRef.current = null;
-    if (d?.engaged && overId != null) {
-      const target = items?.find((i) => i.id === overId);
-      if (target && target.pinned === d.pinned) swap(d.id, target.id);
-    }
+    const target = overIdRef.current != null ? items?.find((i) => i.id === overIdRef.current) : null;
+    if (d?.engaged && target && target.pinned === d.pinned) swap(d.id, target.id);
+    overIdRef.current = null;
     setDrag(null);
     setOverId(null);
     setOffset({ dx: 0, dy: 0 });
@@ -228,10 +278,16 @@ export default function WatchlistPage() {
             const lifted = drag?.id === w.id;
             // A valid drop target: under the pointer, not itself, same group.
             const isTarget = overId === w.id && drag != null && drag.id !== w.id && drag.pinned === w.pinned;
+            // Mid-swap slide: this tile travels toward the other one's slot.
+            const slide = sliding ? (sliding.a === w.id ? sliding.aShift : sliding.b === w.id ? sliding.bShift : null) : null;
 
             return (
               <Card
                 key={w.id}
+                ref={(el: HTMLDivElement | null) => {
+                  if (el) cardRefs.current.set(w.id, el);
+                  else cardRefs.current.delete(w.id);
+                }}
                 data-watch-id={w.id}
                 onPointerDown={(e) => onDragPointerDown(e, w)}
                 onPointerMove={onDragPointerMove}
@@ -254,6 +310,16 @@ export default function WatchlistPage() {
                         cursor: "grabbing",
                         willChange: "transform",
                       }
+                    : slide
+                    ? {
+                        // Sliding to the other tile's slot over SLIDE_MS, then the
+                        // array reorder lands it there and this transform is cleared
+                        // in the same commit — so it never jumps.
+                        transform: `translate(${slide.x}px, ${slide.y}px)`,
+                        transition: `transform ${SLIDE_MS}ms cubic-bezier(0.22,1,0.36,1)`,
+                        zIndex: 10,
+                        position: "relative",
+                      }
                     : {
                         // Everyone else eases — the target's react and the origin
                         // slot sits empty as the "make room" gap.
@@ -261,19 +327,26 @@ export default function WatchlistPage() {
                         transform: isTarget ? "scale(0.96)" : undefined,
                       }),
                 }}
+                // Once the entrance animation ends, switch it off for good. A
+                // finished `.rise` keeps holding transform:translateY(0), which
+                // (animations outrank inline styles) would block the drag/FLIP
+                // transform — and toggling a class off to free it would restart
+                // the animation on every drop, making the whole grid replay its
+                // entrance like a reload. Disabling it once avoids both.
+                onAnimationEnd={(e) => { (e.currentTarget as HTMLElement).style.animation = "none"; }}
                 className={cn(
                   "glass-hover rise group cursor-grab p-5 select-none active:cursor-grabbing", `rise-${(i % 5) + 1}`,
                   w.pinned && "border-gold/25",
                   isTarget && "border-gold/60 ring-2 ring-gold/40",
-                  // Free `transform` from the finished entrance animation so the
-                  // lift and the target's scale actually show.
-                  drag != null && "rise-off",
                 )}
                 // Update hovered on every move, not just enter — with fast tile
                 // changes the enter event can be skipped and the card would keep
                 // showing the previous symbol. Suppressed while dragging.
-                onMouseEnter={(e) => { if (!drag) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
-                onMouseMove={(e) => { if (!drag) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
+                // Also suppress while a tile is grabbed but not yet engaged
+                // (dragRef set, drag state still null) — otherwise a move within
+                // the threshold would bring the card back mid-grab.
+                onMouseEnter={(e) => { if (!drag && !dragRef.current) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
+                onMouseMove={(e) => { if (!drag && !dragRef.current) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
                 onMouseLeave={() => { setHovered((prev) => (prev?.id === w.id ? null : prev)); setCursor(null); }}
               >
                 <div className="flex items-start justify-between gap-2">

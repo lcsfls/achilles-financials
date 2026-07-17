@@ -3,6 +3,20 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.4.3] — 2026-07-17
+
+### Fixed
+- **Dragging a watchlist tile left the price hover card hanging in the air.** It now disappears the
+  instant you grab a tile — on press, before the drag even engages — instead of lingering over the
+  moving tile.
+- **A swap looked like the whole page reloaded.** Two things caused it. The drag transform was freed
+  by toggling off the entrance animation, and toggling it back on after the drop **restarted** that
+  animation on every tile, so the whole grid replayed its entrance. And the swap itself just snapped.
+  The entrance animation is now switched off once, for good, after it first plays — it never replays;
+  and the two swapped tiles **slide to each other's places** over 300 ms before the reorder commits.
+- **The swap could silently not happen.** The drop read the target from state that could still be
+  stale if the last move and the release landed together; it reads a ref now, so the swap always
+  registers.
 ## [1.4.2] — 2026-07-17
 
 ### Changed
