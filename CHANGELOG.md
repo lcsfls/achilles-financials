@@ -3,6 +3,27 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.5] — 2026-07-17
+
+### Fixed
+- **The update button disappeared.** The version check asked GitHub for `releases/latest` and took
+  that answer unconditionally. A version that is tagged but has no GitHub release published was
+  therefore never seen: with 1.0.1 as the newest release, the app reported "up to date" while 1.0.2
+  to 1.0.4 already existed as tags. Releases and tags now count equally and the higher version wins.
+  Where a version has no release, the settings page says so plainly and links to GitHub instead of
+  offering an update with no explanation of what it changes.
+
+### Changed
+- **Updates no longer fill the disk.** `docker image prune` only ever removed the replaced image; the
+  BuildKit cache — by far the largest item for a Node build, since `npm ci` and the Next.js build add
+  layers on every run — was never touched and grew without limit. Updates now prune the build cache
+  as well and report the freed space in the log. Set `PRUNE=0` if the Docker host is shared with
+  other projects, as pruning affects the whole daemon.
+- **Two logs that grew forever are now capped.** The update log is trimmed to its most recent 1 MB
+  before each run (it collects the complete build output every time), and the container log is
+  limited to 3 × 10 MB — Docker's default is a single file with no limit at all, which quietly grows
+  for as long as the dashboard runs.
+
 ## [1.0.4] — 2026-07-17
 
 ### Fixed

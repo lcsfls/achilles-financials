@@ -159,8 +159,11 @@ let releaseCache: { at: number; value: Release | null } | null = null;
 const RELEASE_TTL_MS = 10 * 60 * 1000;
 
 /**
- * Neueste veröffentlichte Version. Bevorzugt GitHub-Releases (mit Notes);
- * fällt auf Tags zurück, falls zu einem Tag kein Release angelegt wurde.
+ * Neueste veröffentlichte Version — die höchste aus Releases UND Tags.
+ *
+ * Beide Quellen zählen gleichberechtigt, weil ein Tag auch ohne zugehörige
+ * GitHub-Release eine veröffentlichte Version ist. Notes gibt es dann keine,
+ * die Version ist aber vorhanden und installierbar.
  */
 export async function fetchLatestRelease(force = false): Promise<Release | null> {
   if (!force && releaseCache && Date.now() - releaseCache.at < RELEASE_TTL_MS) {
@@ -175,25 +178,42 @@ export async function fetchLatestRelease(force = false): Promise<Release | null>
 async function fetchLatestReleaseUncached(): Promise<Release | null> {
   const headers = { Accept: "application/vnd.github+json", "User-Agent": "achilles-financials" };
 
+  const [release, tag] = await Promise.all([fetchLatestGithubRelease(headers), fetchHighestTag(headers)]);
+
+  // Die höhere Version gewinnt, gleich aus welcher Quelle.
+  //
+  // Vorher galt releases/latest bedingungslos: Wurde eine Version nur getaggt,
+  // ohne auf GitHub eine Release anzulegen, meldete die App die ältere Release
+  // als "neueste" — und damit "alles aktuell". Der Update-Button verschwand,
+  // obwohl neuere Tags längst da waren.
+  if (release && tag) {
+    const rv = parseSemver(release.version);
+    const tv = parseSemver(tag.version);
+    if (rv && tv) return compareSemver(tv, rv) > 0 ? tag : release;
+  }
+  return release ?? tag;
+}
+
+async function fetchLatestGithubRelease(headers: Record<string, string>): Promise<Release | null> {
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers, cache: "no-store" });
-    if (res.ok) {
-      const d = await res.json();
-      const version = String(d.tag_name ?? "").replace(/^v/, "");
-      if (parseSemver(version)) {
-        return {
-          version,
-          tag: d.tag_name,
-          sha: d.target_commitish ?? "",
-          notes: d.body || null,
-          publishedAt: d.published_at ?? null,
-        };
-      }
-    }
+    if (!res.ok) return null;
+    const d = await res.json();
+    const version = String(d.tag_name ?? "").replace(/^v/, "");
+    if (!parseSemver(version)) return null;
+    return {
+      version,
+      tag: d.tag_name,
+      sha: d.target_commitish ?? "",
+      notes: d.body || null,
+      publishedAt: d.published_at ?? null,
+    };
   } catch {
-    /* Tags als Rückfallebene versuchen */
+    return null;
   }
+}
 
+async function fetchHighestTag(headers: Record<string, string>): Promise<Release | null> {
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/tags?per_page=100`, { headers, cache: "no-store" });
     if (!res.ok) return null;

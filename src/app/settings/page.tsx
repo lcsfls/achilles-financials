@@ -422,14 +422,26 @@ export default function SettingsPage() {
           )}
 
           {/* Changelog */}
-          {upd?.updateAvailable && upd.latest?.notes && (
+          {upd?.updateAvailable && upd.latest && (
             <div className="glass-inset rounded-xl p-4">
               <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-2">
                 {t("Neu in v{v}", { v: upd.latest.version })}
               </div>
-              <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted">
-                {upd.latest.notes}
-              </pre>
+              {upd.latest.notes ? (
+                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted">
+                  {upd.latest.notes}
+                </pre>
+              ) : (
+                // Zu einem Tag ohne GitHub-Release gibt es keine Notes. Das
+                // offen sagen und den Weg zeigen — sonst stünde hier ein
+                // Update ohne jeden Hinweis, was es ändert.
+                <div className="text-xs text-muted">
+                  {t("Für diese Version sind keine Patchnotes hinterlegt (Tag ohne Release).")}{" "}
+                  <a href={upd.releasesUrl} target="_blank" rel="noreferrer" className="text-gold-bright underline underline-offset-2">
+                    {t("Änderungen auf GitHub ansehen")}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

@@ -18,6 +18,9 @@ set -uo pipefail
 APP_DIR="${APP_DIR:-/opt/achilles-financials}"
 # stable = neuester Versions-Tag (Standard), edge = Spitze des Branches
 CHANNEL="${CHANNEL:-stable}"
+# Aufräumen nach dem Build. Betrifft den ganzen Docker-Daemon, nicht nur
+# Achilles — wer sich den Host mit anderen Containern teilt, setzt PRUNE=0.
+PRUNE="${PRUNE:-1}"
 CONTROL_DIR="$APP_DIR/control"
 LOG_FILE="$CONTROL_DIR/update.log"
 FROM_APP=0
@@ -77,6 +80,13 @@ write_status "running" "Update gestartet"
 FROM_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 
+# Das Log sammelt die komplette Build-Ausgabe jedes Updates und wuchs bisher
+# unbegrenzt — vor dem Anhängen auf die jüngsten 1 MB kürzen.
+if [[ -f "$LOG_FILE" ]] && [[ "$(wc -c <"$LOG_FILE" 2>/dev/null || echo 0)" -gt 2000000 ]]; then
+  tail -c 1000000 "$LOG_FILE" > "${LOG_FILE}.trim" 2>/dev/null && mv -f "${LOG_FILE}.trim" "$LOG_FILE"
+  fix_owner
+fi
+
 echo "=== $(date -Iseconds) — update gestartet (von ${FROM_SHA:0:7}) ===" >> "$LOG_FILE"
 
 log "Hole Änderungen von origin/${BRANCH} …"
@@ -125,7 +135,26 @@ if ! docker compose up -d --build >>"$LOG_FILE" 2>&1; then
   fail "docker compose build fehlgeschlagen — Details in $LOG_FILE"
 fi
 
-docker image prune -f >>"$LOG_FILE" 2>&1 || true
+# Aufräumen — ohne das füllt sich die Platte mit jedem Update:
+#
+#  image prune  entfernt das vorige Image, das beim Rebuild seinen Tag an das
+#               neue verloren hat und sonst verwaist liegen bliebe.
+#  builder prune ist der wichtigere Teil: Der BuildKit-Cache wächst bei jedem
+#               Build weiter (npm ci und der Next-Build erzeugen jedes Mal neue
+#               Layer) und wird von "image prune" gar nicht angefasst. Er ist
+#               bei einem Node-Image der mit Abstand größte Posten.
+if [[ "$PRUNE" == "1" ]]; then
+  log "Räume alte Images und Build-Cache auf …"
+  BEFORE="$(df -Pm "$APP_DIR" | awk 'NR==2 {print $4}')"
+  docker image prune -f >>"$LOG_FILE" 2>&1 || true
+  docker builder prune -f >>"$LOG_FILE" 2>&1 || true
+  AFTER="$(df -Pm "$APP_DIR" | awk 'NR==2 {print $4}')"
+  # Nur berichten, wenn beide Messungen geklappt haben
+  if [[ -n "${BEFORE:-}" && -n "${AFTER:-}" ]]; then
+    log "Freier Speicher: ${BEFORE} MB → ${AFTER} MB"
+    echo "[prune] frei: ${BEFORE} MB -> ${AFTER} MB" >> "$LOG_FILE"
+  fi
+fi
 
 APP_DIR="$APP_DIR" "$APP_DIR/deploy/write-version.sh" >>"$LOG_FILE" 2>&1 || true
 

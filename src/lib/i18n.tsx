@@ -509,6 +509,9 @@ const EN: Record<string, string> = {
   "Letztes Update fehlgeschlagen": "Last update failed",
   "Neu seit deiner Version": "New since your version",
   "… und {n} weitere": "… and {n} more",
+  "Für diese Version sind keine Patchnotes hinterlegt (Tag ohne Release).":
+    "No patch notes are published for this version (tag without a release).",
+  "Änderungen auf GitHub ansehen": "View the changes on GitHub",
   "Nach Updates suchen": "Check for updates",
   "Update installieren": "Install update",
   "Starte …": "Starting …",

@@ -14,6 +14,14 @@ services:
       - APP_URL=${APP_URL:-http://localhost:3000}
       - REPO_SLUG=${REPO_SLUG:-lcsfls/achilles-financials}
       - REPO_BRANCH=${REPO_BRANCH:-main}
+    # Ohne Begrenzung schreibt Docker das Container-Log unbegrenzt in eine
+    # einzige json-Datei — auf einem Dashboard, das monatelang durchläuft, ist
+    # das ein stiller Dauerfresser. 3 × 10 MB reichen zur Fehlersuche.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - achilles-data:/data
       # Update-Kanal zum Host: die App legt hier eine Anforderung ab, der
