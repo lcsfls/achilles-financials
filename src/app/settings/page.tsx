@@ -11,7 +11,7 @@ import { useI18n, type Lang } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null };
+type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
 type UpdateInfo = {
   repo: string;
@@ -56,11 +56,9 @@ export default function SettingsPage() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
-  // Muss im Enable-Banking-Control-Panel als Redirect-URL hinterlegt werden
-  const [redirectUrl, setRedirectUrl] = useState("…/api/bank/callback");
-  useEffect(() => { setRedirectUrl(`${window.location.origin}/api/bank/callback`); }, []);
+  const [appUrl, setAppUrl] = useState("");
 
-  const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); });
+  const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); setAppUrl(s.appUrl ?? ""); });
   const loadUpdate = () => fetch("/api/update").then((r) => r.json()).then(setUpd).catch(() => {});
   useEffect(() => { load(); loadUpdate(); }, []);
 
@@ -97,6 +95,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         ebAppId: appId || undefined,
         ebPrivateKey: privateKey || undefined,
+        appUrl,
         country,
       }),
     });
@@ -337,9 +336,35 @@ export default function SettingsPage() {
             </a>
             , {t("im Control Panel eine Anwendung registrieren (Redirect-URL siehe unten) und den dabei erzeugten Private Key hier einfügen. Application-ID und Key bleiben ausschließlich in deiner lokalen SQLite-Datenbank.")}
           </p>
-          <div className="glass-inset rounded-xl px-3 py-2 text-[11px]">
-            <span className="text-muted-2">{t("Redirect-URL für das Control Panel")}: </span>
-            <code className="text-gold-bright">{redirectUrl}</code>
+          <div className="space-y-1.5">
+            <Label>{t("Öffentliche Adresse dieser Instanz")}</Label>
+            <Input
+              placeholder="https://achilles.deine-domain.de"
+              value={appUrl}
+              onChange={(e) => { setAppUrl(e.target.value); setSaveError(null); }}
+            />
+            <p className="text-[11px] leading-relaxed text-muted-2">
+              {t("Die Adresse, unter der dein Handy das Dashboard erreicht — hinter einem Reverse-Proxy also die HTTPS-Domain, nicht die interne IP. Enable Banking lehnt http:// in der Produktivumgebung ab.")}
+            </p>
+          </div>
+
+          <div className="glass-inset rounded-xl px-3 py-2.5 text-[11px]">
+            <div className="flex flex-wrap items-center gap-x-2">
+              <span className="text-muted-2">{t("Redirect-URL für das Control Panel")}:</span>
+              <code className="text-gold-bright">{settings?.callbackUrl ?? "…"}</code>
+            </div>
+            {settings && !settings.callbackUrl.startsWith("https://") && (
+              <div className="mt-1.5 flex items-start gap-1.5 text-amber-400">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                <span>
+                  {settings.appUrlSource === "setting"
+                    ? t("Kein HTTPS — Enable Banking wird diese Redirect-URL in der Produktivumgebung ablehnen.")
+                    : t("Diese URL stammt {source} und ist kein HTTPS. Trage oben deine HTTPS-Domain ein, sonst wird die Redirect-URL abgelehnt.", {
+                        source: settings.appUrlSource === "env" ? t("aus der APP_URL-Umgebungsvariable") : t("aus dem aktuellen Aufruf"),
+                      })}
+                </span>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Application ID</Label>

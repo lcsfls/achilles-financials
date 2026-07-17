@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSetting, setSetting } from "@/lib/db";
+import { deleteSetting, getSetting, setSetting } from "@/lib/db";
 import { authEnabled, disableAuth, getUsername, setCredentials, verifyPassword } from "@/lib/auth";
+import { callbackUrl, publicOrigin, validateAppUrl } from "@/lib/app-url";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const appId = getSetting("eb_app_id");
   return NextResponse.json({
     ebConfigured: Boolean(appId && getSetting("eb_private_key")),
@@ -15,6 +16,12 @@ export async function GET() {
     setupDone: getSetting("setup_done") === "1",
     authEnabled: authEnabled(),
     authUser: getUsername(),
+    // Die tatsächlich verwendete Adresse — nicht window.location, sonst zeigt
+    // die Oberfläche hinter einem Proxy etwas anderes an, als verschickt wird.
+    appUrl: getSetting("app_url") ?? "",
+    appUrlSource: getSetting("app_url") ? "setting" : process.env.APP_URL ? "env" : "request",
+    effectiveOrigin: publicOrigin(req.url),
+    callbackUrl: callbackUrl(req.url),
   });
 }
 
@@ -61,6 +68,16 @@ export async function POST(req: NextRequest) {
       );
     }
     setSetting("eb_private_key", key);
+  }
+  if (body.appUrl !== undefined) {
+    const raw = String(body.appUrl).trim();
+    if (raw === "") {
+      deleteSetting("app_url");
+    } else {
+      const check = validateAppUrl(raw);
+      if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+      setSetting("app_url", check.url);
+    }
   }
   if (country) setSetting("eb_country", String(country).trim().toUpperCase());
   if (language === "de" || language === "en") setSetting("language", language);

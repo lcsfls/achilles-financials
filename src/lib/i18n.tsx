@@ -402,6 +402,19 @@ const EN: Record<string, string> = {
   "im Control Panel eine Anwendung registrieren (Redirect-URL siehe unten) und den dabei erzeugten Private Key hier einfügen. Application-ID und Key bleiben ausschließlich in deiner lokalen SQLite-Datenbank.":
     "register an application in the Control Panel (redirect URL below) and paste the private key it generates here. The application ID and key never leave your local SQLite database.",
   "Redirect-URL für das Control Panel": "Redirect URL for the Control Panel",
+  "Öffentliche Adresse dieser Instanz": "Public address of this instance",
+  "Die Adresse, unter der dein Handy das Dashboard erreicht — hinter einem Reverse-Proxy also die HTTPS-Domain, nicht die interne IP. Enable Banking lehnt http:// in der Produktivumgebung ab.":
+    "The address your phone reaches the dashboard at — behind a reverse proxy that's the HTTPS domain, not the internal IP. Enable Banking rejects http:// in production.",
+  "Kein HTTPS — Enable Banking wird diese Redirect-URL in der Produktivumgebung ablehnen.":
+    "Not HTTPS — Enable Banking will reject this redirect URL in production.",
+  "Diese URL stammt {source} und ist kein HTTPS. Trage oben deine HTTPS-Domain ein, sonst wird die Redirect-URL abgelehnt.":
+    "This URL comes {source} and isn't HTTPS. Enter your HTTPS domain above, otherwise the redirect URL will be rejected.",
+  "aus der APP_URL-Umgebungsvariable": "from the APP_URL environment variable",
+  "aus dem aktuellen Aufruf": "from the current request",
+  "Keine gültige URL. Erwartet wird z. B. https://achilles.deine-domain.de":
+    "Not a valid URL. Expected something like https://achilles.your-domain.com",
+  "Bitte nur die Basis-Adresse angeben, ohne Pfad.": "Enter just the base address, without a path.",
+  "Nur http:// oder https:// sind erlaubt.": "Only http:// or https:// are allowed.",
   "Private Key (.pem-Inhalt)": "Private key (.pem contents)",
   "Land deiner Bank": "Country of your bank",
   "Das sieht nicht nach einem Private Key aus. Erwartet wird der Inhalt der .pem-Datei inklusive der BEGIN/END-Zeilen.":

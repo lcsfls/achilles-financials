@@ -109,9 +109,16 @@ Prefer not to register at all? Use the **CSV import** on the Connect page.
 ### Two things production access requires
 
 **HTTPS.** Enable Banking rejects a plain `http://192.168.x.x:3000` redirect URL, so a LAN-only
-install can't complete the QR flow as-is. You need a reachable HTTPS URL — a reverse proxy with a
-real certificate (Caddy + Let's Encrypt via DNS-01), a Cloudflare Tunnel, or Tailscale with
-`tailscale serve`. Whatever you pick has to be reachable from the phone you scan the code with.
+install can't complete the QR flow as-is. Put a reverse proxy with a real certificate in front —
+Nginx Proxy Manager, Caddy, a Cloudflare Tunnel or `tailscale serve` all work. Two things matter:
+the certificate must be one your **phone** trusts (a self-signed one means a warning to click
+through at best), and the domain has to resolve from the phone.
+
+Then tell Achilles its own address under **Settings → Public address of this instance**
+(e.g. `https://achilles.your-domain.com`). Without it the app builds the redirect URL from the
+request it happens to see — behind a proxy that's the internal `http://…:3000`, which is exactly
+what gets rejected. Settings shows the redirect URL it will actually send, and warns when it isn't
+HTTPS. That's the string to register in the Control Panel.
 
 **A privacy policy and terms of service.** Activating a production application requires a link to
 each, plus a data protection contact email — and Enable Banking monitors that those links stay

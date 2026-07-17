@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { startAuth } from "@/lib/enablebanking";
+import { callbackUrl } from "@/lib/app-url";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bank und Land sind erforderlich" }, { status: 400 });
     }
 
-    const origin = process.env.APP_URL || new URL(req.url).origin;
-    const { url } = await startAuth(aspspName, country, `${origin}/api/bank/callback`);
+    const { url } = await startAuth(aspspName, country, callbackUrl(req.url));
 
     const qrDataUrl = await QRCode.toDataURL(url, {
       width: 480,

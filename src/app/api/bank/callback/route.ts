@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setSetting } from "@/lib/db";
 import { completeAuth } from "@/lib/enablebanking";
+import { publicOrigin } from "@/lib/app-url";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const origin = process.env.APP_URL || url.origin;
+  const origin = publicOrigin(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state") ?? undefined;
   const error = url.searchParams.get("error");
