@@ -8,6 +8,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { UpdateDialog } from "@/components/update-dialog";
+import { IntegrationsSection } from "@/components/integrations-section";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
@@ -34,11 +35,6 @@ type UpdateInfo = {
 export default function SettingsPage() {
   const { t, lang, setLang } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [appId, setAppId] = useState("");
-  const [privateKey, setPrivateKey] = useState("");
-  const [country, setCountry] = useState("DE");
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [upd, setUpd] = useState<UpdateInfo | null>(null);
@@ -59,9 +55,8 @@ export default function SettingsPage() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
-  const [appUrl, setAppUrl] = useState("");
 
-  const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); setAppUrl(s.appUrl ?? ""); });
+  const load = () => fetch("/api/settings").then((r) => r.json()).then(setSettings);
   const loadUpdate = (refresh = false) =>
     fetch(`/api/update${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then(setUpd).catch(() => {});
   useEffect(() => { load(); loadUpdate(); }, []);
@@ -75,28 +70,6 @@ export default function SettingsPage() {
     return () => clearInterval(iv);
   }, [running]);
 
-
-  const save = async () => {
-    setBusy(true);
-    setSaveError(null);
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ebAppId: appId || undefined,
-        ebPrivateKey: privateKey || undefined,
-        appUrl,
-        country,
-      }),
-    });
-    setBusy(false);
-    if (!res.ok) { setSaveError((await res.json()).error); return; }
-    setAppId("");
-    setPrivateKey("");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    load();
-  };
 
   const saveAuth = async (disable = false) => {
     setBusy(true);
@@ -303,93 +276,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="rise rise-2">
-        <CardHeader className="flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
-              <KeyRound className="h-5 w-5 text-gold" strokeWidth={1.7} />
-            </div>
-            <div>
-              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">Enable Banking</CardTitle>
-              <div className="text-xs text-muted-2">{t("PSD2-Schnittstelle zu 2.700+ Banken in Europa")}</div>
-            </div>
-          </div>
-          {settings?.ebConfigured
-            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Konfiguriert")} {settings.ebAppIdMasked && `(${settings.ebAppIdMasked})`}</Badge>
-            : <Badge color="#fbbf24">{t("Nicht konfiguriert")}</Badge>}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs leading-relaxed text-muted-2">
-            {t("Account anlegen unter")}{" "}
-            <a href="https://enablebanking.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-gold-bright hover:underline">
-              enablebanking.com <ExternalLink className="h-3 w-3" />
-            </a>
-            , {t("im Control Panel eine Anwendung registrieren (Redirect-URL siehe unten) und den dabei erzeugten Private Key hier einfügen. Application-ID und Key bleiben ausschließlich in deiner lokalen SQLite-Datenbank.")}
-          </p>
-          <div className="space-y-1.5">
-            <Label>{t("Öffentliche Adresse dieser Instanz")}</Label>
-            <Input
-              placeholder="https://achilles.deine-domain.de"
-              value={appUrl}
-              onChange={(e) => { setAppUrl(e.target.value); setSaveError(null); }}
-            />
-            <p className="text-[11px] leading-relaxed text-muted-2">
-              {t("Die Adresse, unter der dein Handy das Dashboard erreicht — hinter einem Reverse-Proxy also die HTTPS-Domain, nicht die interne IP. Enable Banking lehnt http:// in der Produktivumgebung ab.")}
-            </p>
-          </div>
-
-          <div className="glass-inset rounded-xl px-3 py-2.5 text-[11px]">
-            <div className="flex flex-wrap items-center gap-x-2">
-              <span className="text-muted-2">{t("Redirect-URL für das Control Panel")}:</span>
-              <code className="text-gold-bright">{settings?.callbackUrl ?? "…"}</code>
-            </div>
-            {settings && !settings.callbackUrl.startsWith("https://") && (
-              <div className="mt-1.5 flex items-start gap-1.5 text-amber-400">
-                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                <span>
-                  {settings.appUrlSource === "setting"
-                    ? t("Kein HTTPS — Enable Banking wird diese Redirect-URL in der Produktivumgebung ablehnen.")
-                    : t("Diese URL stammt {source} und ist kein HTTPS. Trage oben deine HTTPS-Domain ein, sonst wird die Redirect-URL abgelehnt.", {
-                        source: settings.appUrlSource === "env" ? t("aus der APP_URL-Umgebungsvariable") : t("aus dem aktuellen Aufruf"),
-                      })}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Application ID</Label>
-            <Input placeholder={settings?.ebConfigured ? "••••••••" : "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"} value={appId} onChange={(e) => setAppId(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("Private Key (.pem-Inhalt)")}</Label>
-            <textarea
-              rows={4}
-              spellCheck={false}
-              placeholder={settings?.ebConfigured ? "•••••••• (gesetzt)" : "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"}
-              value={privateKey}
-              onChange={(e) => setPrivateKey(e.target.value)}
-              className="flex w-full rounded-xl glass-inset px-4 py-3 font-mono text-[11px] text-foreground placeholder:text-muted-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
-            />
-          </div>
-          <div className="space-y-1.5 sm:w-1/2">
-            <Label>{t("Land deiner Bank")}</Label>
-            <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{lang === "de" ? c.de : c.en}</option>
-              ))}
-            </Select>
-          </div>
-          {saveError && (
-            <div className="flex items-start gap-2 rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-xs text-rose-soft">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {saveError}
-            </div>
-          )}
-          <div className="flex items-center gap-3 pt-1">
-            <Button onClick={save} disabled={busy}>{t("Speichern")}</Button>
-            {saved && <span className="flex items-center gap-1.5 text-sm text-emerald-soft"><CheckCircle2 className="h-4 w-4" /> {t("Gespeichert")}</span>}
-          </div>
-        </CardContent>
-      </Card>
+      <IntegrationsSection onChange={load} />
 
       <Card className="rise rise-3">
         <CardHeader className="flex-row items-center justify-between">

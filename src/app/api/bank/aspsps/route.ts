@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSetting } from "@/lib/db";
 import { listAspsps } from "@/lib/enablebanking";
 
+import { isEnabled } from "@/lib/integrations";
+
 export const dynamic = "force-dynamic";
 
 /** Banken eines Landes für die Auswahl auf der Verbinden-Seite. */
 export async function GET(req: NextRequest) {
+  if (!isEnabled("enablebanking")) {
+    return NextResponse.json({ error: "Die Enable-Banking-Integration ist nicht aktiviert." }, { status: 400 });
+  }
   const country = (new URL(req.url).searchParams.get("country") || getSetting("eb_country") || "DE").toUpperCase();
   try {
     const aspsps = await listAspsps(country);
