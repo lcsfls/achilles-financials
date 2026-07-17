@@ -5,6 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Aufruf der eigenen API.
+ *
+ * Ist die Sitzung abgelaufen — oder wurde der Login gerade erst eingerichtet —
+ * antwortet die Middleware mit 401. Ein blankes r.json() lieferte dann
+ * {error:…} statt der Daten, die Seite rendert damit weiter und stürzt ab
+ * ("Application error"). Ein abgelaufener Login gehört auf die Login-Seite.
+ */
+export async function apiJson<T = unknown>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  if (res.status === 401 && typeof window !== "undefined") {
+    window.location.href = "/login";
+    // Bewusst nie erfüllt: Während der Wechsel zur Login-Seite läuft, soll
+    // kein Aufrufer mit Fehlerdaten weiterrendern.
+    return new Promise<never>(() => {});
+  }
+  return res.json() as Promise<T>;
+}
+
 // Aktive Zahlen-/Datums-Locale — wird vom LanguageProvider gesetzt.
 let LOCALE = "de-DE";
 export function setNumberLocale(locale: string) {

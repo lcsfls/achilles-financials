@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { CATEGORY_COLORS } from "@/lib/categorize";
 import { EmergencyFund } from "@/components/emergency-fund";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
 
 type Summary = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null; last_synced: string | null }>;
@@ -64,7 +64,7 @@ export default function OverviewPage() {
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = () => fetch("/api/summary").then((r) => r.json()).then(setData).finally(() => setLoading(false));
+  const load = () => apiJson<Summary>("/api/summary").then(setData).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const monthShort = (m: number) =>

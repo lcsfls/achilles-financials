@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { cn, fmtDateTime } from "@/lib/utils";
+import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
 type Status = {
   hasCreds: boolean; status: string | null; accounts: number;
@@ -46,7 +46,7 @@ function ConnectInner() {
   const [aspspQuery, setAspspQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
-  const loadStatus = useCallback(() => fetch("/api/bank/status").then((r) => r.json()).then(setStatus), []);
+  const loadStatus = useCallback(() => apiJson<Status>("/api/bank/status").then(setStatus), []);
 
   useEffect(() => {
     const linked = params.get("linked") === "1";

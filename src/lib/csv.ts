@@ -83,6 +83,25 @@ const ALIASES: Record<string, string[]> = {
   state: ["status", "state", "zustand"],
 };
 
+/**
+ * Depot-Exporte kennen andere Spalten als Kontoauszüge — und teils dieselben
+ * Wörter mit anderer Bedeutung ("Betrag" ist hier der Kurswert, nicht die
+ * Buchung). Deshalb ein eigener Satz statt Erweiterung von ALIASES.
+ */
+const POS_ALIASES: Record<string, string[]> = {
+  symbol: ["symbol", "ticker", "kürzel", "isin", "wkn"],
+  secname: ["bezeichnung", "wertpapiername", "wertpapier", "instrument", "produkt", "security", "name"],
+  units: ["anzahl", "stückzahl", "stück", "stk", "quantity", "qty", "shares", "menge", "nominale", "nominal", "units"],
+  // Einstandskurs vor allgemeinem "Kurs": In Bestandslisten stehen oft beide.
+  price: ["einstandskurs", "einstandspreis", "kaufkurs", "durchschnittskurs", "average price", "avg price", "buy price", "purchase price", "kurs", "preis", "price"],
+  curprice: ["aktueller kurs", "current price", "market price", "letzter kurs", "last price", "schlusskurs"],
+  total: ["einstandswert", "kaufwert", "cost basis", "marktwert", "market value", "gesamtwert", "kurswert", "value", "wert", "betrag", "amount"],
+  action: ["transaktionstyp", "order type", "buy/sell", "richtung", "typ", "type", "action", "art", "side", "seite"],
+  fee: ["gebühren", "gebühr", "gebuehren", "provision", "fees", "fee", "commission"],
+  currency: ["währung", "waehrung", "currency", "wkz"],
+  date: ["ausführungstag", "handelstag", "buchungstag", "trade date", "datum", "date"],
+};
+
 function normalize(s: string): string {
   return s.toLowerCase().replace(/^﻿/, "").replace(/["']/g, "").trim();
 }
@@ -93,8 +112,13 @@ function normalize(s: string): string {
  * "Started Date" statt "Completed Date", die Sparkasse "Buchungstext" statt
  * "Verwendungszweck".
  */
-function matchColumn(header: string[], key: string, exclude: number[] = []): number {
-  const names = ALIASES[key];
+function matchColumn(
+  header: string[],
+  key: string,
+  exclude: number[] = [],
+  map: Record<string, string[]> = ALIASES
+): number {
+  const names = map[key];
   // Erst exakt über alle Spalten, dann als Teilstring — sonst greift "datum"
   // bereits bei "Wertstellungsdatum", bevor "buchungstag" geprüft wurde.
   for (const exact of [true, false]) {
@@ -266,4 +290,187 @@ export function parseStatementCsv(text: string): ParseResult {
   }
 
   return { rows, skipped, delimiter, headerRow, mapping };
+}
+
+/* ---------- Depot-/Broker-Exporte ---------- */
+
+export type ParsedPosition = {
+  name: string;
+  symbol: string | null;
+  units: number;
+  buyPricePerUnit: number;   // in der Währung der Datei
+  currentPrice: number | null;
+  currency: string;
+  kind: "stock" | "etf" | "crypto" | "other";
+};
+
+export type PositionsResult = {
+  positions: ParsedPosition[];
+  skipped: number;
+  /** "positions" = Bestandsliste, "transactions" = Orderliste (verrechnet) */
+  mode: "positions" | "transactions";
+  delimiter: string;
+  headerRow: number;
+  mapping: Record<string, string>;
+  currencies: string[];
+};
+
+/** Anlageart raten — nur eine Vorbelegung, in der Oberfläche änderbar. */
+function guessKind(name: string, symbol: string | null): ParsedPosition["kind"] {
+  const s = `${name} ${symbol ?? ""}`.toLowerCase();
+  if (/\b(btc|eth|xrp|sol|ada|doge|bitcoin|ethereum)\b/.test(s) || /-(eur|usd)$/i.test(symbol ?? "")) return "crypto";
+  if (/\betf\b|ucits|index|msci|s&p|ftse/.test(s)) return "etf";
+  return "stock";
+}
+
+/** Kopfzeile eines Depot-Exports: braucht Stückzahl und irgendeine Kennung. */
+function findPositionsHeader(lines: string[], delimiter: string): number {
+  for (let i = 0; i < Math.min(lines.length, 25); i++) {
+    const cells = splitLine(lines[i], delimiter);
+    if (cells.length < 2) continue;
+    const hasUnits = matchColumn(cells, "units", [], POS_ALIASES) !== -1;
+    const hasId = matchColumn(cells, "symbol", [], POS_ALIASES) !== -1 || matchColumn(cells, "secname", [], POS_ALIASES) !== -1;
+    if (hasUnits && hasId) return i;
+  }
+  return -1;
+}
+
+const BUY = /^(k|kauf|buy|purchase|b|einbuchung|zugang)/i;
+const SELL = /^(v|verkauf|sell|sale|s|ausbuchung|abgang)/i;
+
+export function parsePositionsCsv(text: string): PositionsResult {
+  const clean = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = clean.split("\n").filter((l) => l.trim() !== "");
+  if (lines.length < 2) throw new CsvError("Die Datei enthält keine Datenzeilen.");
+
+  const delimiter = detectDelimiter(lines);
+  const headerRow = findPositionsHeader(lines, delimiter);
+  if (headerRow === -1) {
+    throw new CsvError(
+      "In der Datei wurde keine Kopfzeile für ein Depot gefunden. Erwartet werden eine Stückzahl-Spalte („Anzahl“/„Quantity“) und eine Kennung („Symbol“/„ISIN“/„Bezeichnung“)."
+    );
+  }
+
+  const header = splitLine(lines[headerRow], delimiter);
+  const m = (key: string, exclude: number[] = []) => matchColumn(header, key, exclude, POS_ALIASES);
+
+  const priceCol = m("price");
+  const col = {
+    symbol: m("symbol"),
+    secname: m("secname"),
+    units: m("units"),
+    price: priceCol,
+    // "Kurs" träfe sonst denselben Treffer wie der Einstandskurs
+    curprice: m("curprice", priceCol !== -1 ? [priceCol] : []),
+    total: m("total"),
+    action: m("action"),
+    fee: m("fee"),
+    currency: m("currency"),
+    date: m("date"),
+  };
+
+  // Orderliste oder Bestand? Entscheidend ist, ob eine Typ-Spalte tatsächlich
+  // Kauf/Verkauf enthält — "Typ" allein kann auch „Aktie/ETF“ bedeuten.
+  const body = lines.slice(headerRow + 1);
+  const actionValues = col.action === -1 ? [] : body.map((l) => splitLine(l, delimiter)[col.action] ?? "");
+  const isTransactions = actionValues.some((v) => BUY.test(v.trim())) && col.date !== -1;
+
+  const currencies = new Set<string>();
+  let skipped = 0;
+
+  /** Laufende Verrechnung je Wertpapier: Stück und Einstandssumme. */
+  const acc = new Map<string, { name: string; symbol: string | null; units: number; cost: number; currency: string; curprice: number | null }>();
+
+  for (const line of body) {
+    const cells = splitLine(line, delimiter);
+    const at = (i: number) => (i >= 0 && i < cells.length ? cells[i] : "");
+
+    const symbol = at(col.symbol).trim() || null;
+    const name = at(col.secname).trim() || symbol || "";
+    if (!name) { skipped++; continue; }
+
+    const units = parseAmount(at(col.units));
+    if (units === null || units === 0) { skipped++; continue; }
+
+    let perUnit = col.price !== -1 ? parseAmount(at(col.price)) : null;
+    const total = col.total !== -1 ? parseAmount(at(col.total)) : null;
+    // Nur Gesamtwert vorhanden? Dann ergibt sich der Stückpreis daraus.
+    if (perUnit === null && total !== null) perUnit = Math.abs(total) / Math.abs(units);
+    if (perUnit === null) { skipped++; continue; }
+    perUnit = Math.abs(perUnit);
+
+    const cur = (at(col.currency).trim() || "EUR").toUpperCase().slice(0, 3);
+    currencies.add(cur);
+    const curprice = col.curprice !== -1 ? parseAmount(at(col.curprice)) : null;
+    const fee = col.fee !== -1 ? Math.abs(parseAmount(at(col.fee)) ?? 0) : 0;
+
+    const key = (symbol || name).toUpperCase();
+    const entry = acc.get(key) ?? { name, symbol, units: 0, cost: 0, currency: cur, curprice: null };
+    if (curprice !== null) entry.curprice = Math.abs(curprice);
+
+    if (isTransactions) {
+      const action = at(col.action).trim();
+      const qty = Math.abs(units);
+      if (SELL.test(action)) {
+        // Verkauf: Stück abziehen und den Einstand anteilig mindern, damit der
+        // Durchschnittskurs der verbleibenden Stücke unverändert bleibt.
+        const avg = entry.units > 0 ? entry.cost / entry.units : 0;
+        entry.units -= qty;
+        entry.cost -= avg * qty;
+        if (entry.units <= 1e-9) { entry.units = 0; entry.cost = 0; }
+      } else if (BUY.test(action)) {
+        // Gebühren gehören zum Einstand — sie sind Teil dessen, was der Kauf gekostet hat
+        entry.units += qty;
+        entry.cost += qty * perUnit + fee;
+      } else {
+        skipped++;
+        continue;
+      }
+    } else {
+      entry.units += Math.abs(units);
+      entry.cost += Math.abs(units) * perUnit;
+    }
+    acc.set(key, entry);
+  }
+
+  const positions: ParsedPosition[] = [];
+  for (const e of acc.values()) {
+    // Vollständig verkaufte Werte sind kein Bestand mehr
+    if (e.units <= 1e-9) continue;
+    positions.push({
+      name: e.name,
+      symbol: e.symbol,
+      units: e.units,
+      buyPricePerUnit: e.cost / e.units,
+      currentPrice: e.curprice,
+      currency: e.currency,
+      kind: guessKind(e.name, e.symbol),
+    });
+  }
+
+  if (positions.length === 0) {
+    // Zwei sehr verschiedene Fälle, die sich sonst hinter derselben Meldung
+    // verstecken: gar nichts verstanden — oder alles verstanden und am Ende
+    // ist schlicht kein Bestand übrig (alles verkauft).
+    throw new CsvError(
+      acc.size > 0
+        ? "Die Datei wurde gelesen, aber es bleibt kein Bestand übrig — alle enthaltenen Positionen sind vollständig verkauft."
+        : "Es konnte keine einzige Position gelesen werden — Stückzahl- oder Kursspalte passen nicht."
+    );
+  }
+
+  const mapping: Record<string, string> = {};
+  for (const [key, idx] of Object.entries(col)) {
+    if (idx !== -1) mapping[key] = header[idx];
+  }
+
+  return {
+    positions,
+    skipped,
+    mode: isTransactions ? "transactions" : "positions",
+    delimiter,
+    headerRow,
+    mapping,
+    currencies: [...currencies],
+  };
 }

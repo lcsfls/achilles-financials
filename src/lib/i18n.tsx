@@ -155,6 +155,26 @@ const EN: Record<string, string> = {
   "Kurs bearbeiten": "Edit price",
   "Position wirklich löschen?": "Really delete this position?",
   "{n} Kurse aktualisiert": "{n} prices updated",
+  "CSV importieren": "Import CSV",
+  "CSV importiert": "CSV imported",
+  "Import fehlgeschlagen": "Import failed",
+  "Orderliste erkannt — Käufe und Verkäufe wurden zu Positionen verrechnet.":
+    "Order list detected — buys and sells were netted into positions.",
+  "Bestandsliste erkannt.": "Holdings list detected.",
+  "neu": "new",
+  "aktualisiert": "updated",
+  "übersprungen": "skipped",
+  "Erkannte Spalten": "Detected columns",
+  "{sym} sind WKN oder ISIN. Der Kursabruf läuft über Yahoo Finance, das nur Kürzel kennt — „Kurse aktualisieren“ lässt diese Positionen aus. Trage das Yahoo-Symbol nach (z. B. AAPL statt 865985).":
+    "{sym} are WKN or ISIN identifiers. Price lookups go through Yahoo Finance, which only knows tickers — “Refresh prices” will skip these positions. Add the Yahoo symbol (e.g. AAPL instead of 865985).",
+  "Beträge in {cur} wurden zum heutigen Kurs in Euro umgerechnet. Für aktuelle Kurse stimmt das — der Einstand eines älteren Kaufs wird dadurch aber falsch, weil im Export kein historischer Wechselkurs steht. Prüfe diese Positionen.":
+    "Amounts in {cur} were converted to euros at today's rate. That is right for current prices — but it makes the cost basis of an older purchase wrong, because the export contains no historical rate. Check those positions.",
+  "In der Datei wurde keine Kopfzeile für ein Depot gefunden. Erwartet werden eine Stückzahl-Spalte („Anzahl“/„Quantity“) und eine Kennung („Symbol“/„ISIN“/„Bezeichnung“).":
+    "No portfolio header row was found in the file. Expected a quantity column (\u201cAnzahl\u201d/\u201cQuantity\u201d) and an identifier (\u201cSymbol\u201d/\u201cISIN\u201d/\u201cName\u201d).",
+  "Die Datei wurde gelesen, aber es bleibt kein Bestand übrig — alle enthaltenen Positionen sind vollständig verkauft.":
+    "The file was read, but no holdings remain — every position in it has been sold in full.",
+  "Es konnte keine einzige Position gelesen werden — Stückzahl- oder Kursspalte passen nicht.":
+    "Not a single position could be read — the quantity or price column does not match.",
   "Watchlist": "Watchlist",
   "Live-Kurse via Yahoo Finance · 5-Minuten-Cache": "Live prices via Yahoo Finance · 5-minute cache",
   "Symbol, z. B. NVDA, VWCE.DE": "Symbol, e.g. NVDA, VWCE.DE",

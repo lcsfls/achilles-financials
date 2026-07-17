@@ -7,7 +7,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { IntegrationCard, type Requirement } from "@/components/integration-card";
 import { useI18n } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
-import { cn, fmtDateTime } from "@/lib/utils";
+import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
 type Integrations = { integrations: Array<{ id: "enablebanking" | "fints"; enabled: boolean; configured: boolean }> };
 type EbSettings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; appUrl: string; appUrlSource: string; callbackUrl: string };
@@ -37,9 +37,9 @@ export function IntegrationsSection({ onChange }: { onChange?: () => void }) {
 
   const load = useCallback(async () => {
     const [i, s, f] = await Promise.all([
-      fetch("/api/integrations").then((r) => r.json()),
-      fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/fints").then((r) => r.json()),
+      apiJson<Integrations>("/api/integrations"),
+      apiJson<EbSettings>("/api/settings"),
+      apiJson<FinTs>("/api/fints"),
     ]);
     setState(i);
     setEb(s);

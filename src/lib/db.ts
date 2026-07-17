@@ -75,6 +75,7 @@ function migrate(d: Database.Database) {
       current_price_eur REAL,           -- per unit
       kind TEXT DEFAULT 'stock',        -- stock | etf | crypto | other
       updated_at TEXT,
+      source TEXT,                      -- 'csv' = aus einem Depot-Export; von Hand gepflegte bleiben NULL
       demo INTEGER DEFAULT 0
     );
 
@@ -145,6 +146,9 @@ function migrate(d: Database.Database) {
   for (const [col, def] of [["price_at_add", "REAL"], ["price_eur_at_add", "REAL"], ["currency_at_add", "TEXT"]]) {
     addColumnIfMissing(d, "watchlist", col, def);
   }
+  // Unterscheidet importierte von handgepflegten Positionen — nur so kann ein
+  // erneuter Import "ersetzen" anbieten, ohne eigene Einträge mitzulöschen.
+  addColumnIfMissing(d, "investments", "source", "TEXT");
 }
 
 function addColumnIfMissing(d: Database.Database, table: string, column: string, definition: string) {

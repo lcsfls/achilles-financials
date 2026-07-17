@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtNum, fmtDate } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum, fmtDate } from "@/lib/utils";
 
 type Row = {
   id: number; symbol: string; name: string | null; weight_pct: number; valueEur: number;
@@ -32,7 +32,7 @@ export function PensionAllocation({ onChange }: { onChange?: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    fetch("/api/pension/allocation").then((r) => r.json()).then((d: Data) => {
+    apiJson<Data>("/api/pension/allocation").then((d) => {
       setData(d);
       setStartDate(d.startDate ?? "");
     });

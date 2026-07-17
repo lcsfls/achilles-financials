@@ -3,6 +3,33 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.3] — 2026-07-17
+
+### Added
+- **CSV import for portfolios.** Investments → Import CSV reads a broker export, detecting its format
+  the same way the bank-statement import does. Two kinds of export are handled:
+  a **holdings list** (each row is a position) and an **order list** (each row is a buy or sell) —
+  the latter is netted into positions, so several buys of the same security become one holding at its
+  weighted average cost, fees included, and partial sells reduce the quantity without distorting that
+  average. Re-importing updates the same positions instead of duplicating them, and the dialog shows
+  which columns were detected, so an unfamiliar export can be checked rather than trusted.
+
+### Fixed
+- **Setting a username and password logged you straight out.** Saving credentials enabled the login
+  and rotated the session secret, but never issued a session — so the very next request was rejected
+  and the page crashed with "Application error"; a reload appeared to fix it because it sent you to
+  the login page. Credentials now come back with a session, and an expired session anywhere in the
+  app leads to the login page rather than a crash.
+
+### Notes on the portfolio import
+- German exports identify securities by **WKN or ISIN**, while positions here use Yahoo tickers.
+  An import falls back to matching by name, so a WKN row merges into an existing `AAPL` position
+  rather than double-counting Apple in your net worth. Where no match exists, the WKN or ISIN is
+  kept as the symbol and the dialog says plainly that "Refresh prices" cannot use it.
+- Foreign-currency amounts are converted at **today's** rate — a broker export contains no historical
+  rate. That is right for current prices and wrong for the cost basis of an older purchase, so the
+  import says which currencies it converted.
+
 ## [1.0.2] — 2026-07-17
 
 ### Added

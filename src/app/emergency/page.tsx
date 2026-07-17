@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
 
 type Data = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null }>;
@@ -33,8 +33,8 @@ export default function EmergencyPage() {
 
   const load = useCallback(async () => {
     const [d, s] = await Promise.all([
-      fetch("/api/emergency").then((r) => r.json()),
-      fetch("/api/summary").then((r) => r.json()).catch(() => null),
+      apiJson<Data>("/api/emergency"),
+      apiJson<{ stats?: { avgSpent: number | null }; thisMonth?: { spent: number } }>("/api/summary").catch(() => null),
     ]);
     setData(d);
     setMode(d.accountId ? "account" : "manual");

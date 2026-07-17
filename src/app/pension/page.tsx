@@ -11,7 +11,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { PensionAllocation } from "@/components/pension-allocation";
 import { useI18n } from "@/lib/i18n";
-import { fmtEUR, fmtEUR0, fmtDate } from "@/lib/utils";
+import { apiJson, fmtEUR, fmtEUR0, fmtDate } from "@/lib/utils";
 
 type Statement = { id: number; statement_date: string; balance_eur: number; contribution_eur: number | null; note: string | null };
 type Data = {
@@ -31,7 +31,7 @@ export default function PensionPage() {
   const [metaSaved, setMetaSaved] = useState(false);
 
   const load = () =>
-    fetch("/api/pension").then((r) => r.json()).then((d: Data) => {
+    apiJson<Data>("/api/pension").then((d) => {
       setData(d);
       setProvider(d.provider);
       setMonthly(d.monthlyContribution ? String(d.monthlyContribution).replace(".", ",") : "");

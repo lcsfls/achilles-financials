@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, ShieldCheck, Flame, PiggyBank } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { apiJson, cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Übersicht", icon: LayoutDashboard },
@@ -28,8 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Ersteinrichtung: ohne abgeschlossenes Setup zum Wizard umleiten
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
+    apiJson<{ setupDone: boolean }>("/api/settings")
       .then((s) => {
         if (!s.setupDone && pathname !== "/setup") router.replace("/setup");
         else setChecked(true);

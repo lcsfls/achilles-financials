@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteSetting, getSetting, setSetting } from "@/lib/db";
-import { authEnabled, disableAuth, getUsername, setCredentials, verifyPassword } from "@/lib/auth";
+import { SESSION_COOKIE, authEnabled, createSession, disableAuth, getUsername, setCredentials, verifyPassword } from "@/lib/auth";
 import { callbackUrl, publicOrigin, validateAppUrl } from "@/lib/app-url";
 import { isSupported } from "@/lib/currency";
 
@@ -62,7 +62,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen haben." }, { status: 400 });
     }
     setCredentials(String(username), String(password));
-    return NextResponse.json({ ok: true });
+
+    // Sofort anmelden, wer gerade das Passwort gesetzt hat.
+    //
+    // Ohne das sperrt man sich mit dem eigenen Klick aus: setCredentials
+    // schaltet den Login ein und wechselt das Sitzungsgeheimnis, der Browser
+    // hat aber noch gar kein (bzw. kein gültiges) Cookie. Jeder folgende
+    // Request lief danach in den 401 der Middleware — die Seite bekam
+    // {error:…} statt der Einstellungen und stürzte beim Rendern ab.
+    const session = createSession();
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(SESSION_COOKIE, session.value, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: session.maxAge,
+      secure: req.nextUrl.protocol === "https:",
+    });
+    return res;
   }
 
   if (ebAppId) setSetting("eb_app_id", String(ebAppId).trim());

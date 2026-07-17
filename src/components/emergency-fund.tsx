@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
+import { apiJson, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
 
 type Data = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null }>;
@@ -28,7 +28,7 @@ export function EmergencyFund({ monthlySpending, onChange }: { monthlySpending: 
   const [busy, setBusy] = useState(false);
 
   const load = () =>
-    fetch("/api/emergency").then((r) => r.json()).then((d: Data) => {
+    apiJson<Data>("/api/emergency").then((d) => {
       setData(d);
       setAccountId(d.accountId ?? "");
       setTarget(d.target ? String(d.target).replace(".", ",") : "");

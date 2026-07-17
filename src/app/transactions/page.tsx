@@ -7,7 +7,7 @@ import { Input, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORIES, CATEGORY_COLORS } from "@/lib/categorize";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtDate } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtDate } from "@/lib/utils";
 
 type Tx = {
   id: string;
@@ -34,8 +34,7 @@ export default function TransactionsPage() {
     if (q) params.set("q", q);
     if (category) params.set("category", category);
     if (month) params.set("month", month);
-    fetch(`/api/transactions?${params}`)
-      .then((r) => r.json())
+    apiJson<{ transactions: Tx[]; months: string[] }>(`/api/transactions?${params}`)
       .then((d) => { setTxs(d.transactions); setMonths(d.months); })
       .finally(() => setLoading(false));
   }, [q, category, month]);

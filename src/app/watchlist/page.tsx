@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuoteHoverCard } from "@/components/quote-hover-card";
 import { useI18n } from "@/lib/i18n";
-import { cn, displayCurrency, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
+import { apiJson, cn, displayCurrency, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
 
 type WatchItem = {
   id: number; symbol: string; label: string | null; added_at: string;
@@ -30,7 +30,7 @@ export default function WatchlistPage() {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const load = useCallback((refresh = false) =>
-    fetch(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then((d) => setItems(d.watchlist)), []);
+    apiJson<{ watchlist: WatchItem[] }>(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((d) => setItems(d.watchlist)), []);
   useEffect(() => { load(); }, [load]);
 
   const add = async () => {

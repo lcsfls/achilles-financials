@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2, TrendingUp, Pencil, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, TrendingUp, Pencil, RefreshCw, Upload, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtPct, fmtNum } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtPct, fmtNum } from "@/lib/utils";
+
+type ImportResult = {
+  inserted: number; updated: number; skipped: number;
+  mode: "positions" | "transactions";
+  detected: { delimiter: string; headerRow: number; mapping: Record<string, string> };
+  convertedFrom: string[];
+  noQuoteSymbols: string[];
+};
 
 type Inv = {
   id: number; name: string; symbol: string | null; units: number;
@@ -32,8 +40,12 @@ export default function InvestmentsPage() {
   const [priceEdit, setPriceEdit] = useState<{ id: number; value: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshInfo, setRefreshInfo] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
-  const load = () => fetch("/api/investments").then((r) => r.json()).then((d) => setInvs(d.investments));
+  const load = () => apiJson<{ investments: Inv[] }>("/api/investments").then((d) => setInvs(d.investments));
   useEffect(() => { load(); }, []);
 
   const refreshPrices = async () => {
@@ -45,6 +57,22 @@ export default function InvestmentsPage() {
     setRefreshing(false);
     setRefreshInfo(t("{n} Kurse aktualisiert", { n: d.updated }));
     setTimeout(() => setRefreshInfo(null), 5000);
+  };
+
+  const importCsv = async (file: File) => {
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    const res = await fetch("/api/import/investments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ csv: await file.text() }),
+    });
+    const d = await res.json();
+    setImporting(false);
+    if (!res.ok) { setImportError(t(d.error)); return; }
+    setImportResult(d);
+    load();
   };
 
   const num = (s: string) => parseFloat(s.replace(",", "."));
@@ -105,6 +133,16 @@ export default function InvestmentsPage() {
           {refreshInfo && <span className="text-xs text-emerald-soft">{refreshInfo}</span>}
           <Button variant="glass" size="sm" disabled={refreshing} onClick={refreshPrices}>
             <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} /> {t("Kurse aktualisieren")}
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.target.value = ""; }}
+          />
+          <Button variant="glass" size="sm" disabled={importing} onClick={() => fileRef.current?.click()}>
+            <Upload className="h-3.5 w-3.5" /> {importing ? t("Importiere …") : t("CSV importieren")}
           </Button>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -229,6 +267,68 @@ export default function InvestmentsPage() {
         </Card>
       )}
 
+      {/* Import-Ergebnis */}
+      <Dialog open={Boolean(importResult || importError)} onOpenChange={() => { setImportResult(null); setImportError(null); }}>
+        <DialogContent>
+          <DialogTitle>{importError ? t("Import fehlgeschlagen") : t("CSV importiert")}</DialogTitle>
+          {importError ? (
+            <DialogDescription>{importError}</DialogDescription>
+          ) : importResult ? (
+            <>
+              <DialogDescription>
+                {importResult.mode === "transactions"
+                  ? t("Orderliste erkannt — Käufe und Verkäufe wurden zu Positionen verrechnet.")
+                  : t("Bestandsliste erkannt.")}
+              </DialogDescription>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                {[
+                  { n: importResult.inserted, label: t("neu") },
+                  { n: importResult.updated, label: t("aktualisiert") },
+                  { n: importResult.skipped, label: t("übersprungen") },
+                ].map((x) => (
+                  <div key={x.label} className="rounded-xl border border-white/10 px-3 py-2.5">
+                    <div className="num text-xl font-semibold">{x.n}</div>
+                    <div className="text-[11px] text-muted-2">{x.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {importResult.convertedFrom.length > 0 && (
+                <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <div className="text-xs text-muted">
+                    {t("Beträge in {cur} wurden zum heutigen Kurs in Euro umgerechnet. Für aktuelle Kurse stimmt das — der Einstand eines älteren Kaufs wird dadurch aber falsch, weil im Export kein historischer Wechselkurs steht. Prüfe diese Positionen.", { cur: importResult.convertedFrom.join(", ") })}
+                  </div>
+                </div>
+              )}
+
+              {importResult.noQuoteSymbols.length > 0 && (
+                <div className="mt-3 flex gap-2.5 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <div className="text-xs text-muted">
+                    {t("{sym} sind WKN oder ISIN. Der Kursabruf läuft über Yahoo Finance, das nur Kürzel kennt — „Kurse aktualisieren“ lässt diese Positionen aus. Trage das Yahoo-Symbol nach (z. B. AAPL statt 865985).", { sym: importResult.noQuoteSymbols.join(", ") })}
+                  </div>
+                </div>
+              )}
+
+              {/* Erkannte Zuordnung offenlegen, damit ein unbekannter Export
+                  überprüfbar ist statt nur geglaubt werden zu müssen */}
+              <div className="mt-4">
+                <div className="text-[11px] uppercase tracking-wider text-muted-2">{t("Erkannte Spalten")}</div>
+                <div className="mt-1.5 space-y-1">
+                  {Object.entries(importResult.detected.mapping).map(([k, v]) => (
+                    <div key={k} className="flex justify-between gap-3 text-xs">
+                      <span className="text-muted-2">{k}</span>
+                      <span className="num truncate text-foreground">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

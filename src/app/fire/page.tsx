@@ -11,7 +11,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_PARAMS, project, startCapital, type Assets, type FireParams } from "@/lib/fire";
-import { cn, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
 
 type Scenario = { id: number; name: string; createdAt: string; params: FireParams };
 
@@ -31,8 +31,8 @@ export default function FirePage() {
 
   const load = useCallback(async () => {
     const [f, s] = await Promise.all([
-      fetch("/api/fire").then((r) => r.json()),
-      fetch("/api/summary").then((r) => r.json()),
+      apiJson<{ scenarios: Scenario[] }>("/api/fire"),
+      apiJson<{ assets?: Assets; emergency?: { balance: number; accountName: string } | null }>("/api/summary"),
     ]);
     setAssets(s.assets ?? { cash: 0, metals: 0, investments: 0, pension: 0 });
     setEmergency(s.emergency ? { balance: s.emergency.balance, accountName: s.emergency.accountName } : null);

@@ -12,7 +12,7 @@ import { IntegrationsSection } from "@/components/integrations-section";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { CURRENCIES } from "@/lib/currency";
 import { COUNTRIES } from "@/lib/countries";
-import { cn, fmtDateTime } from "@/lib/utils";
+import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
 type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
@@ -57,9 +57,9 @@ export default function SettingsPage() {
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
 
 
-  const load = () => fetch("/api/settings").then((r) => r.json()).then(setSettings);
+  const load = () => apiJson<Settings>("/api/settings").then(setSettings);
   const loadUpdate = (refresh = false) =>
-    fetch(`/api/update${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then(setUpd).catch(() => {});
+    apiJson<UpdateInfo>(`/api/update${refresh ? "?refresh=1" : ""}`).then(setUpd).catch(() => {});
   useEffect(() => { load(); loadUpdate(); }, []);
 
   // Während ein Update läuft, Status pollen — der Container startet dabei neu,
@@ -151,7 +151,7 @@ export default function SettingsPage() {
   const openDemoWarning = async () => {
     setDemoCounts(null);
     setDemoWarning(true);
-    const s = await fetch("/api/summary").then((r) => r.json()).catch(() => null);
+    const s = await apiJson<{ accounts: { id: string }[]; netWorth: number }>("/api/summary").catch(() => null);
     if (s) setDemoCounts({ accounts: (s.accounts ?? []).filter((a: { id: string }) => a.id !== "demo-main").length, netWorth: s.netWorth ?? 0 });
   };
 

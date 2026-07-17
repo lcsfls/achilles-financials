@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtGrams, fmtDate, fmtPct } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtGrams, fmtDate, fmtPct } from "@/lib/utils";
 
 type Lot = {
   id: number; grams: number; purchase_price_eur: number; purchase_date: string;
@@ -31,7 +31,7 @@ export default function MetalsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = (refresh = false) =>
-    fetch(`/api/metals${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then(setData);
+    apiJson<Data>(`/api/metals${refresh ? "?refresh=1" : ""}`).then(setData);
   useEffect(() => { load(); }, []);
 
   const submit = async () => {
