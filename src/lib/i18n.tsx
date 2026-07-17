@@ -500,6 +500,17 @@ const EN: Record<string, string> = {
   "Passwort vergessen? Es lässt sich nur direkt in der Datenbank zurücksetzen — siehe README.":
     "Forgot your password? It can only be reset directly in the database — see the README.",
   "Währung": "Currency",
+  "Kredite im Gesamtvermögen": "Loans in net worth",
+  "Ob Verliehenes und Aufgenommenes mitzählen": "Whether money lent out and taken on counts",
+  "Nicht einbeziehen": "Leave them out",
+  "Kredite bleiben eine eigene Seite. Verliehenes ist Geld, das ein anderer gerade hat — ob es zurückkommt, weiß man erst hinterher. Aber Vorsicht: Ein Bankkredit erhöht dein Vermögen, solange das Geld noch auf dem Konto liegt.":
+    "Loans stay on their own page. Money lent out is money someone else is holding — whether it comes back is only known afterwards. But note the flip side: a bank loan raises your net worth for as long as the cash sits in your account.",
+  "Nur Schulden abziehen": "Subtract debts only",
+  "Durchgehend vorsichtig: Was du schuldest, zählt sicher — was du bekommen sollst, vielleicht. Aufgenommene Kredite werden abgezogen, Verliehenes bleibt draußen.":
+    "Cautious throughout: what you owe is certain, what you are owed is not. Loans you took on are subtracted; money you lent out stays out.",
+  "Beides einbeziehen": "Include both",
+  "Die bilanzielle Sicht: Forderungen zählen, Verbindlichkeiten werden abgezogen. Vermögen minus Schulden — so würde eine Bilanz es sehen.":
+    "The balance-sheet view: claims count, liabilities are subtracted. Assets minus debts — the way a balance sheet would see it.",
   "Anzeigewährung · USD wird immer zusätzlich gezeigt": "Display currency · USD always shown alongside",
   "Gespeichert wird weiterhin in Euro — umgerechnet wird erst bei der Anzeige, mit EZB-Referenzkursen (frankfurter.dev, täglich). Eingabefelder für Kaufpreise und Beträge bleiben deshalb in Euro.":
     "Everything is still stored in euros — conversion happens at display time only, using ECB reference rates (frankfurter.dev, updated daily). Input fields for purchase prices and amounts therefore stay in euros.",

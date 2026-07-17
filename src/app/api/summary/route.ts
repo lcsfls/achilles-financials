@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, getSetting } from "@/lib/db";
+import { loanState, type Loan, type Payment } from "@/lib/loans";
 import { getMetalHoldings } from "@/lib/metals";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,32 @@ export async function GET() {
     .get() as { statement_date: string; balance_eur: number } | undefined;
   const pensionValue = pensionRow?.balance_eur ?? 0;
 
+  /**
+   * Kredite im Gesamtvermögen — Einstellung, weil es hier keine objektiv
+   * richtige Antwort gibt, sondern eine Haltung:
+   *
+   *  none      Kredite bleiben eine eigene Seite. Vorsicht bei Forderungen,
+   *            aber ein Bankkredit erhöht das Vermögen, solange das Geld noch
+   *            auf dem Konto liegt.
+   *  borrowed  Nur Schulden abziehen. Durchgehend vorsichtig: Was man schuldet,
+   *            zählt sicher; was man bekommen soll, vielleicht.
+   *  both      Forderungen zählen, Schulden werden abgezogen — die bilanzielle
+   *            Sicht (Vermögen minus Verbindlichkeiten).
+   */
+  const mode = getSetting("loans_in_networth") ?? "none";
+  const loanRows = db().prepare("SELECT * FROM loans WHERE closed = 0").all() as Loan[];
+  const loanPayments = db().prepare("SELECT * FROM loan_payments").all() as Array<Payment & { loan_id: number }>;
+  const asOf = new Date().toISOString().slice(0, 10);
+  const outstanding = (dir: "lent" | "borrowed") =>
+    loanRows
+      .filter((l) => l.direction === dir)
+      .reduce((sum, l) => sum + loanState(l, loanPayments.filter((p) => p.loan_id === l.id), asOf).outstanding, 0);
+
+  const loansLent = outstanding("lent");
+  const loansBorrowed = outstanding("borrowed");
+  const loansEffect =
+    mode === "both" ? loansLent - loansBorrowed : mode === "borrowed" ? -loansBorrowed : 0;
+
   return NextResponse.json({
     accounts,
     cashTotal,
@@ -152,7 +179,8 @@ export async function GET() {
       investments: invValue,
       pension: pensionValue,
     },
-    netWorth: cashTotal + metals.totalValue + invValue + pensionValue,
+    loans: { mode, lent: loansLent, borrowed: loansBorrowed, effect: loansEffect },
+    netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect,
     demoMode: getSetting("demo_mode") === "1",
     lastSync: getSetting("eb_last_sync"),
     connected: getSetting("eb_auth_status") === "linked",

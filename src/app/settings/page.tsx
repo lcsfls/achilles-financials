@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { COUNTRIES } from "@/lib/countries";
 import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
+type Settings = { loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
 type UpdateInfo = {
   repo: string;
@@ -93,6 +93,16 @@ export default function SettingsPage() {
     setAuthSaved(true);
     setTimeout(() => setAuthSaved(false), 3000);
     load();
+  };
+
+  const saveLoanMode = async (v: "none" | "borrowed" | "both") => {
+    // Sofort umschalten, dann speichern — die Wahl soll nicht auf den Server warten
+    setSettings((prev) => (prev ? { ...prev, loansInNetWorth: v } : prev));
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loans_in_networth: v }),
+    });
   };
 
   const logout = async () => {
@@ -224,6 +234,42 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-2">
             {t("Gespeichert wird weiterhin in Euro — umgerechnet wird erst bei der Anzeige, mit EZB-Referenzkursen (frankfurter.dev, täglich). Eingabefelder für Kaufpreise und Beträge bleiben deshalb in Euro.")}
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Kredite im Gesamtvermögen */}
+      <Card className="rise rise-1">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
+            <HandCoins className="h-5 w-5 text-gold" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Kredite im Gesamtvermögen")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Ob Verliehenes und Aufgenommenes mitzählen")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {/* Begründung an der Auswahl statt darunter: Die Wahl ist eine
+              Haltung, keine Einstellung — sie gehört erklärt, wo man sie trifft. */}
+          {([
+            ["none", t("Nicht einbeziehen"), t("Kredite bleiben eine eigene Seite. Verliehenes ist Geld, das ein anderer gerade hat — ob es zurückkommt, weiß man erst hinterher. Aber Vorsicht: Ein Bankkredit erhöht dein Vermögen, solange das Geld noch auf dem Konto liegt.")],
+            ["borrowed", t("Nur Schulden abziehen"), t("Durchgehend vorsichtig: Was du schuldest, zählt sicher — was du bekommen sollst, vielleicht. Aufgenommene Kredite werden abgezogen, Verliehenes bleibt draußen.")],
+            ["both", t("Beides einbeziehen"), t("Die bilanzielle Sicht: Forderungen zählen, Verbindlichkeiten werden abgezogen. Vermögen minus Schulden — so würde eine Bilanz es sehen.")],
+          ] as const).map(([v, label, why]) => (
+            <button
+              key={v}
+              onClick={() => saveLoanMode(v)}
+              className={cn(
+                "w-full cursor-pointer rounded-xl border p-4 text-left transition-all",
+                settings?.loansInNetWorth === v
+                  ? "border-gold/40 bg-gold/10 shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                  : "border-white/10 hover:border-white/20"
+              )}
+            >
+              <div className={cn("text-sm font-medium", settings?.loansInNetWorth === v ? "text-gold-bright" : "text-foreground")}>{label}</div>
+              <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
+            </button>
+          ))}
         </CardContent>
       </Card>
 

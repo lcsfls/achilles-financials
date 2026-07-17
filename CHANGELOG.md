@@ -3,6 +3,18 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.2.1] — 2026-07-17
+
+### Added
+- **You decide whether loans count towards net worth** (Settings → Loans in net worth), because there
+  is no objectively right answer here — only a stance, and the reasoning sits next to each choice
+  rather than buried in a tooltip:
+  - **Leave them out** (default) — loans stay on their own page. Money lent out is money someone else
+    is holding, and whether it comes back is only known afterwards. The flip side is named too: a
+    bank loan raises your net worth for as long as the cash sits in your account.
+  - **Subtract debts only** — cautious throughout: what you owe is certain, what you are owed is not.
+  - **Include both** — the balance-sheet view: claims count, liabilities are subtracted.
+
 ## [1.2.0] — 2026-07-17
 
 ### Added

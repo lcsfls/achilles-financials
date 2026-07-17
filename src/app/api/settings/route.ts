@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     demoMode: getSetting("demo_mode") === "1",
     language: getSetting("language") || "de",
     displayCurrency: getSetting("display_currency") || "EUR",
+    loansInNetWorth: getSetting("loans_in_networth") || "none",
     setupDone: getSetting("setup_done") === "1",
     authEnabled: authEnabled(),
     authUser: getUsername(),
@@ -35,6 +36,11 @@ export async function POST(req: NextRequest) {
   // auf jeder Seite und das Dashboard bliebe leer.
   if (typeof body.display_currency === "string" && isSupported(body.display_currency)) {
     setSetting("display_currency", body.display_currency);
+  }
+
+  // Nur bekannte Werte — ein Tippfehler würde sonst still zu "nicht einbeziehen"
+  if (["none", "borrowed", "both"].includes(body.loans_in_networth)) {
+    setSetting("loans_in_networth", body.loans_in_networth);
   }
 
   // Login einrichten / ändern / abschalten
