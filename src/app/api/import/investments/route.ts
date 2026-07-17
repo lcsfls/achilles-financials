@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CsvError, parsePositionsCsv } from "@/lib/csv";
+import { CsvError, assertCsvSize, parsePositionsCsv } from "@/lib/csv";
 import { PositionError, upsertPositions } from "@/lib/positions";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
 
   let parsed;
   try {
+    assertCsvSize(csv);
     parsed = parsePositionsCsv(csv);
   } catch (e) {
     const msg = e instanceof CsvError ? e.message : "Die Datei konnte nicht gelesen werden.";

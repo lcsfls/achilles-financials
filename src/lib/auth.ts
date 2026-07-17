@@ -99,3 +99,49 @@ export function verifySession(token: string | undefined): boolean {
   const b = Buffer.from(expected);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+/* ---------- Schutz gegen Durchprobieren ---------- */
+
+/**
+ * Fehlversuche im Speicher, nicht in der Datenbank.
+ *
+ * Bewusst flüchtig: Ein Neustart hebt die Sperre auf. Für eine selbstgehostete
+ * Einzelinstanz ist das der richtige Tausch — die Alternative wäre ein
+ * Schreibzugriff pro Fehlversuch, womit das Durchprobieren erst recht zu einem
+ * Weg würde, die Platte vollzuschreiben. Wer den Container neu starten kann,
+ * kommt ohnehin direkt an die Datenbank.
+ */
+const failures = new Map<string, { count: number; until: number }>();
+
+const FREE_TRIES = 5;
+const BASE_LOCK_MS = 30_000;
+const MAX_LOCK_MS = 15 * 60_000;
+
+/** Verbleibende Sperrzeit in Sekunden; 0 = nicht gesperrt. */
+export function loginLockSeconds(key: string): number {
+  const f = failures.get(key);
+  if (!f || Date.now() >= f.until) return 0;
+  return Math.ceil((f.until - Date.now()) / 1000);
+}
+
+export function noteLoginFailure(key: string) {
+  const f = failures.get(key) ?? { count: 0, until: 0 };
+  f.count++;
+  if (f.count > FREE_TRIES) {
+    // Verdopplung ab dem ersten Versuch über der Freigrenze: 30s, 60s, 120s …
+    const step = f.count - FREE_TRIES - 1;
+    f.until = Date.now() + Math.min(BASE_LOCK_MS * 2 ** step, MAX_LOCK_MS);
+  }
+  failures.set(key, f);
+
+  // Die Map selbst begrenzen: Ohne das wäre sie ein eigenes Angriffsziel —
+  // beliebig viele Kennungen ergäben beliebig viele Einträge.
+  if (failures.size > 1000) {
+    const now = Date.now();
+    for (const [k, v] of failures) if (v.until < now) failures.delete(k);
+  }
+}
+
+export function noteLoginSuccess(key: string) {
+  failures.delete(key);
+}

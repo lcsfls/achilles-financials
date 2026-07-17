@@ -3,6 +3,36 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.4.0] — 2026-07-17
+
+### Security
+Findings from an audit of the auth, SQL, upload and header surfaces. What was fixed:
+
+- **Passwords could be guessed without limit.** Nothing counted failed logins, so a login exposed to
+  a network could be brute-forced at request speed. Five attempts are now free, after which the lock
+  doubles from 30 seconds up to 15 minutes. It keys on **origin, not username** — otherwise anyone
+  could lock the real user out by guessing their name wrong. Verified: an attacker stays locked even
+  once they hit the right password, while the real user signs in from their own address unaffected.
+- **No security headers at all.** Added `X-Frame-Options: DENY` and `frame-ancestors 'none'` (an app
+  that may run without a login on a LAN should not be embeddable and clickjackable), a
+  Content-Security-Policy, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` so the
+  internal hostname is not handed to third parties, and a Permissions-Policy.
+- **Uploads had no size limit.** A CSV was parsed fully in memory, so one large file could take the
+  container down. Capped at 20 MB — roughly 900,000 entries, which no statement reaches.
+
+Checked and found sound, stated because a clean result is worth as much as a finding: every SQL
+statement is parameterised (the one dynamically built `UPDATE` composes fixed literals, never request
+keys), passwords use scrypt with timing-safe comparison, and session cookies are `httpOnly` with
+`sameSite=lax`, which keeps cross-site POSTs from carrying them.
+
+Known and **not** fixed, deliberately — see the README:
+- Banking credentials (Enable Banking private key, FinTS PIN) sit **unencrypted** in the SQLite file.
+  Encrypting them would need a key on the same machine, which is theatre rather than protection. The
+  database file is the trust boundary; back it up encrypted and keep the host access-controlled.
+- **The login is off by default.** Without it, anyone who can reach the host reads your finances and
+  can trigger an update, which runs a script as root on the container host. Turn it on before the
+  host is reachable by anyone else.
+
 ## [1.3.0] — 2026-07-17
 
 ### Added

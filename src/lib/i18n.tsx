@@ -20,6 +20,8 @@ const EN: Record<string, string> = {
   "FIRE": "FIRE",
   "Notgroschen": "Emergency fund",
   "Kredite": "Loans",
+  "Zu viele Fehlversuche. Bitte {n} Sekunden warten.": "Too many failed attempts. Please wait {n} seconds.",
+  "Die Datei ist zu groß — erlaubt sind maximal 20 MB.": "The file is too large — the limit is 20 MB.",
   "Verbinden": "Connect",
   "Einstellungen": "Settings",
 

@@ -29,6 +29,23 @@ export type ParseResult = {
 
 export class CsvError extends Error {}
 
+/**
+ * Obergrenze für eine Importdatei.
+ *
+ * Der Inhalt liegt beim Parsen vollständig im Speicher — ohne Grenze reicht
+ * eine einzige große Datei, um den Container umzubringen. 20 MB sind für einen
+ * Kontoauszug sehr großzügig: Das sind grob 200.000 Buchungen.
+ */
+export const MAX_CSV_BYTES = 20 * 1024 * 1024;
+
+export function assertCsvSize(text: string) {
+  // Feste Meldung statt zusammengebauter: Ein interpolierter Satz findet im
+  // Wörterbuch keinen Schlüssel und bliebe für englische Nutzer deutsch.
+  if (Buffer.byteLength(text, "utf8") > MAX_CSV_BYTES) {
+    throw new CsvError("Die Datei ist zu groß — erlaubt sind maximal 20 MB.");
+  }
+}
+
 /* ---------- Zerlegen ---------- */
 
 function splitLine(line: string, delimiter: string): string[] {

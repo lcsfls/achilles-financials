@@ -25,7 +25,13 @@ export default function LoginPage() {
       body: JSON.stringify({ username, password }),
     });
     setBusy(false);
-    if (!res.ok) { setError(t((await res.json()).error)); return; }
+    if (!res.ok) {
+      // Die Sperrmeldung trägt einen {n}-Platzhalter — ohne die Sekunden
+      // stünde er wörtlich auf dem Schirm.
+      const d = await res.json();
+      setError(t(d.error, d.seconds !== undefined ? { n: d.seconds } : undefined));
+      return;
+    }
     router.replace("/");
     router.refresh();
   };
