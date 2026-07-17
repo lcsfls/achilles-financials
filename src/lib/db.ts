@@ -89,7 +89,12 @@ function migrate(d: Database.Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       symbol TEXT NOT NULL UNIQUE,
       label TEXT,
-      added_at TEXT NOT NULL
+      added_at TEXT NOT NULL,
+      -- Kurs beim Hinzufügen, um den Zuwachs seither zu zeigen. Ohne diesen
+      -- Wert wäre er später nicht mehr rekonstruierbar.
+      price_at_add REAL,
+      price_eur_at_add REAL,
+      currency_at_add TEXT
     );
 
     CREATE TABLE IF NOT EXISTS quote_cache (
@@ -136,6 +141,9 @@ function migrate(d: Database.Database) {
   // vorhandene Tabellen nicht, die demo-Spalte muss nachgerüstet werden.
   for (const table of ["metal_lots", "investments", "pension_statements"]) {
     addColumnIfMissing(d, table, "demo", "INTEGER DEFAULT 0");
+  }
+  for (const [col, def] of [["price_at_add", "REAL"], ["price_eur_at_add", "REAL"], ["currency_at_add", "TEXT"]]) {
+    addColumnIfMissing(d, "watchlist", col, def);
   }
 }
 

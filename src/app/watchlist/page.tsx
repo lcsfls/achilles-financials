@@ -1,19 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuoteHoverCard } from "@/components/quote-hover-card";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtNum, fmtPct, fmtDateTime } from "@/lib/utils";
+import { cn, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
 
 type WatchItem = {
   id: number; symbol: string; label: string | null; added_at: string;
+  priceAtAdd: number | null; priceEurAtAdd: number | null; currencyAtAdd: string | null;
   quote: {
     name: string | null; price: number; prevClose: number | null; changePct: number | null;
     currency: string; priceEur: number | null; fetchedAt: string; stale: boolean;
   } | null;
+  since: { pct: number; abs: number; currency: string } | null;
 };
 
 export default function WatchlistPage() {
@@ -23,6 +26,8 @@ export default function WatchlistPage() {
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<WatchItem | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const load = useCallback((refresh = false) =>
     fetch(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then((d) => setItems(d.watchlist)), []);
@@ -86,7 +91,6 @@ export default function WatchlistPage() {
         </Button>
       </div>
 
-      {/* Hinzufügen */}
       <Card className="rise rise-1 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -114,10 +118,22 @@ export default function WatchlistPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((w, i) => {
             const q = w.quote;
-            const up = (q?.changePct ?? 0) >= 0;
-            const color = up ? "#34d399" : "#fb7185";
+            const dayUp = (q?.changePct ?? 0) >= 0;
+            const dayColor = dayUp ? "#34d399" : "#fb7185";
+            const sinceUp = (w.since?.pct ?? 0) >= 0;
+            const sinceColor = sinceUp ? "#34d399" : "#fb7185";
+
             return (
-              <Card key={w.id} className={cn("glass-hover rise group p-5", `rise-${(i % 5) + 1}`)}>
+              <Card
+                key={w.id}
+                className={cn("glass-hover rise group p-5", `rise-${(i % 5) + 1}`)}
+                // hovered auch bei jeder Bewegung setzen, nicht nur bei Enter:
+                // bleibt das Enter-Event aus (schneller Wechsel, synthetische
+                // Events), zeigte die Karte sonst den vorigen Wert weiter.
+                onMouseEnter={(e) => { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); }}
+                onMouseMove={(e) => { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); }}
+                onMouseLeave={() => { setHovered((prev) => (prev?.id === w.id ? null : prev)); setCursor(null); }}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{w.label || q?.name || w.symbol}</div>
@@ -136,25 +152,49 @@ export default function WatchlistPage() {
                 </div>
 
                 {q ? (
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <div>
-                      <div className="num text-2xl font-semibold tracking-tight">
-                        {fmtNum(q.price)} <span className="text-sm font-normal text-muted-2">{q.currency}</span>
+                  <>
+                    <div className="mt-4 flex items-end justify-between gap-3">
+                      <div>
+                        <div className="num text-2xl font-semibold tracking-tight">
+                          {fmtNum(q.price)} <span className="text-sm font-normal text-muted-2">{q.currency}</span>
+                        </div>
+                        {q.priceEur !== null && q.currency !== "EUR" && (
+                          <div className="num mt-0.5 text-xs text-muted-2">{fmtEUR(q.priceEur)}</div>
+                        )}
                       </div>
-                      {q.priceEur !== null && q.currency !== "EUR" && (
-                        <div className="num mt-0.5 text-xs text-muted-2">{fmtEUR(q.priceEur)}</div>
+                      {q.changePct !== null && (
+                        <div
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+                          style={{ background: `${dayColor}14`, border: `1px solid ${dayColor}30`, color: dayColor }}
+                          title={t("Veränderung heute")}
+                        >
+                          {dayUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                          <span className="num">{fmtPct(q.changePct)}</span>
+                        </div>
                       )}
                     </div>
-                    {q.changePct !== null && (
-                      <div
-                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
-                        style={{ background: `${color}14`, border: `1px solid ${color}30`, color }}
-                      >
-                        {up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                        <span className="num">{fmtPct(q.changePct)}</span>
-                      </div>
-                    )}
-                  </div>
+
+                    {/* Zuwachs seit Aufnahme */}
+                    <div className="hairline my-3" />
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="flex items-center gap-1.5 text-muted-2">
+                        <CalendarPlus className="h-3 w-3" />
+                        {t("seit {date}", { date: fmtDate(w.added_at) })}
+                      </span>
+                      {w.since ? (
+                        <span className="num font-semibold" style={{ color: sinceColor }}>
+                          {fmtPct(w.since.pct)}
+                          <span className="ml-1.5 font-normal opacity-75">
+                            ({w.since.abs >= 0 ? "+" : ""}{fmtNum(w.since.abs)} {w.since.currency})
+                          </span>
+                        </span>
+                      ) : (
+                        // Vor der Einstandskurs-Erfassung hinzugefügt — ehrlich
+                        // benennen statt 0 % zu behaupten
+                        <span className="text-muted-2">{t("kein Einstandskurs erfasst")}</span>
+                      )}
+                    </div>
+                  </>
                 ) : (
                   <div className="mt-4 text-xs text-muted-2">{t("kein Kurs")}</div>
                 )}
@@ -162,6 +202,16 @@ export default function WatchlistPage() {
             );
           })}
         </div>
+      )}
+
+      {hovered?.quote && (
+        <QuoteHoverCard
+          key={hovered.symbol}
+          symbol={hovered.symbol}
+          name={hovered.label || hovered.quote.name || hovered.symbol}
+          currency={hovered.quote.currency}
+          cursor={cursor}
+        />
       )}
     </div>
   );

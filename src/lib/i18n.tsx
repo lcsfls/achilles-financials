@@ -207,6 +207,11 @@ const EN: Record<string, string> = {
   "{n} im Plus": "{n} up",
   "{n} im Minus": "{n} down",
   "Symbol, z. B. NVDA, VWCE.DE, BTC-EUR, ^GSPC": "Symbol, e.g. NVDA, VWCE.DE, BTC-EUR, ^GSPC",
+  "Veränderung heute": "Change today",
+  "kein Einstandskurs erfasst": "no entry price recorded",
+  "6 Monate": "6 months",
+  "Lade Verlauf …": "Loading history …",
+  "Kein Verlauf verfügbar": "No history available",
 
   // Notgroschen
   "Lade Notgroschen …": "Loading emergency fund …",

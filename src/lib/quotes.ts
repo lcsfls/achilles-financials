@@ -134,3 +134,48 @@ export async function getQuotes(symbols: string[], force = false): Promise<Map<s
   }
   return out;
 }
+
+
+/* ---------- Kursverlauf für den Hover-Chart ---------- */
+
+export type HistoryPoint = { t: number; c: number };
+
+// Verlauf ändert sich täglich, nicht sekündlich — großzügig cachen, sonst
+// feuert jedes Überfahren mit der Maus eine Anfrage an Yahoo.
+const historyCache = new Map<string, { at: number; data: HistoryPoint[] }>();
+const HISTORY_TTL_MS = 60 * 60 * 1000;
+
+export async function getHistory(symbol: string, range = "6mo"): Promise<HistoryPoint[] | null> {
+  const key = `${symbol}|${range}`;
+  const hit = historyCache.get(key);
+  if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.data;
+
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`,
+      { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store" }
+    );
+    if (!res.ok) return hit?.data ?? null;
+
+    const result = (await res.json())?.chart?.result?.[0];
+    const stamps: number[] = result?.timestamp ?? [];
+    const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
+    let scale = 1;
+    // Londoner Notierungen kommen in Pence — wie beim Live-Kurs umrechnen,
+    // sonst passt der Verlauf nicht zum angezeigten Kurs.
+    if (result?.meta?.currency === "GBp") scale = 0.01;
+
+    const data: HistoryPoint[] = [];
+    for (let i = 0; i < stamps.length; i++) {
+      const c = closes[i];
+      // Feiertage liefern null — auslassen statt als 0 zu zeichnen
+      if (typeof c === "number") data.push({ t: stamps[i] * 1000, c: c * scale });
+    }
+    if (data.length === 0) return hit?.data ?? null;
+
+    historyCache.set(key, { at: Date.now(), data });
+    return data;
+  } catch {
+    return hit?.data ?? null;
+  }
+}
