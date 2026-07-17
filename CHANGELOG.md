@@ -3,6 +3,34 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.2] — 2026-07-17
+
+### Added
+- **Display currency.** Settings → Currency switches the whole dashboard to one of twelve currencies
+  (EUR, USD, CHF, GBP, SEK, NOK, DKK, PLN, CZK, CAD, AUD, JPY), and **USD is always shown as a second
+  value** next to net worth and the KPI tiles — unless USD is already the main currency, where a
+  duplicate would be pointless. Amounts are still stored in euros; conversion happens only at display
+  time, using ECB reference rates (frankfurter.dev, daily). Input fields for prices and balances
+  therefore stay in euros.
+- **Flexible CSV import.** Bank exports have no common format, so nothing is assumed any more — the
+  delimiter (`;`, `,`, tab, `|`), the header row (preambles are skipped), and the column meanings are
+  all detected from the file. Handles German and English number formats (`1.234,56` / `1,234.56`),
+  trailing and parenthesised minus signs, ISO / `DD.MM.YYYY` / two-digit dates, separate debit and
+  credit columns, and separate sign columns (`S`/`H`). The response reports which columns it mapped,
+  so an unfamiliar export can be checked rather than trusted. Tested against Revolut, Sparkasse,
+  debit/credit and tab-delimited layouts.
+
+### Fixed
+- **Column detection picked the wrong column.** The leftmost match won instead of the most specific
+  one, so Revolut imports dated transactions by "Started Date" rather than "Completed Date", and
+  Sparkasse ones showed "Buchungstext" instead of the actual "Verwendungszweck".
+- **Watchlist hid the converted price** when a quote was already quoted in euros — with a different
+  display currency that meant the converted value was missing exactly where it was needed.
+- **The precious-metals table claimed "€/g"** in a column that follows the display currency. The cell
+  prints its own currency symbol, so the header no longer names one.
+- **FX rates moved.** `frankfurter.app` now answers with a 301 to `api.frankfurter.dev/v1`. Requests
+  still worked (redirects are followed), but all calls now go to the current endpoint directly.
+
 ## [1.0.1] — 2026-07-17
 
 ### Added

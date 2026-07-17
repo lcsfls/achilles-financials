@@ -27,7 +27,7 @@ async function toEurRate(currency: string): Promise<number | null> {
   const hit = fxCache.get(currency);
   if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.rate;
   try {
-    const res = await fetch(`https://api.frankfurter.app/latest?from=${currency}&to=EUR`, { cache: "no-store" });
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${currency}&to=EUR`, { cache: "no-store" });
     if (!res.ok) return null;
     const rate = (await res.json()).rates?.EUR;
     if (typeof rate !== "number") return null;

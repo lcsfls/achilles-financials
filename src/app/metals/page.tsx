@@ -184,7 +184,7 @@ export default function MetalsPage() {
                     <th className="px-6 py-3 font-medium">{t("Kaufdatum")}</th>
                     <th className="px-4 py-3 font-medium">{t("Gewicht")}</th>
                     <th className="px-4 py-3 font-medium">{t("Einstand")}</th>
-                    <th className="hidden px-4 py-3 font-medium md:table-cell">{t("€/g Einstand")}</th>
+                    <th className="hidden px-4 py-3 font-medium md:table-cell">{t("Einstand / g")}</th>
                     <th className="px-4 py-3 font-medium">{t("Aktueller Wert")}</th>
                     <th className="px-4 py-3 text-right font-medium">{t("G/V")}</th>
                     <th className="hidden px-4 py-3 font-medium lg:table-cell">{t("Händler / Notiz")}</th>

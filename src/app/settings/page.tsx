@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { UpdateDialog } from "@/components/update-dialog";
 import { IntegrationsSection } from "@/components/integrations-section";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { CURRENCIES } from "@/lib/currency";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
 
@@ -33,7 +34,7 @@ type UpdateInfo = {
 };
 
 export default function SettingsPage() {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang, setLang, currency, setCurrency } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -186,6 +187,41 @@ export default function SettingsPage() {
               {label}
             </button>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Anzeigewährung */}
+      <Card className="rise rise-1">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
+            <Coins className="h-5 w-5 text-gold" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Währung")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Anzeigewährung · USD wird immer zusätzlich gezeigt")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                onClick={() => setCurrency(c.code)}
+                title={lang === "en" ? c.en : c.de}
+                className={`cursor-pointer rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${
+                  currency === c.code
+                    ? "border-gold/40 bg-gold/10 text-gold-bright shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                    : "border-white/10 text-muted hover:border-white/20 hover:text-foreground"
+                }`}
+              >
+                <span className="num">{c.code}</span>
+                <span className="ml-1.5 text-xs opacity-60">{c.symbol}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-2">
+            {t("Gespeichert wird weiterhin in Euro — umgerechnet wird erst bei der Anzeige, mit EZB-Referenzkursen (frankfurter.dev, täglich). Eingabefelder für Kaufpreise und Beträge bleiben deshalb in Euro.")}
+          </p>
         </CardContent>
       </Card>
 
@@ -529,7 +565,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-xs leading-relaxed text-muted-2">
-            {t("Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.app — es verlassen keine persönlichen Daten deinen Server.")}
+            {t("Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.dev — es verlassen keine persönlichen Daten deinen Server.")}
           </p>
         </CardContent>
       </Card>

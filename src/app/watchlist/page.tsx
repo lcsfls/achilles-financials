@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuoteHoverCard } from "@/components/quote-hover-card";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
+import { cn, displayCurrency, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
 
 type WatchItem = {
   id: number; symbol: string; label: string | null; added_at: string;
@@ -158,7 +158,10 @@ export default function WatchlistPage() {
                         <div className="num text-2xl font-semibold tracking-tight">
                           {fmtNum(q.price)} <span className="text-sm font-normal text-muted-2">{q.currency}</span>
                         </div>
-                        {q.priceEur !== null && q.currency !== "EUR" && (
+                        {/* Umgerechnet nur zeigen, wenn der Kurs nicht ohnehin
+                            schon in der Anzeigewährung notiert — sonst stünde
+                            derselbe Betrag zweimal untereinander. */}
+                        {q.priceEur !== null && q.currency !== displayCurrency() && (
                           <div className="num mt-0.5 text-xs text-muted-2">{fmtEUR(q.priceEur)}</div>
                         )}
                       </div>

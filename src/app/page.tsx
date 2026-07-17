@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { CATEGORY_COLORS } from "@/lib/categorize";
 import { EmergencyFund } from "@/components/emergency-fund";
 import { useI18n } from "@/lib/i18n";
-import { cn, fmtEUR, fmtEUR0, fmtDate, fmtPct } from "@/lib/utils";
+import { cn, fmtEUR, fmtEUR0, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
 
 type Summary = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null; last_synced: string | null }>;
@@ -119,6 +119,10 @@ export default function OverviewPage() {
           <div className="text-[11px] uppercase tracking-[0.28em] text-muted-2">{t("Gesamtvermögen")}</div>
           <div className="mt-1 flex items-baseline gap-3">
             <span className="num font-display text-5xl font-semibold gold-text sm:text-6xl">{fmtEUR0(data.netWorth)}</span>
+            {/* USD immer zusätzlich; entfällt, wenn USD schon die Hauptwährung ist */}
+            {fmtUSD0(data.netWorth) && (
+              <span className="num text-sm text-muted-2">{fmtUSD0(data.netWorth)}</span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -134,35 +138,36 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {[
           {
-            icon: Wallet, label: t("Liquidität"), value: fmtEUR(data.cashTotal),
+            icon: Wallet, label: t("Liquidität"), value: fmtEUR(data.cashTotal), usd: fmtUSD(data.cashTotal),
             sub: data.accounts.length === 1 ? t("1 Konto") : t("{n} Konten", { n: data.accounts.length }), accent: "#38bdf8", delay: "rise-1",
           },
           {
-            icon: ArrowDownRight, label: t("Ausgaben diesen Monat"), value: fmtEUR(data.thisMonth.spent),
+            icon: ArrowDownRight, label: t("Ausgaben diesen Monat"), value: fmtEUR(data.thisMonth.spent), usd: fmtUSD(data.thisMonth.spent),
             sub: t("{pct} vs. Vormonat", { pct: fmtPct(spendDelta) }), accent: spendDelta > 0 ? "#fb7185" : "#34d399", delay: "rise-2",
             subColor: spendDelta > 0 ? "#fb7185" : "#34d399",
           },
           {
-            icon: Gem, label: t("Edelmetalle"), value: fmtEUR(data.metals.totalValue),
+            icon: Gem, label: t("Edelmetalle"), value: fmtEUR(data.metals.totalValue), usd: fmtUSD(data.metals.totalValue),
             sub: t("{amount} unrealisiert", { amount: `${metalsPL >= 0 ? "+" : ""}${fmtEUR(metalsPL)}` }), accent: "#d4af37", delay: "rise-3",
             subColor: metalsPL >= 0 ? "#34d399" : "#fb7185",
           },
           {
-            icon: TrendingUp, label: t("Investments"), value: fmtEUR(data.investments.value),
+            icon: TrendingUp, label: t("Investments"), value: fmtEUR(data.investments.value), usd: fmtUSD(data.investments.value),
             sub: t("{amount} unrealisiert", { amount: `${invPL >= 0 ? "+" : ""}${fmtEUR(invPL)}` }), accent: "#a78bfa", delay: "rise-4",
             subColor: invPL >= 0 ? "#34d399" : "#fb7185",
           },
           {
-            icon: PiggyBank, label: t("Altersvorsorge"), value: fmtEUR(data.pension.value),
+            icon: PiggyBank, label: t("Altersvorsorge"), value: fmtEUR(data.pension.value), usd: fmtUSD(data.pension.value),
             sub: data.pension.lastDate ? t("Auszug vom {date}", { date: fmtDate(data.pension.lastDate) }) : t("noch kein Auszug erfasst"),
             accent: "#34d399", delay: "rise-5",
           },
-        ].map(({ icon: Icon, label, value, sub, accent, delay, subColor }) => (
+        ].map(({ icon: Icon, label, value, sub, accent, delay, subColor, usd }) => (
           <Card key={label} className={cn("glass-hover rise p-6", delay)}>
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.18em] text-muted-2">{label}</div>
                 <div className="num mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+                {usd && <div className="num mt-0.5 text-[11px] text-muted-2">{usd}</div>}
                 <div className="mt-1 text-xs" style={{ color: subColor ?? "var(--color-muted-2)" }}>{sub}</div>
               </div>
               <div className="rounded-xl p-2.5" style={{ background: `${accent}14`, border: `1px solid ${accent}30` }}>

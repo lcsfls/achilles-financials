@@ -6,7 +6,7 @@
  * Platzhalter wie {n} werden nach der Übersetzung ersetzt.
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { setNumberLocale } from "./utils";
+import { setDisplayCurrency, setNumberLocale } from "./utils";
 
 export type Lang = "de" | "en";
 
@@ -126,7 +126,7 @@ const EN: Record<string, string> = {
   "Aktueller Wert": "Current value",
   "G/V": "P/L",
   "Händler / Notiz": "Dealer / note",
-  "€/g Einstand": "€/g cost",
+  "Einstand / g": "Cost / g",
   "Löschen": "Delete",
   "Diesen Kauf wirklich löschen?": "Really delete this purchase?",
   "Lade Edelmetalle …": "Loading precious metals …",
@@ -399,6 +399,10 @@ const EN: Record<string, string> = {
   "Benutzername oder Passwort ist falsch.": "Incorrect username or password.",
   "Passwort vergessen? Es lässt sich nur direkt in der Datenbank zurücksetzen — siehe README.":
     "Forgot your password? It can only be reset directly in the database — see the README.",
+  "Währung": "Currency",
+  "Anzeigewährung · USD wird immer zusätzlich gezeigt": "Display currency · USD always shown alongside",
+  "Gespeichert wird weiterhin in Euro — umgerechnet wird erst bei der Anzeige, mit EZB-Referenzkursen (frankfurter.dev, täglich). Eingabefelder für Kaufpreise und Beträge bleiben deshalb in Euro.":
+    "Everything is still stored in euros — conversion happens at display time only, using ECB reference rates (frankfurter.dev, updated daily). Input fields for purchase prices and amounts therefore stay in euros.",
   "Sprache der Oberfläche und Zahlenformate": "Interface language and number formats",
   "PSD2-Schnittstelle zu 2.700+ Banken in Europa": "PSD2 interface to 2,700+ banks across Europe",
   "Konfiguriert": "Configured",
@@ -464,8 +468,8 @@ const EN: Record<string, string> = {
   "Das ist keine Achilles-Backup-Datei (.achillesbak).": "That is not an Achilles backup file (.achillesbak).",
   "Daten & Hosting": "Data & Hosting",
   "Alles bleibt bei dir": "Everything stays with you",
-  "Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.app — es verlassen keine persönlichen Daten deinen Server.":
-    "All data lives in a SQLite database at /data/achilles.db inside the container volume. Backing up that file is all you need. Spot prices and FX rates come from gold-api.com, Yahoo Finance and frankfurter.app — no personal data ever leaves your server.",
+  "Alle Daten liegen in einer SQLite-Datenbank unter /data/achilles.db im Container-Volume. Für Backups genügt es, diese Datei zu sichern. Spotpreise und Wechselkurse kommen von gold-api.com, Yahoo Finance und frankfurter.dev — es verlassen keine persönlichen Daten deinen Server.":
+    "All data lives in a SQLite database at /data/achilles.db inside the container volume. Backing up that file is all you need. Spot prices and FX rates come from gold-api.com, Yahoo Finance and frankfurter.dev — no personal data ever leaves your server.",
 
   // Updates
   "Updates": "Updates",
@@ -552,9 +556,22 @@ const EN: Record<string, string> = {
 };
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
-type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: TFunc };
+type Ctx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: TFunc;
+  /** Aktive Anzeigewährung; Beträge selbst bleiben intern EUR. */
+  currency: string;
+  setCurrency: (code: string) => void;
+};
 
-const I18nContext = createContext<Ctx>({ lang: "de", setLang: () => {}, t: (k) => k });
+const I18nContext = createContext<Ctx>({
+  lang: "de",
+  setLang: () => {},
+  t: (k) => k,
+  currency: "EUR",
+  setCurrency: () => {},
+});
 
 function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {
   let out = lang === "en" ? EN[key] ?? key : key;
@@ -566,11 +583,27 @@ function translate(lang: Lang, key: string, vars?: Record<string, string | numbe
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("de");
+  const [currency, setCurrencyState] = useState("EUR");
 
   const apply = useCallback((l: Lang) => {
     setNumberLocale(l === "de" ? "de-DE" : "en-US");
     setLangState(l);
     if (typeof document !== "undefined") document.documentElement.lang = l;
+  }, []);
+
+  /**
+   * Kurse holen und im Formatter hinterlegen. Der State-Wechsel danach ist
+   * nötig, damit die Oberfläche neu rendert — setDisplayCurrency allein ändert
+   * nur ein Modul-Objekt, davon erfährt React nichts.
+   */
+  const loadFx = useCallback(async () => {
+    try {
+      const fx = await fetch("/api/fx").then((r) => r.json());
+      setDisplayCurrency(fx.currency, fx.rate, fx.usdRate);
+      setCurrencyState(fx.currency);
+    } catch {
+      // Ohne Kurse bleibt es bei EUR — besser als leere Beträge
+    }
   }, []);
 
   useEffect(() => {
@@ -585,7 +618,20 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [apply]);
+    loadFx();
+  }, [apply, loadFx]);
+
+  const setCurrency = useCallback(
+    async (code: string) => {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_currency: code }),
+      }).catch(() => {});
+      await loadFx();
+    },
+    [loadFx]
+  );
 
   const setLang = useCallback(
     (l: Lang) => {
@@ -602,7 +648,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback<TFunc>((key, vars) => translate(lang, key, vars), [lang]);
 
-  return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={{ lang, setLang, t, currency, setCurrency }}>{children}</I18nContext.Provider>
+  );
 }
 
 export function useI18n() {

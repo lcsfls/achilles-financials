@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteSetting, getSetting, setSetting } from "@/lib/db";
 import { authEnabled, disableAuth, getUsername, setCredentials, verifyPassword } from "@/lib/auth";
 import { callbackUrl, publicOrigin, validateAppUrl } from "@/lib/app-url";
+import { isSupported } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
     country: getSetting("eb_country") || "DE",
     demoMode: getSetting("demo_mode") === "1",
     language: getSetting("language") || "de",
+    displayCurrency: getSetting("display_currency") || "EUR",
     setupDone: getSetting("setup_done") === "1",
     authEnabled: authEnabled(),
     authUser: getUsername(),
@@ -28,6 +30,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { ebAppId, ebPrivateKey, country, language, setupDone } = body;
+
+  // Anzeigewährung — nur bekannte Codes, sonst wirft Intl.NumberFormat später
+  // auf jeder Seite und das Dashboard bliebe leer.
+  if (typeof body.display_currency === "string" && isSupported(body.display_currency)) {
+    setSetting("display_currency", body.display_currency);
+  }
 
   // Login einrichten / ändern / abschalten
   if (body.auth !== undefined) {

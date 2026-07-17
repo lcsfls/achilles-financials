@@ -11,7 +11,7 @@ const OZ_IN_GRAMS = 31.1034768;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 async function fetchUsdToEur(): Promise<number> {
-  const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR", { cache: "no-store" });
+  const res = await fetch("https://api.frankfurter.dev/v1/latest?from=USD&to=EUR", { cache: "no-store" });
   if (!res.ok) throw new Error("FX-Kurs nicht abrufbar");
   const data = await res.json();
   return data.rates.EUR as number;

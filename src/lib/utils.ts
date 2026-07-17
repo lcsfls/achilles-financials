@@ -11,17 +11,57 @@ export function setNumberLocale(locale: string) {
   LOCALE = locale;
 }
 
+/**
+ * Anzeigewährung.
+ *
+ * Gerechnet und gespeichert wird durchgehend in EUR (alle Spalten heißen
+ * *_eur). Umgerechnet wird ausschließlich hier, beim Formatieren — deshalb
+ * nimmt fmtEUR weiterhin einen EUR-Betrag entgegen und alle bestehenden
+ * Aufrufstellen stimmen ohne Änderung.
+ */
+let DISPLAY = { code: "EUR", rate: 1 };
+let USD_RATE: number | null = null;
+
+export function setDisplayCurrency(code: string, rate: number, usdRate: number | null) {
+  DISPLAY = { code, rate: Number.isFinite(rate) && rate > 0 ? rate : 1 };
+  USD_RATE = usdRate && usdRate > 0 ? usdRate : null;
+}
+
+export function displayCurrency() {
+  return DISPLAY.code;
+}
+
+/** Betrag in EUR — formatiert in der eingestellten Anzeigewährung. */
 export function fmtEUR(n: number, opts: Intl.NumberFormatOptions = {}) {
   return new Intl.NumberFormat(LOCALE, {
     style: "currency",
-    currency: "EUR",
+    currency: DISPLAY.code,
     maximumFractionDigits: 2,
     ...opts,
-  }).format(n);
+  }).format(n * DISPLAY.rate);
 }
 
 export function fmtEUR0(n: number) {
   return fmtEUR(n, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
+}
+
+/**
+ * Derselbe Betrag zusätzlich in USD — die Zweitanzeige neben jedem Wert.
+ * Gibt null zurück, wenn USD bereits die Anzeigewährung ist (dann wäre es eine
+ * Dopplung) oder kein Kurs vorliegt.
+ */
+export function fmtUSD(n: number, opts: Intl.NumberFormatOptions = {}): string | null {
+  if (DISPLAY.code === "USD" || USD_RATE === null) return null;
+  return new Intl.NumberFormat(LOCALE, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+    ...opts,
+  }).format(n * USD_RATE);
+}
+
+export function fmtUSD0(n: number) {
+  return fmtUSD(n, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
 }
 
 export function fmtPct(n: number) {
