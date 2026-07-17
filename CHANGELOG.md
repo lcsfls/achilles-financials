@@ -33,6 +33,20 @@ Known and **not** fixed, deliberately — see the README:
   can trigger an update, which runs a script as root on the container host. Turn it on before the
   host is reachable by anyone else.
 
+## [1.3.2] — 2026-07-17
+
+### Changed
+- **Watchlist tiles are now picked up, not just dragged.** The old HTML5 drag showed a flat ghost
+  image; this rebuilds the gesture on pointer events so the whole tile lifts off — it scales up,
+  tilts slightly, casts a shadow and follows your hand, leaving an open gap in its slot. The tile you
+  carry it over is marked as the drop target (gold ring), and releasing swaps the two. Same as before,
+  swaps stay within the pinned/unpinned group, and a plain click still reaches the pin and delete
+  buttons.
+
+### Fixed
+- Along the way: the drag transform was being overridden by the finished entrance animation (a done
+  CSS animation keeps holding `transform`, and animations outrank inline styles), which would have
+  frozen the lift flat. The entrance animation is now switched off on a tile while a drag is active.
 ## [1.3.1] — 2026-07-17
 
 ### Fixed

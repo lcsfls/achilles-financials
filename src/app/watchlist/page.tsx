@@ -28,12 +28,15 @@ export default function WatchlistPage() {
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<WatchItem | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
-  // Die gezogene Kachel steht im Ref, nicht nur im State: Der Drop-Handler
-  // liest sie sofort, und ein State-Wert wäre in seiner Closure noch der alte,
-  // wenn zwischen dragstart und drop kein Rendern lag. Der State daneben dient
-  // nur der Darstellung.
-  const dragIdRef = useRef<number | null>(null);
-  const [dragId, setDragId] = useState<number | null>(null);
+
+  // Drag & drop over pointer events instead of the HTML5 drag API: only that
+  // lets the whole tile lift off and follow the hand. The gesture in progress
+  // lives in a ref (read synchronously on move/up); the state mirrors it for
+  // rendering. `engaged` gates the lift behind a small movement so a plain
+  // click on the pin/trash buttons still goes through.
+  const dragRef = useRef<{ id: number; pinned: boolean; startX: number; startY: number; engaged: boolean } | null>(null);
+  const [drag, setDrag] = useState<{ id: number; pinned: boolean } | null>(null);
+  const [offset, setOffset] = useState({ dx: 0, dy: 0 });
   const [overId, setOverId] = useState<number | null>(null);
 
   const load = useCallback((refresh = false) =>
@@ -60,22 +63,21 @@ export default function WatchlistPage() {
     [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || list.indexOf(a) - list.indexOf(b));
 
   /**
-   * Zwei Kacheln tauschen die Plätze.
+   * Swap two tiles.
    *
-   * Nur innerhalb derselben Gruppe: Angepinnte stehen immer vorn, ein Tausch
-   * über die Gruppengrenze hinweg würde die gezogene Kachel also gar nicht
-   * bewegen und nur die andere wegspringen lassen — das sähe kaputt aus.
+   * Within the same group only: pinned tiles always sort first, so swapping
+   * across the boundary would leave the dragged tile where it was and only make
+   * the other one jump — which reads as broken.
    */
-  const drop = async (target: WatchItem) => {
-    const src = items?.find((i) => i.id === dragIdRef.current);
-    dragIdRef.current = null;
-    setDragId(null);
-    setOverId(null);
-    if (!src || !items || src.id === target.id || src.pinned !== target.pinned) return;
+  const swap = async (srcId: number, targetId: number) => {
+    if (!items || srcId === targetId) return;
+    const src = items.find((i) => i.id === srcId);
+    const target = items.find((i) => i.id === targetId);
+    if (!src || !target || src.pinned !== target.pinned) return;
 
     const next = [...items];
-    const a = next.findIndex((i) => i.id === src.id);
-    const b = next.findIndex((i) => i.id === target.id);
+    const a = next.findIndex((i) => i.id === srcId);
+    const b = next.findIndex((i) => i.id === targetId);
     [next[a], next[b]] = [next[b], next[a]];
     setItems(next);
 
@@ -84,6 +86,52 @@ export default function WatchlistPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: next.map((i) => i.id) }),
     });
+  };
+
+  /* ---------- Pick up, carry, swap ---------- */
+
+  const onDragPointerDown = (e: React.PointerEvent, w: WatchItem) => {
+    // Left button / touch / pen only, and never when a control was pressed.
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("button")) return;
+    dragRef.current = { id: w.id, pinned: w.pinned, startX: e.clientX, startY: e.clientY, engaged: false };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onDragPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+
+    // Lift only once the pointer has actually travelled — below that it's a click.
+    if (!d.engaged) {
+      if (Math.hypot(dx, dy) < 6) return;
+      d.engaged = true;
+      setDrag({ id: d.id, pinned: d.pinned });
+      setHovered(null); // the price hover card must not fight the drag
+      document.body.style.userSelect = "none";
+    }
+    setOffset({ dx, dy });
+
+    // The lifted tile has pointer-events:none, so elementFromPoint sees the
+    // tile underneath — that is the swap target.
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-watch-id]") as HTMLElement | null;
+    const tid = under ? Number(under.dataset.watchId) : null;
+    setOverId(tid && tid !== d.id ? tid : null);
+  };
+
+  const endDrag = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (d?.engaged && overId != null) {
+      const target = items?.find((i) => i.id === overId);
+      if (target && target.pinned === d.pinned) swap(d.id, target.id);
+    }
+    setDrag(null);
+    setOverId(null);
+    setOffset({ dx: 0, dy: 0 });
+    document.body.style.userSelect = "";
   };
 
   const togglePin = async (w: WatchItem) => {
@@ -177,29 +225,55 @@ export default function WatchlistPage() {
             const sinceUp = (w.since?.pct ?? 0) >= 0;
             const sinceColor = sinceUp ? "#34d399" : "#fb7185";
 
+            const lifted = drag?.id === w.id;
+            // A valid drop target: under the pointer, not itself, same group.
+            const isTarget = overId === w.id && drag != null && drag.id !== w.id && drag.pinned === w.pinned;
+
             return (
               <Card
                 key={w.id}
-                draggable
-                onDragStart={(e) => { dragIdRef.current = w.id; setDragId(w.id); e.dataTransfer.effectAllowed = "move"; }}
-                onDragEnd={() => { dragIdRef.current = null; setDragId(null); setOverId(null); }}
-                // preventDefault ist Pflicht — ohne das lehnt der Browser den Drop ab
-                onDragOver={(e) => { e.preventDefault(); setOverId(w.id); }}
-                onDragLeave={() => setOverId((prev) => (prev === w.id ? null : prev))}
-                onDrop={(e) => { e.preventDefault(); drop(w); }}
+                data-watch-id={w.id}
+                onPointerDown={(e) => onDragPointerDown(e, w)}
+                onPointerMove={onDragPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                style={{
+                  touchAction: "none",
+                  ...(lifted
+                    ? {
+                        // Carried in hand: follow the pointer 1:1, scale up, a
+                        // touch of tilt, and lift above everything. transition
+                        // is off so it tracks without lag; pointer-events off so
+                        // elementFromPoint can see the tile beneath.
+                        transform: `translate(${offset.dx}px, ${offset.dy}px) scale(1.05) rotate(1.2deg)`,
+                        zIndex: 50,
+                        position: "relative",
+                        transition: "none",
+                        pointerEvents: "none",
+                        boxShadow: "0 30px 60px -12px rgba(0,0,0,0.75)",
+                        cursor: "grabbing",
+                        willChange: "transform",
+                      }
+                    : {
+                        // Everyone else eases — the target's react and the origin
+                        // slot sits empty as the "make room" gap.
+                        transition: "transform 0.22s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease",
+                        transform: isTarget ? "scale(0.96)" : undefined,
+                      }),
+                }}
                 className={cn(
-                  "glass-hover rise group p-5", `rise-${(i % 5) + 1}`,
+                  "glass-hover rise group cursor-grab p-5 select-none active:cursor-grabbing", `rise-${(i % 5) + 1}`,
                   w.pinned && "border-gold/25",
-                  dragId === w.id && "opacity-40",
-                  // Nur als Ziel markieren, wo ein Tausch auch stattfindet
-                  overId === w.id && dragId !== null && dragId !== w.id &&
-                    items.find((x) => x.id === dragId)?.pinned === w.pinned && "border-gold/60 ring-1 ring-gold/30"
+                  isTarget && "border-gold/60 ring-2 ring-gold/40",
+                  // Free `transform` from the finished entrance animation so the
+                  // lift and the target's scale actually show.
+                  drag != null && "rise-off",
                 )}
-                // hovered auch bei jeder Bewegung setzen, nicht nur bei Enter:
-                // bleibt das Enter-Event aus (schneller Wechsel, synthetische
-                // Events), zeigte die Karte sonst den vorigen Wert weiter.
-                onMouseEnter={(e) => { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); }}
-                onMouseMove={(e) => { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); }}
+                // Update hovered on every move, not just enter — with fast tile
+                // changes the enter event can be skipped and the card would keep
+                // showing the previous symbol. Suppressed while dragging.
+                onMouseEnter={(e) => { if (!drag) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
+                onMouseMove={(e) => { if (!drag) { setHovered(w); setCursor({ x: e.clientX, y: e.clientY }); } }}
                 onMouseLeave={() => { setHovered((prev) => (prev?.id === w.id ? null : prev)); setCursor(null); }}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -213,7 +287,8 @@ export default function WatchlistPage() {
                   <div className="flex shrink-0 items-center gap-0.5">
                     {/* Sichtbarer Anfasser: Dass eine Kachel ziehbar ist, sieht
                         man ihr sonst nicht an. */}
-                    <span className="cursor-grab rounded-lg p-1.5 text-muted-2 opacity-0 transition-all group-hover:opacity-100 active:cursor-grabbing" title={t("Ziehen zum Tauschen")}>
+                    {/* Affordance only — the whole tile is draggable now. */}
+                    <span className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all group-hover:opacity-100" title={t("Ziehen zum Tauschen")}>
                       <GripVertical className="h-3.5 w-3.5" />
                     </span>
                     {/* Angepinnt bleibt sichtbar — sonst wäre nicht erkennbar,
@@ -296,7 +371,7 @@ export default function WatchlistPage() {
         </div>
       )}
 
-      {hovered?.quote && (
+      {hovered?.quote && !drag && (
         <QuoteHoverCard
           key={hovered.symbol}
           symbol={hovered.symbol}
