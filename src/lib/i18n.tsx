@@ -465,6 +465,9 @@ const EN: Record<string, string> = {
   // Updates
   "Updates": "Updates",
   "Aktuell": "Up to date",
+  "Prüfung fehlgeschlagen": "Check failed",
+  "Die Version auf GitHub konnte nicht geprüft werden — meist das Stundenlimit der GitHub-API (60 Anfragen ohne Token) oder fehlendes Internet. Später erneut versuchen.":
+    "Couldn't check the version on GitHub — usually the API's hourly limit (60 requests without a token) or no internet. Try again later.",
   "1 Update verfügbar": "1 update available",
   "{n} Updates verfügbar": "{n} updates available",
   "Version {v} verfügbar": "Version {v} available",
@@ -474,8 +477,6 @@ const EN: Record<string, string> = {
   "Installiert": "Installed",
   "unbekannt": "unknown",
   "Neueste": "Latest",
-  "Update läuft — der Container wird neu gebaut. Die Seite ist gleich kurz nicht erreichbar; danach einfach neu laden.":
-    "Update running — the container is rebuilding. This page will be briefly unavailable; just reload afterwards.",
   "Letztes Update fehlgeschlagen": "Last update failed",
   "Neu seit deiner Version": "New since your version",
   "… und {n} weitere": "… and {n} more",
@@ -489,8 +490,29 @@ const EN: Record<string, string> = {
     "No write access to the control directory — the files are owned by root while the app runs as uid 1001. Run this once in the Proxmox shell (replace <CTID> with your container ID; no container password needed):",
   "Kopieren": "Copy",
   "Kopiert": "Copied",
-  "Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten.":
-    "Install the update now? The container will rebuild and restart — your data is preserved.",
+  "Der Container wird neu gebaut und startet neu. Deine Daten bleiben unberührt.":
+    "The container will rebuild and restart. Your data is untouched.",
+  "Neu": "New",
+  "Der Build dauert einige Minuten. Das Dashboard ist zwischendurch kurz nicht erreichbar — dieses Fenster bleibt offen und zeigt den Fortschritt.":
+    "The build takes a few minutes. The dashboard will be briefly unreachable — this window stays open and shows the progress.",
+  "Jetzt aktualisieren": "Update now",
+  "Update läuft": "Update running",
+  "Fenster offen lassen — bei laufendem Build ist das normal.": "Leave this window open — that's normal while the build runs.",
+  "Version wird geladen": "Fetching version",
+  "Container wird gebaut": "Building container",
+  "Neustart": "Restarting",
+  "Fertig": "Done",
+  "Container antwortet gerade nicht — er wird neu gestartet. Das Fenster verbindet sich automatisch wieder.":
+    "The container isn't responding — it's restarting. This window will reconnect automatically.",
+  "Build-Ausgabe": "Build output",
+  "Update abgeschlossen": "Update complete",
+  "Seite neu laden": "Reload page",
+  "Update fehlgeschlagen": "Update failed",
+  "Die alte Version läuft weiter. Vollständiges Log auf dem Host unter control/update.log.":
+    "The previous version keeps running. Full log on the host at control/update.log.",
+  "Schließen": "Close",
+  "Erneut versuchen": "Try again",
+  "Fortschritt anzeigen": "Show progress",
   "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.":
     "In-app updates aren't set up (control directory missing). Please update via shell.",
   "Es läuft bereits ein Update.": "An update is already running.",

@@ -106,6 +106,19 @@ export function getUpdateStatus(): UpdateStatus {
   return readJson<UpdateStatus>("update-status.json") ?? { state: "idle" };
 }
 
+/**
+ * Letzte Zeilen aus update.log — damit im Dialog steht, was der Build gerade
+ * tut, statt nur "läuft". Docker-Build-Logs werden lang, deshalb nur der Tail.
+ */
+export function getUpdateLog(lines = 40): string | null {
+  try {
+    const raw = fs.readFileSync(path.join(CONTROL_DIR, "update.log"), "utf8");
+    return raw.split("\n").filter(Boolean).slice(-lines).join("\n") || null;
+  } catch {
+    return null;
+  }
+}
+
 export function requestUpdate(): void {
   try {
     fs.writeFileSync(
@@ -138,10 +151,28 @@ export function compareSemver(a: Semver, b: Semver): number {
 export type Release = { version: string; tag: string; sha: string; notes: string | null; publishedAt: string | null };
 
 /**
+ * GitHub erlaubt ohne Token 60 Anfragen pro Stunde und IP. Der Update-Dialog
+ * pollt im Sekundentakt — ohne Cache wäre das Limit nach zwei Minuten leer und
+ * die Versionsprüfung für den Rest der Stunde tot.
+ */
+let releaseCache: { at: number; value: Release | null } | null = null;
+const RELEASE_TTL_MS = 10 * 60 * 1000;
+
+/**
  * Neueste veröffentlichte Version. Bevorzugt GitHub-Releases (mit Notes);
  * fällt auf Tags zurück, falls zu einem Tag kein Release angelegt wurde.
  */
-export async function fetchLatestRelease(): Promise<Release | null> {
+export async function fetchLatestRelease(force = false): Promise<Release | null> {
+  if (!force && releaseCache && Date.now() - releaseCache.at < RELEASE_TTL_MS) {
+    return releaseCache.value;
+  }
+  const value = await fetchLatestReleaseUncached();
+  // Auch ein Fehlschlag wird gecacht — sonst rennt jeder Poll erneut ins Limit.
+  releaseCache = { at: Date.now(), value };
+  return value;
+}
+
+async function fetchLatestReleaseUncached(): Promise<Release | null> {
   const headers = { Accept: "application/vnd.github+json", "User-Agent": "achilles-financials" };
 
   try {

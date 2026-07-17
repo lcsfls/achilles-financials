@@ -1,18 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   BRANCH, FIX_PERMISSIONS_COMMAND, REPO, compareSemver, controlState, fetchLatestRelease,
-  getUpdateStatus, getVersion, parseSemver, requestUpdate,
+  getUpdateLog, getUpdateStatus, getVersion, parseSemver, requestUpdate,
 } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
 /** Versions- und Update-Status inkl. Prüfung gegen die neueste Release-Version. */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const params = new URL(req.url).searchParams;
+  // Der Dialog pollt sekündlich und braucht dabei nur Status und Log —
+  // die Release-Prüfung dabei jedes Mal mitzumachen, sprengt GitHubs Limit.
+  const statusOnly = params.get("statusOnly") === "1";
+  const force = params.get("refresh") === "1";
+
   const version = getVersion();
   const status = getUpdateStatus();
   const control = controlState();
 
-  const latest = await fetchLatestRelease();
+  const latest = statusOnly ? null : await fetchLatestRelease(force);
 
   const installedSv = parseSemver(version.version);
   const latestSv = parseSemver(latest?.version);
@@ -22,16 +28,22 @@ export async function GET() {
   const updateAvailable =
     installedSv !== null && latestSv !== null ? compareSemver(latestSv, installedSv) > 0 : null;
 
+  // Unterscheidbar machen: "nichts Neues" ist etwas anderes als "konnte nicht
+  // nachsehen" — sonst wirkt eine gescheiterte Prüfung wie "alles aktuell".
+  const checkFailed = !statusOnly && latest === null;
+
   return NextResponse.json({
     repo: REPO,
     branch: BRANCH,
     version,
     status,
+    log: getUpdateLog(),
     canUpdate: control === "ok",
     control,
     fixCommand: control === "readonly" ? FIX_PERMISSIONS_COMMAND : null,
     latest: latest ? { version: latest.version, tag: latest.tag, notes: latest.notes, publishedAt: latest.publishedAt } : null,
     updateAvailable,
+    checkFailed,
     upToDate: updateAvailable === false,
     releasesUrl: `https://github.com/${REPO}/releases`,
     shellCommand: "cd /opt/achilles-financials && ./deploy/update.sh",

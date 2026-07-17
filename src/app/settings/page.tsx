@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { UpdateDialog } from "@/components/update-dialog";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { cn, fmtDateTime } from "@/lib/utils";
@@ -18,11 +19,13 @@ type UpdateInfo = {
   branch: string;
   version: { version: string | null; sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
   status: { state: "idle" | "requested" | "running" | "success" | "error"; message?: string; finishedAt?: string; toSha?: string };
+  log: string | null;
   canUpdate: boolean;
   control: "ok" | "missing" | "readonly";
   fixCommand: string | null;
   latest: { version: string; tag: string; notes: string | null; publishedAt: string | null } | null;
   updateAvailable: boolean | null;
+  checkFailed: boolean;
   upToDate: boolean;
   releasesUrl: string;
   shellCommand: string;
@@ -39,9 +42,9 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
 
   const [upd, setUpd] = useState<UpdateInfo | null>(null);
-  const [updBusy, setUpdBusy] = useState(false);
   const [updError, setUpdError] = useState<string | null>(null);
   const [updFix, setUpdFix] = useState<string | null>(null);
+  const [updDialog, setUpdDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const [demoWarning, setDemoWarning] = useState(false);
   const [authUser, setAuthUser] = useState("");
@@ -59,7 +62,8 @@ export default function SettingsPage() {
   const [appUrl, setAppUrl] = useState("");
 
   const load = () => fetch("/api/settings").then((r) => r.json()).then((s) => { setSettings(s); setCountry(s.country); setAppUrl(s.appUrl ?? ""); });
-  const loadUpdate = () => fetch("/api/update").then((r) => r.json()).then(setUpd).catch(() => {});
+  const loadUpdate = (refresh = false) =>
+    fetch(`/api/update${refresh ? "?refresh=1" : ""}`).then((r) => r.json()).then(setUpd).catch(() => {});
   useEffect(() => { load(); loadUpdate(); }, []);
 
   // Während ein Update läuft, Status pollen — der Container startet dabei neu,
@@ -71,20 +75,6 @@ export default function SettingsPage() {
     return () => clearInterval(iv);
   }, [running]);
 
-  const startUpdate = async () => {
-    if (!confirm(t("Update jetzt installieren? Der Container wird neu gebaut und startet neu — deine Daten bleiben erhalten."))) return;
-    setUpdBusy(true);
-    setUpdError(null);
-    const res = await fetch("/api/update", { method: "POST" });
-    setUpdBusy(false);
-    if (!res.ok) {
-      const d = await res.json();
-      setUpdError(d.error);
-      setUpdFix(d.fixCommand ?? null);
-      return;
-    }
-    loadUpdate();
-  };
 
   const save = async () => {
     setBusy(true);
@@ -435,11 +425,13 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          {upd && (upd.upToDate
-            ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktuell")}</Badge>
-            : upd.updateAvailable && upd.latest
-              ? <Badge color="#fbbf24">{t("Version {v} verfügbar", { v: upd.latest.version })}</Badge>
-              : null)}
+          {upd && (upd.checkFailed
+            ? <Badge color="#94a3b8">{t("Prüfung fehlgeschlagen")}</Badge>
+            : upd.upToDate
+              ? <Badge color="#34d399"><CheckCircle2 className="h-3 w-3" /> {t("Aktuell")}</Badge>
+              : upd.updateAvailable && upd.latest
+                ? <Badge color="#fbbf24">{t("Version {v} verfügbar", { v: upd.latest.version })}</Badge>
+                : null)}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Versionszeile */}
@@ -465,12 +457,6 @@ export default function SettingsPage() {
           </div>
 
           {/* Laufendes Update */}
-          {running && (
-            <div className="flex items-center gap-3 rounded-xl border border-gold/25 bg-gold/8 px-4 py-3 text-sm text-gold-bright">
-              <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />
-              {t("Update läuft — der Container wird neu gebaut. Die Seite ist gleich kurz nicht erreichbar; danach einfach neu laden.")}
-            </div>
-          )}
 
           {/* Ergebnis des letzten Updates */}
           {!running && upd?.status.state === "success" && upd.status.message && (
@@ -487,6 +473,13 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+          {upd?.checkFailed && (
+            <div className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-muted">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-2" />
+              {t("Die Version auf GitHub konnte nicht geprüft werden — meist das Stundenlimit der GitHub-API (60 Anfragen ohne Token) oder fehlendes Internet. Später erneut versuchen.")}
+            </div>
+          )}
+
           {updError && (
             <div className="rounded-xl border border-rose-soft/25 bg-rose-soft/8 px-4 py-3 text-sm text-rose-soft">
               <div className="flex items-start gap-3">
@@ -519,13 +512,18 @@ export default function SettingsPage() {
 
           {/* Aktionen */}
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="glass" onClick={loadUpdate} disabled={running}>
+            <Button variant="glass" onClick={() => loadUpdate(true)} disabled={running}>
               <RefreshCw className={cn("h-4 w-4", running && "animate-spin")} /> {t("Nach Updates suchen")}
             </Button>
             {upd?.canUpdate && upd.updateAvailable && upd.latest && (
-              <Button onClick={startUpdate} disabled={updBusy || running}>
+              <Button onClick={() => setUpdDialog(true)} disabled={running}>
                 <Download className="h-4 w-4" />
-                {updBusy ? t("Starte …") : t("Auf v{v} aktualisieren", { v: upd.latest.version })}
+                {t("Auf v{v} aktualisieren", { v: upd.latest.version })}
+              </Button>
+            )}
+            {running && (
+              <Button variant="glass" onClick={() => setUpdDialog(true)}>
+                <RefreshCw className="h-4 w-4 animate-spin" /> {t("Fortschritt anzeigen")}
               </Button>
             )}
           </div>
@@ -648,6 +646,14 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <UpdateDialog
+        open={updDialog}
+        onOpenChange={setUpdDialog}
+        info={upd}
+        onStarted={loadUpdate}
+        onFinished={loadUpdate}
+      />
 
       {/* Warnung vor dem Laden von Demo-Daten */}
       <Dialog open={demoWarning} onOpenChange={setDemoWarning}>
