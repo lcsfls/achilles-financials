@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
               // Kurse und Kurse-Proxy laufen serverseitig; der Browser
               // spricht nur mit der App selbst.
               "connect-src 'self'",
+              // Same-origin service worker and manifest for the PWA.
+              "worker-src 'self'",
+              "manifest-src 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

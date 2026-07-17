@@ -8,7 +8,10 @@ import { SESSION_COOKIE, authEnabled, verifySession } from "@/lib/auth";
  */
 export const config = {
   runtime: "nodejs",
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // The PWA assets must stay reachable even with a login enabled: the browser
+  // fetches the manifest, registers /sw.js and loads the icons before (and on)
+  // the login page. Guarding them would break installability.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
 };
 
 export function middleware(req: NextRequest) {

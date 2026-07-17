@@ -48,6 +48,7 @@ stays on your own server.
 | 🤝 **Loans** | Money you lent out and money you took on — privately or from a bank, with or without interest. Interest accrues daily on the outstanding balance; payments cover interest first, then principal. You choose whether they count towards net worth. |
 | 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, your FIRE number, and years to financial independence — interactive sliders, seeded from your real net worth. |
 | 🐷 **Pension tracking** | Log balances from your pension statements and split contributions across ETFs by weight; the latest balance feeds into net worth and the FIRE simulation. <br>[Screenshot](docs/screenshots/pension.png) |
+| 📱 **Installable (PWA)** | Add it to your phone's home screen and it runs standalone, like an app. A service worker caches the shell for a fast open but **never caches API data** — a balance you see is always live, never a stale copy. Needs HTTPS (you have it via your reverse proxy). |
 | 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
 | 💱 **Your currency** | Display everything in one of twelve currencies, with **USD always shown alongside**. Amounts stay in EUR internally; conversion happens at display time with ECB reference rates. |
 | ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |

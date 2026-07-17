@@ -3,6 +3,18 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.5.0] — 2026-07-17
+
+### Added
+- **Installable as a PWA.** Add Achilles to a phone home screen and it launches standalone, without
+  browser chrome — a proper app icon (the gold shield), a splash matching the dark theme, and a
+  manifest with maskable icons. A service worker caches the app shell and immutable assets for a fast
+  open. **It never caches `/api/*`** — for a finance app a cached balance shown offline would be a
+  lie, so account data is always fetched live; offline shows a plain "reconnect" notice instead.
+  The manifest, service worker and icons are exempt from the login guard so the browser can install
+  the app from the login screen. Requires HTTPS (via your reverse proxy), which installability needs
+  anyway.
+
 ## [1.4.3] — 2026-07-17
 
 ### Fixed
