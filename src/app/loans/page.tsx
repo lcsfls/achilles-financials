@@ -311,7 +311,7 @@ export default function LoansPage() {
                     )}
                   </div>
                   <Button variant="glass" size="sm" onClick={() => { setPayFor(l); setPayError(null); }}>
-                    {t("{n} Zahlungen", { n: l.payments.length })}
+                    {l.payments.length === 1 ? t("1 Zahlung") : t("{n} Zahlungen", { n: l.payments.length })}
                   </Button>
                 </div>
               </Card>

@@ -3,6 +3,19 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.3.0] — 2026-07-17
+
+### Added
+- **Screenshots and tutorials in the README.** Eleven 1920×1080 captures of the running app with demo
+  data, and seven walkthroughs covering first run, the three ways to get data in, precious metals,
+  investments, loans, emergency fund and FIRE, plus a section on FinTS registration and what it does
+  and does not require.
+- **Demo data now covers loans** — one interest-free loan lent out, one at 3.5 %, and a bank loan
+  with fifteen instalments. All dates are relative to today, so the demo does not visibly age.
+
+### Fixed
+- A loan with one payment said "1 payments".
+
 ## [1.2.1] — 2026-07-17
 
 ### Added

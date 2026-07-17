@@ -237,6 +237,7 @@ const EN: Record<string, string> = {
   "fällig {date}": "due {date}",
   "überfällig": "overdue",
   "{n} Zahlungen": "{n} payments",
+  "1 Zahlung": "1 payment",
   "Zahlungen · {name}": "Payments · {name}",
   "Jede Zahlung deckt zuerst die bis dahin aufgelaufenen Zinsen, der Rest tilgt das Kapital.":
     "Each payment first covers the interest accrued up to that date; the remainder repays the principal.",

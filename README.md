@@ -14,23 +14,47 @@ stays on your own server.
 
 ---
 
+![Overview](docs/screenshots/overview.png)
+
+<table>
+<tr>
+<td width="50%"><a href="docs/screenshots/investments.png"><img src="docs/screenshots/investments.png" alt="Investments"></a><br><sub><b>Investments</b> — live prices, P/L per position</sub></td>
+<td width="50%"><a href="docs/screenshots/metals.png"><img src="docs/screenshots/metals.png" alt="Precious metals"></a><br><sub><b>Precious metals</b> — every purchase as its own lot</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/loans.png"><img src="docs/screenshots/loans.png" alt="Loans"></a><br><sub><b>Loans</b> — lent out and taken on, with interest</sub></td>
+<td><a href="docs/screenshots/fire.png"><img src="docs/screenshots/fire.png" alt="FIRE"></a><br><sub><b>FIRE</b> — projections from your real net worth</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/watchlist.png"><img src="docs/screenshots/watchlist.png" alt="Watchlist"></a><br><sub><b>Watchlist</b> — pin favourites, drag to rearrange</sub></td>
+<td><a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" alt="Settings"></a><br><sub><b>Settings</b> — language, currency, integrations</sub></td>
+</tr>
+</table>
+
+<sub>Screenshots show the built-in demo data — load it from Settings and click around before connecting anything.</sub>
+
+
 ## Features
 
 | | |
 |---|---|
 | 🏦 **Any European bank, by QR code** | Pick your country, search your bank, scan the QR code with your phone, approve in your banking app. Achilles pulls up to 12 months of history — balances and transactions only, never payment access. |
-| 📄 **CSV import** | No API account needed: export a statement from your banking app and upload it. Duplicate-safe, understands English and German column headers. |
+| 📄 **CSV import that adapts** | No API account needed. Delimiter, header row and column meanings are detected from the file, not assumed — German and English number formats, separate debit/credit columns, preambles. Works for statements *and* broker exports (holdings or order lists, netted into positions). |
+| 🏛️ **FinTS for German banks** | No public domain required, no aggregator: Achilles talks to your bank directly. Fetches transactions and — where the bank supports HKWPD — your portfolio holdings. |
 | 🏷️ **Auto-categorization** | Rule-based categories (groceries, subscriptions, housing, …). Manual overrides stick and survive re-syncs. |
 | 🥇 **Precious metals** | Track every purchase as its own lot — grams, cost basis, date, dealer. Live spot prices for gold, silver, platinum and palladium show current value and P/L per lot and per metal. |
 | 📈 **Investments + live prices** | Stocks, ETFs, crypto. Add a Yahoo-format symbol (`AAPL`, `VWCE.DE`, `BTC-EUR`) and refresh every price with one click, including USD→EUR conversion. |
-| 👀 **Watchlist** | Watch any symbol with its price and daily change. |
+| 👀 **Watchlist** | Watch any symbol with its price, daily change and gain since you added it. Pin favourites to the top, drag tiles to rearrange, hover for a 6-month chart. |
+| 🤝 **Loans** | Money you lent out and money you took on — privately or from a bank, with or without interest. Interest accrues daily on the outstanding balance; payments cover interest first, then principal. You choose whether they count towards net worth. |
 | 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, your FIRE number, and years to financial independence — interactive sliders, seeded from your real net worth. |
-| 🐷 **Pension tracking** | Log balances from your pension statements; the latest one feeds into net worth and the FIRE simulation. |
+| 🐷 **Pension tracking** | Log balances from your pension statements and split contributions across ETFs by weight; the latest balance feeds into net worth and the FIRE simulation. <br>[Screenshot](docs/screenshots/pension.png) |
 | 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
+| 💱 **Your currency** | Display everything in one of twelve currencies, with **USD always shown alongside**. Amounts stay in EUR internally; conversion happens at display time with ECB reference rates. |
 | ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |
 | 🔐 **Login** | Username + password (scrypt), enabled in Settings. Off by default so a fresh install can't lock you out — turn it on before anyone else can reach the host. |
 | 💾 **Encrypted backup** | Settings → Backup downloads a password-protected `.achillesbak` (AES-256-GCM). It contains your banking private key, so it's never written in the clear — and never restorable without the password. |
-| 🔒 **Private by design** | One SQLite file on your server. Outbound calls go only to public price/FX APIs and your bank's PSD2 endpoint — no analytics, no cloud, no middleman holding your data. |
+| 🔎 **Every outbound call, listed** | Settings → External services names each service Achilles contacts, **what actually leaves your server**, when, and the source file to check the claim. Six entries, compiled from every `fetch()` in the code. |
+| 🔒 **Private by design** | One SQLite file on your server. No analytics, no telemetry, no third-party scripts, fonts or tracking pixels. |
 
 ## Quick start (local)
 
@@ -87,6 +111,140 @@ docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
 
 Or use **Settings → Backup** for an encrypted `.achillesbak` you can download and restore from the
 browser — no shell needed.
+
+## Tutorials
+
+Everything below assumes Achilles is running and you have opened it in a browser.
+
+<details open>
+<summary><b>1 · First run — click around before committing anything</b></summary>
+
+The setup wizard asks for your language and country. You do **not** need a bank connection to start.
+
+1. Go to **Settings → Demo data → Load demo data**. You now have a year of transactions, metal lots,
+   a portfolio, a pension history and loans — exactly what the screenshots above show.
+2. Walk through the nav. Nothing here talks to your bank yet.
+3. When you are done, **Settings → Remove demo data** deletes every demo row and leaves anything you
+   added yourself untouched.
+
+> Loading demo data on top of real data mixes the two. Achilles warns you first and tells you how
+> many real accounts it found — read that dialog rather than clicking through it.
+
+</details>
+
+<details>
+<summary><b>2 · Getting your data in — three ways</b></summary>
+
+![Connect](docs/screenshots/connect.png)
+
+**By QR code (Enable Banking, 2,700+ banks).** Settings → Integrations → enable Enable Banking, then
+**Connect** → pick your country → search your bank → scan the QR code with your phone → approve in
+your banking app. Achilles pulls up to 12 months of history.
+Needs a public HTTPS address — see [Connecting your bank](#connecting-your-bank) below.
+
+![Transactions](docs/screenshots/transactions.png)
+
+**By CSV (works everywhere, no account).** Export a statement from your banking app,
+then **Connect → CSV import**. The format is detected, not assumed: delimiter, header row and columns
+are read from your file. Duplicates are recognised, and categories you set by hand survive re-imports.
+
+**By FinTS (German banks, no public domain needed).** Settings → Integrations → FinTS. You need your
+bank's FinTS URL, your login and a **product ID** — see [FinTS registration](#fints-registration).
+This talks to your bank directly, with no aggregator in between.
+
+</details>
+
+<details>
+<summary><b>3 · Precious metals — every purchase is its own lot</b></summary>
+
+![Precious metals](docs/screenshots/metals.png)
+
+**Precious Metals → Add purchase.** Enter grams, the **total** you paid, and the date.
+
+Each purchase stays a separate lot with its own cost basis, so buying gold three times at three
+prices gives you three honest P/L numbers instead of one blurred average. Spot prices come from
+gold-api.com and update on **Refresh prices**.
+
+</details>
+
+<details>
+<summary><b>4 · Investments — by hand, by CSV, or from your bank</b></summary>
+
+![Investments](docs/screenshots/investments.png)
+
+**By hand:** *Add position*. Give it a **Yahoo-format symbol** (`AAPL`, `VWCE.DE`, `IWDA.AS`,
+`BTC-EUR`) and *Refresh prices* keeps it current. Without a symbol you maintain the price yourself.
+
+**By CSV:** *Import CSV* reads a broker export. Two shapes are handled — a **holdings list** (one row
+per position) and an **order list** (one row per buy/sell), which is netted into positions at
+weighted average cost, fees included. Re-importing updates instead of duplicating.
+
+**From your bank:** with FinTS configured, *Fetch portfolio* pulls your depot directly.
+
+> Banks identify securities by **ISIN**, which Yahoo cannot price. Achilles merges those into an
+> existing position by name where it can, so `865985` lands on your `AAPL` rather than counting Apple
+> twice. Where no match exists, the dialog tells you plainly that *Refresh prices* will skip it —
+> add the Yahoo symbol by hand and it works.
+
+</details>
+
+<details>
+<summary><b>5 · Loans — with or without interest</b></summary>
+
+![Loans](docs/screenshots/loans.png)
+
+**Loans → Add a loan.** Choose the direction (you lent it out / you took it on), the counterparty,
+the amount, and optionally a rate and a due date. Then record payments as they happen.
+
+How the interest is calculated — stated openly, because a plausible number and a correct one look
+identical:
+
+- On the balance **still outstanding**, not the original sum.
+- Daily, on **act/365** (actual days ÷ 365).
+- **Simple** — accrued interest is not compounded.
+- A payment **covers accrued interest first**, then principal, the way a bank does it.
+
+**Settings → Loans in net worth** decides whether any of this touches your net worth. The default
+leaves loans out entirely. Worth knowing: that is cautious about money you lent out, but generous
+about money you owe — a bank loan lifts your net worth for as long as the cash sits in your account.
+*Subtract debts only* is the consistently cautious choice.
+
+</details>
+
+<details>
+<summary><b>6 · Emergency fund and FIRE</b></summary>
+
+![FIRE](docs/screenshots/fire.png)
+
+![Emergency fund](docs/screenshots/emergency.png)
+
+**Emergency fund:** point it at an account, or enter a figure by hand if the money sits somewhere
+Achilles cannot see. Set a target in months of spending. That money is then **excluded from FIRE
+starting capital** — earmarked reserves are not investable wealth.
+
+**FIRE:** *New scenario* opens the calculator. Set your age, monthly spending, savings rate, expected
+return and inflation. Starting capital is seeded from your **real** net worth, and you pick which
+parts count — cash, metals, investments, pension. Save several scenarios and compare them; each keeps
+its own progress.
+
+</details>
+
+<details>
+<summary><b>7 · Making it yours</b></summary>
+
+- **Currency** — Settings → Currency. Twelve currencies, with USD always shown alongside. Stored in
+  EUR, converted only for display, so nothing is rewritten in your database.
+- **Watchlist** — pin the symbols you actually follow to the top, drag tiles to swap them, hover for
+  a 6-month chart.
+- **Login** — Settings → Login. Off by default so a fresh install cannot lock you out. **Turn it on
+  before the host is reachable by anyone else.**
+- **Backup** — Settings → Backup downloads a password-protected `.achillesbak`. It holds your banking
+  private key and every transaction, so it is never written in the clear — and never restorable
+  without the password. Keep the password somewhere other than the file.
+- **What leaves your server** — Settings → External services lists every outbound call, what it
+  sends, and where in the source to verify it.
+
+</details>
 
 ## Connecting your bank
 
@@ -153,6 +311,19 @@ Idempotent: it exits early if you're already on the latest commit, and logs to `
 > In-app updates need `./control` bind-mounted and the systemd watcher installed (the Proxmox
 > installer does both). Without it, the app still *checks* for updates and shows you the shell command
 > to copy — it just won't run it itself. The app never gets access to the Docker socket.
+
+## FinTS registration
+
+FinTS access has required a **registered product** since 1 August 2019. The registration covers *the
+application a user runs*, is **free**, and takes 10–15 working days. There is no exemption for open
+source or private use.
+
+Achilles deliberately ships **no** product ID. It is source code you run yourself, so registration is
+yours to do — enter your number under Settings → Integrations → FinTS. Without one, most banks answer
+`9050 / 3078 — Software nicht als FinTS-Produkt registriert`, which Achilles translates for you.
+
+Apply at [fints.org → Produktregistrierung](https://www.fints.org/de/hersteller/produktregistrierung).
+Enable Banking and CSV import need none of this.
 
 ## Stack
 

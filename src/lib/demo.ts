@@ -1,6 +1,18 @@
 import { db, deleteSetting, getSetting, setSetting } from "./db";
 import { categorize } from "./categorize";
 
+/**
+ * Datum relativ zu heute als ISO-Tag.
+ * Demo-Daten müssen mitwandern — ein fest eingetragenes Datum wäre in einem
+ * Jahr sichtbar veraltet.
+ */
+function iso(daysFromToday: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromToday);
+  // Lokales Datum, nicht toISOString(): Das verschöbe abends um einen Tag.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** Seed realistischer Demo-Daten, solange noch keine Bank verbunden ist. */
 export function seedDemoData() {
   const d = db();
@@ -111,6 +123,26 @@ export function seedDemoData() {
     inv.run("Bitcoin", "BTC-EUR", 0.18, 38200, 61800, "crypto", ts);
   }
 
+  const loanCount = (d.prepare("SELECT COUNT(*) AS c FROM loans").get() as { c: number }).c;
+  if (loanCount === 0) {
+    const loan = d.prepare(
+      `INSERT INTO loans (direction, counterparty, kind, principal_eur, interest_pct, start_date, due_date, note, demo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    );
+    const pay = d.prepare("INSERT INTO loan_payments (loan_id, paid_on, amount_eur, note) VALUES (?, ?, ?, ?)");
+    // Je ein Fall pro Bauart: zinslos verliehen, verzinst verliehen,
+    // Bankkredit — sonst zeigt die Demo nur die Hälfte der Funktion.
+    const a = loan.run("lent", "Tobias", "private", 2500, 0, iso(-190), iso(-15), "Umzug").lastInsertRowid;
+    pay.run(a, iso(-120), 1000, null);
+    pay.run(a, iso(-45), 500, null);
+
+    const b = loan.run("lent", "Nadine", "private", 5000, 3.5, iso(-380), null, null).lastInsertRowid;
+    pay.run(b, iso(-200), 800, null);
+
+    const c = loan.run("borrowed", "Sparkasse", "bank", 12000, 4.9, iso(-500), iso(560), "Autokredit").lastInsertRowid;
+    for (let i = 15; i >= 1; i--) pay.run(c, iso(-i * 30), 320, null);
+  }
+
   const penCount = (d.prepare("SELECT COUNT(*) AS c FROM pension_statements").get() as { c: number }).c;
   if (penCount === 0) {
     const pen = d.prepare(
@@ -195,6 +227,9 @@ export function clearDemoData() {
     d.prepare("DELETE FROM pension_statements WHERE demo = 1").run();
     d.prepare("DELETE FROM pension_allocation WHERE demo = 1").run();
     d.prepare("DELETE FROM fire_scenarios WHERE demo = 1").run();
+    // Zahlungen zuerst: Sie hängen an den Krediten und blieben sonst verwaist.
+    d.prepare("DELETE FROM loan_payments WHERE loan_id IN (SELECT id FROM loans WHERE demo = 1)").run();
+    d.prepare("DELETE FROM loans WHERE demo = 1").run();
     if (getSetting("pension_provider") === "Muster Direktversicherung (Demo)") {
       deleteSetting("pension_provider");
       deleteSetting("pension_monthly");
