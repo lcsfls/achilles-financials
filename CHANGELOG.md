@@ -3,6 +3,41 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.1] — 2026-07-17
+
+### Added
+- **Login.** Username and password (scrypt via `node:crypto`), enforced in middleware so no route can
+  be forgotten. Sessions are signed HMAC tokens in an httpOnly cookie; changing the password
+  invalidates them. Off until you configure it, so a fresh install can't lock you out.
+  Passkeys are not implemented yet.
+- **Encrypted backup.** Settings → Backup downloads a password-protected `.achillesbak`
+  (AES-256-GCM, key derived with scrypt), and restores from one. The file holds your banking private
+  key and every transaction, so it is never written in the clear — and never restorable without the
+  password.
+- **Public address setting.** Behind a reverse proxy the app can now be told its own HTTPS domain.
+  Settings shows the redirect URL it will actually send to Enable Banking and warns when it isn't
+  HTTPS.
+- **Emergency fund** works without an account — reserves the app can't see (savings at another bank,
+  cash) can be entered manually — and has its own page and nav entry.
+- **Container password.** The Proxmox installer now generates a root password, sets it, and prints it
+  once at the end. Previously `pct create` ran without `--password`, so the container had none at all.
+
+### Fixed
+- **Restoring a backup no longer breaks the app.** Swapping the database file invalidated every
+  SQLite connection except the restoring route's own — Next.js bundles routes separately, so each
+  holds its own. Restore now replaces the contents inside the live connection via `ATTACH`, copying
+  only columns present in both schemas so older backups still restore.
+- **The permissions hint said "fix it on the host"**, which read as "log into the container" — a
+  container that has no password to log in with. It now shows the `pct exec` form and states that no
+  container password is needed.
+
+### Documentation
+- Enable Banking production access requires an **HTTPS redirect URL** (a LAN-only install cannot
+  complete the QR flow) and **published privacy policy and terms pages** plus a data protection
+  email, which Enable Banking monitors for availability. Neither applies to the CSV import.
+
+[1.0.1]: https://github.com/lcsfls/achilles-financials/releases/tag/v1.0.1
+
 ## [1.0.0] — 2026-07-17
 
 First tagged release.
