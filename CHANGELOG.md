@@ -3,6 +3,32 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.2.0] — 2026-07-17
+
+### Added
+- **Loans** — a new section in the nav. Track money you lent out to someone and money you took on,
+  privately or from a bank, with or without interest. Payments are entered by hand; each loan shows
+  what is still outstanding, how much of the principal is repaid, the interest so far, and whether it
+  is past its due date. Lent-out and taken-on totals are shown separately rather than netted: a claim
+  and a debt are different things, and one number for both would say nothing.
+
+#### How the interest is calculated
+Stated openly, because a plausible number is not the same as a correct one:
+
+- Interest accrues on the balance **still outstanding**, not on the original sum — repay half and you
+  pay interest on half from then on.
+- Daily, on **act/365** (actual days ÷ 365), the usual convention for private lending and easy to
+  check by hand.
+- **Simple interest**: accrued interest is not itself compounded. A private loan with compounding
+  would be the exception rather than the rule.
+- A payment **covers the accrued interest first**, and the remainder repays the principal — the way a
+  bank does it. The other way round would quietly leave interest behind.
+- Overpaying does not produce a negative debt; the loan shows nothing outstanding and the surplus is
+  named separately.
+
+There is deliberately no fixed instalment schedule: the page records what was actually paid, not what
+was supposed to be paid. The maths is covered by 15 tests against hand-computed values.
+
 ## [1.1.0] — 2026-07-17
 
 ### Added

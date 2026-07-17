@@ -128,6 +128,32 @@ function migrate(d: Database.Database) {
       demo INTEGER DEFAULT 0
     );
 
+    -- Kredite: verliehen (Forderung) oder aufgenommen (Verbindlichkeit)
+    CREATE TABLE IF NOT EXISTS loans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      direction TEXT NOT NULL,          -- lent | borrowed
+      counterparty TEXT NOT NULL,       -- an wen verliehen / bei wem aufgenommen
+      kind TEXT NOT NULL DEFAULT 'private',  -- private | bank
+      principal_eur REAL NOT NULL,      -- ursprüngliche Summe
+      interest_pct REAL DEFAULT 0,      -- Jahreszins in %, 0 = zinslos
+      start_date TEXT NOT NULL,
+      due_date TEXT,                    -- optional
+      note TEXT,
+      closed INTEGER DEFAULT 0,         -- von Hand abgeschlossen
+      demo INTEGER DEFAULT 0
+    );
+
+    -- Einzelne Zahlungen auf einen Kredit, von Hand erfasst
+    CREATE TABLE IF NOT EXISTS loan_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loan_id INTEGER NOT NULL,
+      paid_on TEXT NOT NULL,
+      amount_eur REAL NOT NULL,
+      note TEXT,
+      FOREIGN KEY (loan_id) REFERENCES loans(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_loan_payments ON loan_payments(loan_id);
+
     -- Gespeicherte FIRE-Szenarien; params als JSON, damit neue Parameter
     -- keine Migration brauchen
     CREATE TABLE IF NOT EXISTS fire_scenarios (
