@@ -3,6 +3,17 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.4] — 2026-07-17
+
+### Fixed
+- **The login page flickered and could not be used.** With a login configured, the app shell asked
+  `/api/settings` for the setup state from every page — including `/login`, where that endpoint
+  correctly answers 401 because nobody is signed in yet. Since 1.0.3 a 401 sent the browser to
+  `/login`, which reloaded the page, which asked again: an endless loop that reloaded the form faster
+  than anyone could type into it. Two things were wrong and both are fixed — a 401 no longer
+  redirects when you are already on the login page, and the shell no longer runs its setup check
+  there at all (anyone reaching the login has finished setup anyway).
+
 ## [1.0.3] — 2026-07-17
 
 ### Added

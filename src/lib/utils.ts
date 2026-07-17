@@ -15,7 +15,11 @@ export function cn(...inputs: ClassValue[]) {
  */
 export async function apiJson<T = unknown>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
-  if (res.status === 401 && typeof window !== "undefined") {
+  // Auf der Login-Seite selbst NICHT weiterleiten: Dort ist ein 401 der
+  // Normalfall, und ein Sprung nach /login lädt die Seite neu, die dann
+  // erneut abruft — eine Endlosschleife, die als Flackern erscheint und die
+  // Eingabe der Zugangsdaten unmöglich macht.
+  if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
     window.location.href = "/login";
     // Bewusst nie erfüllt: Während der Wechsel zur Login-Seite läuft, soll
     // kein Aufrufer mit Fehlerdaten weiterrendern.

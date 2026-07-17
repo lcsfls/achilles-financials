@@ -26,8 +26,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   const [checked, setChecked] = useState(false);
 
-  // Ersteinrichtung: ohne abgeschlossenes Setup zum Wizard umleiten
+  // Ersteinrichtung: ohne abgeschlossenes Setup zum Wizard umleiten.
+  //
+  // Auf der Login-Seite darf das nicht laufen: /api/settings ist geschützt,
+  // liefert dort also 401. Der Setup-Stand ist damit unbekannt — und die
+  // Antwort ohne setupDone sähe aus wie „Setup fehlt“ und würde zum Wizard
+  // schicken, den die Middleware sofort wieder auf /login zurückwirft.
+  // Wer sich anmelden will, hat das Setup ohnehin hinter sich.
   useEffect(() => {
+    if (pathname === "/login") { setChecked(true); return; }
     apiJson<{ setupDone: boolean }>("/api/settings")
       .then((s) => {
         if (!s.setupDone && pathname !== "/setup") router.replace("/setup");
