@@ -3,6 +3,27 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.1.0] — 2026-07-17
+
+### Added
+- **External services page** (Settings → External services). Every connection Achilles makes on its
+  own, listed in full: what it is for, **what actually leaves your server**, when it happens, and the
+  file in the source where you can check the claim. Six entries — Yahoo Finance, gold-api.com,
+  frankfurter.dev, GitHub, Enable Banking and FinTS — each marked as always-on or only-when-used.
+  The list was compiled from every outbound `fetch()` in the code, and it lives next to that code
+  (`src/lib/services.ts`) rather than in the README, because a page that claims completeness has to
+  be maintained where the calls are made.
+- **Rearrange watchlist tiles by drag and drop.** Dragging one tile onto another swaps their places.
+  Swaps happen within a group only: pinned tiles always sort first, so exchanging a pinned tile with
+  an unpinned one would leave the dragged tile where it was and make the other one jump — which would
+  read as broken. A new symbol is appended rather than inserted, so it never disturbs an order you
+  arranged yourself.
+
+### Fixed
+- Floating panels fall back to an opaque background where `backdrop-filter` is unavailable (old
+  browsers, disabled GPU acceleration). Without it a translucent panel is not glass but a hole, with
+  chart lines running unfiltered through the numbers.
+
 ## [1.0.10] — 2026-07-17
 
 ### Fixed

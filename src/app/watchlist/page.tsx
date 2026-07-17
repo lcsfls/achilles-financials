@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus, Pin } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus, Pin, GripVertical } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,13 @@ export default function WatchlistPage() {
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<WatchItem | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  // Die gezogene Kachel steht im Ref, nicht nur im State: Der Drop-Handler
+  // liest sie sofort, und ein State-Wert wäre in seiner Closure noch der alte,
+  // wenn zwischen dragstart und drop kein Rendern lag. Der State daneben dient
+  // nur der Darstellung.
+  const dragIdRef = useRef<number | null>(null);
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
 
   const load = useCallback((refresh = false) =>
     apiJson<{ watchlist: WatchItem[] }>(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((d) => setItems(d.watchlist)), []);
@@ -48,15 +55,42 @@ export default function WatchlistPage() {
     load();
   };
 
+  /** Dieselbe Reihenfolge wie im Backend (pinned DESC, sort_order). */
+  const sorted = (list: WatchItem[]) =>
+    [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || list.indexOf(a) - list.indexOf(b));
+
+  /**
+   * Zwei Kacheln tauschen die Plätze.
+   *
+   * Nur innerhalb derselben Gruppe: Angepinnte stehen immer vorn, ein Tausch
+   * über die Gruppengrenze hinweg würde die gezogene Kachel also gar nicht
+   * bewegen und nur die andere wegspringen lassen — das sähe kaputt aus.
+   */
+  const drop = async (target: WatchItem) => {
+    const src = items?.find((i) => i.id === dragIdRef.current);
+    dragIdRef.current = null;
+    setDragId(null);
+    setOverId(null);
+    if (!src || !items || src.id === target.id || src.pinned !== target.pinned) return;
+
+    const next = [...items];
+    const a = next.findIndex((i) => i.id === src.id);
+    const b = next.findIndex((i) => i.id === target.id);
+    [next[a], next[b]] = [next[b], next[a]];
+    setItems(next);
+
+    await fetch("/api/watchlist", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: next.map((i) => i.id) }),
+    });
+  };
+
   const togglePin = async (w: WatchItem) => {
     // Sofort umsortieren und erst danach speichern: Ein Pin ist eine winzige
     // Änderung, auf die man nicht auf den Server warten möchte. Dieselbe
     // Sortierung wie im Backend, damit das Ergebnis nicht springt.
-    setItems((prev) =>
-      (prev ?? [])
-        .map((i) => (i.id === w.id ? { ...i, pinned: !i.pinned } : i))
-        .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.added_at.localeCompare(b.added_at))
-    );
+    setItems((prev) => sorted((prev ?? []).map((i) => (i.id === w.id ? { ...i, pinned: !i.pinned } : i))));
     await fetch("/api/watchlist", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -146,7 +180,21 @@ export default function WatchlistPage() {
             return (
               <Card
                 key={w.id}
-                className={cn("glass-hover rise group p-5", `rise-${(i % 5) + 1}`, w.pinned && "border-gold/25")}
+                draggable
+                onDragStart={(e) => { dragIdRef.current = w.id; setDragId(w.id); e.dataTransfer.effectAllowed = "move"; }}
+                onDragEnd={() => { dragIdRef.current = null; setDragId(null); setOverId(null); }}
+                // preventDefault ist Pflicht — ohne das lehnt der Browser den Drop ab
+                onDragOver={(e) => { e.preventDefault(); setOverId(w.id); }}
+                onDragLeave={() => setOverId((prev) => (prev === w.id ? null : prev))}
+                onDrop={(e) => { e.preventDefault(); drop(w); }}
+                className={cn(
+                  "glass-hover rise group p-5", `rise-${(i % 5) + 1}`,
+                  w.pinned && "border-gold/25",
+                  dragId === w.id && "opacity-40",
+                  // Nur als Ziel markieren, wo ein Tausch auch stattfindet
+                  overId === w.id && dragId !== null && dragId !== w.id &&
+                    items.find((x) => x.id === dragId)?.pinned === w.pinned && "border-gold/60 ring-1 ring-gold/30"
+                )}
                 // hovered auch bei jeder Bewegung setzen, nicht nur bei Enter:
                 // bleibt das Enter-Event aus (schneller Wechsel, synthetische
                 // Events), zeigte die Karte sonst den vorigen Wert weiter.
@@ -163,6 +211,11 @@ export default function WatchlistPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    {/* Sichtbarer Anfasser: Dass eine Kachel ziehbar ist, sieht
+                        man ihr sonst nicht an. */}
+                    <span className="cursor-grab rounded-lg p-1.5 text-muted-2 opacity-0 transition-all group-hover:opacity-100 active:cursor-grabbing" title={t("Ziehen zum Tauschen")}>
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </span>
                     {/* Angepinnt bleibt sichtbar — sonst wäre nicht erkennbar,
                         warum eine Kachel vorn steht. */}
                     <button

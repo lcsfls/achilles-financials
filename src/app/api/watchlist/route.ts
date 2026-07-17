@@ -8,13 +8,14 @@ type Row = {
   id: number; symbol: string; label: string | null; added_at: string;
   price_at_add: number | null; price_eur_at_add: number | null; currency_at_add: string | null;
   pinned: number;
+  sort_order: number;
 };
 
 export async function GET(req: NextRequest) {
   const force = new URL(req.url).searchParams.get("refresh") === "1";
   // Angepinnte zuerst — die Reihenfolge kommt aus der Datenbank, damit sie
   // auf jedem Gerät gleich ist und nicht erst im Browser entsteht.
-  const rows = db().prepare("SELECT * FROM watchlist ORDER BY pinned DESC, added_at").all() as Row[];
+  const rows = db().prepare("SELECT * FROM watchlist ORDER BY pinned DESC, sort_order, added_at").all() as Row[];
   const quotes = await getQuotes(rows.map((r) => r.symbol), force);
 
   return NextResponse.json({
@@ -70,8 +71,11 @@ export async function POST(req: NextRequest) {
   try {
     // Kurs beim Hinzufügen festhalten — er ist die Bezugsgröße für den Zuwachs
     // und später nicht mehr rekonstruierbar.
+    // Ans Ende einsortieren — ein neuer Wert soll die selbst gelegte
+    // Reihenfolge nicht durcheinanderbringen.
     db().prepare(
-      "INSERT INTO watchlist (symbol, label, added_at, price_at_add, price_eur_at_add, currency_at_add) VALUES (?, ?, ?, ?, ?, ?)"
+      `INSERT INTO watchlist (symbol, label, added_at, price_at_add, price_eur_at_add, currency_at_add, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM watchlist))`
     ).run(sym, label || quote.name, new Date().toISOString(), quote.price, quote.priceEur, quote.currency);
   } catch {
     return NextResponse.json({ error: "Symbol ist bereits auf der Watchlist" }, { status: 409 });
@@ -79,9 +83,20 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, quote });
 }
 
-/** Anpinnen / lösen. */
+/** Anpinnen / lösen — oder die Reihenfolge neu setzen. */
 export async function PATCH(req: NextRequest) {
-  const { id, pinned } = await req.json();
+  const body = await req.json();
+
+  // Ganze Reihenfolge statt einzelner Positionen: Nach einem Tausch sind immer
+  // zwei Kacheln betroffen, und die Liste als Ganzes zu schreiben kann nicht
+  // halb misslingen.
+  if (Array.isArray(body.order)) {
+    const set = db().prepare("UPDATE watchlist SET sort_order = ? WHERE id = ?");
+    db().transaction((ids: number[]) => ids.forEach((id, i) => set.run(i + 1, id)))(body.order);
+    return NextResponse.json({ ok: true });
+  }
+
+  const { id, pinned } = body;
   if (typeof id !== "number") return NextResponse.json({ error: "id erforderlich" }, { status: 400 });
   db().prepare("UPDATE watchlist SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, id);
   return NextResponse.json({ ok: true });

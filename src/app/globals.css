@@ -91,6 +91,20 @@ body {
     0 24px 48px -20px rgba(0, 0, 0, 0.8);
 }
 
+/*
+ * Ohne backdrop-filter wäre die durchscheinende Fläche kein Glas, sondern nur
+ * ein Loch: Der Chart liefe ungefiltert durch die Zahlen. Dann lieber deckend
+ * und lesbar. Betrifft alte Browser und Umgebungen mit abgeschalteter
+ * Grafikbeschleunigung.
+ */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-float {
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03) 55%),
+      rgba(12, 14, 20, 0.95);
+  }
+}
+
 .glass-hover {
   transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }

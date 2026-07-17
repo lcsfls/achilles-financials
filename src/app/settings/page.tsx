@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { UpdateDialog } from "@/components/update-dialog";
 import { IntegrationsSection } from "@/components/integrations-section";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { CURRENCIES } from "@/lib/currency";
+import { SERVICES } from "@/lib/services";
 import { COUNTRIES } from "@/lib/countries";
 import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ export default function SettingsPage() {
   const [bakInfo, setBakInfo] = useState<string | null>(null);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [demoCounts, setDemoCounts] = useState<{ accounts: number; netWorth: number } | null>(null);
+  const [servicesOpen, setServicesOpen] = useState(false);
 
 
   const load = () => apiJson<Settings>("/api/settings").then(setSettings);
@@ -564,6 +566,74 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Ausgehende Verbindungen */}
+      <Card className="rise">
+        <CardHeader className="flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-soft/10 border border-emerald-soft/20">
+              <ShieldCheck className="h-5 w-5 text-emerald-soft" strokeWidth={1.7} />
+            </div>
+            <div>
+              <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Externe Dienste")}</CardTitle>
+              <div className="text-xs text-muted-2">
+                {t("{n} Dienste · was abgerufen wird und was dabei rausgeht", { n: SERVICES.length })}
+              </div>
+            </div>
+          </div>
+          <Button variant="glass" size="sm" onClick={() => setServicesOpen(true)}>{t("Ansehen")}</Button>
+        </CardHeader>
+      </Card>
+
+      <Dialog open={servicesOpen} onOpenChange={setServicesOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-emerald-soft" />
+            {t("Externe Dienste")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("Jede Verbindung, die Achilles von sich aus nach außen aufbaut — vollständig. Alles andere bleibt auf deinem Server.")}
+          </DialogDescription>
+
+          <div className="mt-4 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+            {SERVICES.map((sv) => (
+              <div key={sv.host} className="glass-inset rounded-xl p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="num text-sm font-semibold text-foreground">{sv.host}</span>
+                  <Badge color={sv.optional ? "#38bdf8" : "#6b7280"}>
+                    {sv.optional ? t("nur bei Nutzung") : t("immer")}
+                  </Badge>
+                </div>
+                <div className="mt-2 space-y-1.5 text-xs leading-relaxed">
+                  <div className="text-muted">{sv.purpose[lang]}</div>
+                  {/* Das Wichtigste hervorheben: was den Server verlässt */}
+                  <div className="flex gap-2">
+                    <span className="shrink-0 text-muted-2">{t("Sendet:")}</span>
+                    <span className="text-foreground/85">{sv.sends[lang]}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="shrink-0 text-muted-2">{t("Wann:")}</span>
+                    <span className="text-muted">{sv.when[lang]}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-muted-2">
+                    {/* Quelle nennen, damit die Angaben nachprüfbar sind */}
+                    <span className="num">{sv.source}</span>
+                    {sv.privacyUrl && (
+                      <a href={sv.privacyUrl} target="_blank" rel="noreferrer" className="text-gold-bright underline underline-offset-2">
+                        {t("Datenschutzerklärung")}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-[11px] leading-relaxed text-muted-2">
+            {t("Kurse und Wechselkurse werden ohne Anmeldung abgerufen — die Dienste sehen die IP deines Servers und das abgefragte Symbol, sonst nichts. Achilles sendet keine Telemetrie und bindet keine Skripte, Schriften oder Zählpixel von Dritten ein.")}
+          </p>
+        </DialogContent>
+      </Dialog>
 
       <Card className="rise">
         <CardHeader className="flex-row items-center gap-3">

@@ -166,6 +166,18 @@ const EN: Record<string, string> = {
   "aktualisiert": "updated",
   "übersprungen": "skipped",
   "Erkannte Spalten": "Detected columns",
+  "Externe Dienste": "External services",
+  "{n} Dienste · was abgerufen wird und was dabei rausgeht": "{n} services · what is called and what leaves your server",
+  "Ansehen": "View",
+  "Jede Verbindung, die Achilles von sich aus nach außen aufbaut — vollständig. Alles andere bleibt auf deinem Server.":
+    "Every connection Achilles makes on its own — the complete list. Everything else stays on your server.",
+  "nur bei Nutzung": "only when used",
+  "immer": "always",
+  "Sendet:": "Sends:",
+  "Wann:": "When:",
+  "Datenschutzerklärung": "Privacy policy",
+  "Kurse und Wechselkurse werden ohne Anmeldung abgerufen — die Dienste sehen die IP deines Servers und das abgefragte Symbol, sonst nichts. Achilles sendet keine Telemetrie und bindet keine Skripte, Schriften oder Zählpixel von Dritten ein.":
+    "Prices and FX rates are fetched unauthenticated — those services see your server's IP and the symbol requested, nothing else. Achilles sends no telemetry and embeds no third-party scripts, fonts or tracking pixels.",
   "Depot abrufen": "Fetch portfolio",
   "{n} Depot(s) über FinTS abgerufen.": "Fetched {n} portfolio account(s) via FinTS.",
   "Für {n} keinen Einstandskurs erhalten — als Platzhalter steht dort der aktuelle Kurs, die Wertentwicklung zeigt deshalb 0 %. Bitte den echten Kaufkurs nachtragen.":
@@ -195,6 +207,7 @@ const EN: Record<string, string> = {
     "Empty — add symbols to watch prices (Yahoo format: AAPL, VWCE.DE, IWDA.AS, BTC-EUR, ^GSPC).",
   "Entfernen": "Remove",
   "Anpinnen": "Pin to top",
+  "Ziehen zum Tauschen": "Drag to swap",
   "Nicht mehr anpinnen": "Unpin",
   "Lade Investments …": "Loading investments …",
 
