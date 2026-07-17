@@ -44,7 +44,7 @@ type Summary = {
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass rounded-xl px-4 py-3 text-xs">
+    <div className="glass-float rounded-xl px-4 py-3 text-xs">
       <div className="mb-1.5 font-medium text-muted">{label}</div>
       {payload.map((p) => (
         <div key={p.name} className="flex items-center justify-between gap-6">

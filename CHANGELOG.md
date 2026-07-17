@@ -3,6 +3,21 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.6] — 2026-07-17
+
+### Fixed
+- **Chart tooltips and the price hover card were see-through.** They relied on `backdrop-filter`,
+  which cannot work there: a `transform` on an ancestor creates a backdrop root, and only what sits
+  behind the element *inside that root* gets blurred. Recharts positions its tooltip with exactly
+  such a transform on a wrapper that contains nothing but the tooltip — so there was literally
+  nothing to blur, the panel stayed transparent and chart lines ran straight through the numbers.
+  The transform belongs to Recharts and cannot be removed without losing the positioning.
+
+  Floating surfaces now carry their own near-opaque base (`.glass-float`) instead of depending on an
+  effect that is present or absent depending on the ancestor tree. The blur stays on top where it
+  does apply. This affected four surfaces, not the two that were visible at first glance: the cash
+  flow chart, the pension chart, the FIRE projection and the watchlist hover card.
+
 ## [1.0.5] — 2026-07-17
 
 ### Fixed

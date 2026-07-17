@@ -295,7 +295,7 @@ export default function FirePage() {
                 content={({ active: a, payload }) => {
                   if (!a || !payload?.length) return null;
                   return (
-                    <div className="glass rounded-xl px-4 py-3 text-xs">
+                    <div className="glass-float rounded-xl px-4 py-3 text-xs">
                       <div className="mb-1 text-muted">{t("Alter {age}", { age: Math.round(payload[0].payload.age) })}</div>
                       {payload.map((pl) => (
                         <div key={String(pl.name)} className="flex items-center justify-between gap-4">

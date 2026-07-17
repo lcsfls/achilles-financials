@@ -68,7 +68,7 @@ export function QuoteHoverCard({
 
   return createPortal(
     <div
-      className="glass pointer-events-none fixed z-[100] rounded-glass p-4"
+      className="glass-float pointer-events-none fixed z-[100] rounded-glass p-4"
       style={{ left, top, width: CARD_W }}
     >
       <div className="flex items-start justify-between gap-3">

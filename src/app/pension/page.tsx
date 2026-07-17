@@ -164,7 +164,7 @@ export default function PensionPage() {
                       if (!active || !payload?.length) return null;
                       const p = payload[0].payload as Statement & { label: string };
                       return (
-                        <div className="glass rounded-xl px-4 py-3 text-xs">
+                        <div className="glass-float rounded-xl px-4 py-3 text-xs">
                           <div className="mb-1 text-muted">{p.label}</div>
                           <div className="num text-sm font-semibold">{fmtEUR(p.balance_eur)}</div>
                           {p.contribution_eur != null && <div className="mt-0.5 text-muted-2">{t("Beitrag: {amount}", { amount: fmtEUR(p.contribution_eur) })}</div>}
