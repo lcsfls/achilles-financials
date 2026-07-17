@@ -3,6 +3,17 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.0.10] — 2026-07-17
+
+### Fixed
+- **The update button showed "update complete" and started nothing.** The dialog chose its view from
+  the status file alone, and that file outlives every run: after any successful update — including
+  one run from the shell — it says `success` forever. Opening the dialog therefore showed the result
+  of that earlier run, the confirmation step never appeared, and so the update was never requested.
+  A finished state now only counts when the run was started from this dialog; anything else opens on
+  the confirmation step. An update that is genuinely in progress is still shown, whoever started it,
+  so no second one can be launched alongside it.
+
 ## [1.0.9] — 2026-07-17
 
 ### Fixed

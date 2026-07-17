@@ -55,6 +55,16 @@ export function UpdateDialog({
 }) {
   const { t } = useI18n();
   const [starting, setStarting] = useState(false);
+  /**
+   * Wurde in dieser Dialog-Sitzung ein Update angestoßen?
+   *
+   * Die Statusdatei überlebt jeden Lauf: Nach einem erfolgreichen Update —
+   * auch einem über die Shell — steht dort dauerhaft "success". Wählte der
+   * Dialog seine Ansicht allein am Status, zeigte er beim Öffnen sofort das
+   * Ergebnis von damals, die Bestätigung erschien nie und der Start wurde nie
+   * ausgelöst. Ein fremdes Ergebnis ist kein Ergebnis dieses Dialogs.
+   */
+  const [startedHere, setStartedHere] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState<UpdateInfo | null>(null);
   // Während des Rebuilds ist der Container weg — das ist erwartet, kein Fehler
@@ -64,6 +74,11 @@ export function UpdateDialog({
   const current = live ?? info;
   const state = current?.status.state ?? "idle";
   const running = state === "requested" || state === "running";
+  // Abgeschlossen zählt nur, wenn der Lauf hier gestartet wurde. Ein gerade
+  // laufendes Update wird dagegen immer gezeigt — auch wenn es woanders
+  // angestoßen wurde, denn dann darf man keins danebenstarten.
+  const finished = startedHere && (state === "success" || state === "error");
+  const confirming = !running && !finished;
   const phase = phaseFromLog(current?.log ?? null, state);
 
   const poll = useCallback(async () => {
@@ -93,8 +108,8 @@ export function UpdateDialog({
   }, [current?.log]);
 
   useEffect(() => {
-    if (state === "success") onFinished?.();
-  }, [state, onFinished]);
+    if (startedHere && state === "success") onFinished?.();
+  }, [startedHere, state, onFinished]);
 
   const start = async () => {
     setStarting(true);
@@ -102,11 +117,12 @@ export function UpdateDialog({
     const res = await fetch("/api/update", { method: "POST" });
     setStarting(false);
     if (!res.ok) { setError(t((await res.json()).error)); return; }
+    setStartedHere(true);
     onStarted?.();
     poll();
   };
 
-  const reset = () => { setLive(null); setError(null); setUnreachable(false); };
+  const reset = () => { setLive(null); setError(null); setUnreachable(false); setStartedHere(false); };
 
   return (
     <Dialog
@@ -120,7 +136,7 @@ export function UpdateDialog({
     >
       <DialogContent className="max-w-lg">
         {/* Bestätigung */}
-        {state === "idle" && (
+        {confirming && (
           <>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-gold" />
@@ -241,7 +257,7 @@ export function UpdateDialog({
         )}
 
         {/* Fertig */}
-        {state === "success" && (
+        {finished && state === "success" && (
           <>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-emerald-soft" />
@@ -259,7 +275,7 @@ export function UpdateDialog({
         )}
 
         {/* Fehlgeschlagen */}
-        {state === "error" && (
+        {finished && state === "error" && (
           <>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-rose-soft" />
