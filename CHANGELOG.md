@@ -33,6 +33,16 @@ Known and **not** fixed, deliberately — see the README:
   can trigger an update, which runs a script as root on the container host. Turn it on before the
   host is reachable by anyone else.
 
+## [1.3.1] — 2026-07-17
+
+### Fixed
+- **The blur on chart tooltips and the price hover card was missing** — the glassmorphism showed no
+  frost. The cause was in the build, not the CSS: the minifier kept only the *last* of the two
+  `backdrop-filter` declarations and dropped the other, and it happened to keep the `-webkit-`
+  prefixed one — which the target browsers do not support. The computed value came out as `none`, so
+  nothing was blurred. Ordering the standard property last (after the `-webkit-` prefix) makes it
+  survive minification, and the frost is back on every glass surface.
+
 ## [1.3.0] — 2026-07-17
 
 ### Added

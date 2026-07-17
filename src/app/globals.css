@@ -60,8 +60,11 @@ body {
 .glass {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.028) 45%, rgba(255, 255, 255, 0.015));
   border: 1px solid var(--color-border-glass);
-  backdrop-filter: blur(22px) saturate(1.35);
+  /* -webkit- first, standard LAST: the CSS minifier was keeping only the last
+     of the two and dropping the other, and the target browsers need the
+     standard property — so it must come last to survive. */
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  backdrop-filter: blur(22px) saturate(1.35);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 24px 48px -24px rgba(0, 0, 0, 0.65);
@@ -84,8 +87,9 @@ body {
     linear-gradient(160deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.02)),
     rgba(10, 12, 18, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(28px) saturate(1.8);
+  /* -webkit- first, standard last — see .glass above. */
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.09) inset,
     0 24px 48px -20px rgba(0, 0, 0, 0.8);
