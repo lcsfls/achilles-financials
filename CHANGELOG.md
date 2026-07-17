@@ -3,6 +3,31 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.4.2] — 2026-07-17
+
+### Changed
+- **Watchlist tiles are now picked up, not just dragged.** The old HTML5 drag showed a flat ghost
+  image; this rebuilds the gesture on pointer events so the whole tile lifts off — it scales up,
+  tilts slightly, casts a shadow and follows your hand, leaving an open gap in its slot. The tile you
+  carry it over is marked as the drop target (gold ring), and releasing swaps the two. Same as before,
+  swaps stay within the pinned/unpinned group, and a plain click still reaches the pin and delete
+  buttons.
+
+### Fixed
+- Along the way: the drag transform was being overridden by the finished entrance animation (a done
+  CSS animation keeps holding `transform`, and animations outrank inline styles), which would have
+  frozen the lift flat. The entrance animation is now switched off on a tile while a drag is active.
+
+## [1.4.1] — 2026-07-17
+
+### Fixed
+- **The blur on chart tooltips and the price hover card was missing** — the glassmorphism showed no
+  frost. The cause was in the build, not the CSS: the minifier kept only the *last* of the two
+  `backdrop-filter` declarations and dropped the other, and it happened to keep the `-webkit-`
+  prefixed one — which the target browsers do not support. The computed value came out as `none`, so
+  nothing was blurred. Ordering the standard property last (after the `-webkit-` prefix) makes it
+  survive minification, and the frost is back on every glass surface.
+
 ## [1.4.0] — 2026-07-17
 
 ### Security
@@ -32,30 +57,6 @@ Known and **not** fixed, deliberately — see the README:
 - **The login is off by default.** Without it, anyone who can reach the host reads your finances and
   can trigger an update, which runs a script as root on the container host. Turn it on before the
   host is reachable by anyone else.
-
-## [1.3.2] — 2026-07-17
-
-### Changed
-- **Watchlist tiles are now picked up, not just dragged.** The old HTML5 drag showed a flat ghost
-  image; this rebuilds the gesture on pointer events so the whole tile lifts off — it scales up,
-  tilts slightly, casts a shadow and follows your hand, leaving an open gap in its slot. The tile you
-  carry it over is marked as the drop target (gold ring), and releasing swaps the two. Same as before,
-  swaps stay within the pinned/unpinned group, and a plain click still reaches the pin and delete
-  buttons.
-
-### Fixed
-- Along the way: the drag transform was being overridden by the finished entrance animation (a done
-  CSS animation keeps holding `transform`, and animations outrank inline styles), which would have
-  frozen the lift flat. The entrance animation is now switched off on a tile while a drag is active.
-## [1.3.1] — 2026-07-17
-
-### Fixed
-- **The blur on chart tooltips and the price hover card was missing** — the glassmorphism showed no
-  frost. The cause was in the build, not the CSS: the minifier kept only the *last* of the two
-  `backdrop-filter` declarations and dropped the other, and it happened to keep the `-webkit-`
-  prefixed one — which the target browsers do not support. The computed value came out as `none`, so
-  nothing was blurred. Ordering the standard property last (after the `-webkit-` prefix) makes it
-  survive minification, and the frost is back on every glass surface.
 
 ## [1.3.0] — 2026-07-17
 
