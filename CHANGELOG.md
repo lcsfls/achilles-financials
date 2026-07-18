@@ -3,6 +3,25 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.6.0] — 2026-07-18
+
+### Added
+- **Real estate** — a new section in the nav. Record a property with its address, value and floor
+  area, attach photos, and see €/m² plus the gain since purchase. Whether properties count towards
+  net worth is a setting, with the reasoning next to each option (default: they count — a property
+  you own is an asset you hold, unlike money lent out; any mortgage stays under Loans and follows
+  that setting).
+- Photos are stored **in the database**, not on disk, so the encrypted backup genuinely contains
+  them. They are downscaled in the browser to 1600px before upload, which keeps that promise
+  affordable — and the server rejects anything that isn't a JPEG, PNG or WebP under 3 MB.
+
+### Note: the value is entered by hand, on purpose
+There is deliberately no "estimate my property" button. A real automated valuation needs a paid AVM
+service, and the free official Bodenrichtwerte price only the *land*, not the building — a number
+derived from them would look like a valuation and mislead inside a net-worth figure. Instead every
+value carries **its date and its source** (appraisal, portal, own estimate), so a maintained figure
+is visibly different from a guessed one.
+
 ## [1.5.0] — 2026-07-17
 
 ### Added

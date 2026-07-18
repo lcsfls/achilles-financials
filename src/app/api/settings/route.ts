@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     language: getSetting("language") || "de",
     displayCurrency: getSetting("display_currency") || "EUR",
     loansInNetWorth: getSetting("loans_in_networth") || "none",
+    propertyInNetWorth: getSetting("property_in_networth") || "include",
     setupDone: getSetting("setup_done") === "1",
     authEnabled: authEnabled(),
     authUser: getUsername(),
@@ -41,6 +42,9 @@ export async function POST(req: NextRequest) {
   // Nur bekannte Werte — ein Tippfehler würde sonst still zu "nicht einbeziehen"
   if (["none", "borrowed", "both"].includes(body.loans_in_networth)) {
     setSetting("loans_in_networth", body.loans_in_networth);
+  }
+  if (["include", "exclude"].includes(body.property_in_networth)) {
+    setSetting("property_in_networth", body.property_in_networth);
   }
 
   // Login einrichten / ändern / abschalten

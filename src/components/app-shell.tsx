@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, ShieldCheck, Flame, PiggyBank, HandCoins } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, ShieldCheck, Flame, PiggyBank, HandCoins, Home } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ const NAV = [
   { href: "/pension", label: "Vorsorge", icon: PiggyBank },
   { href: "/emergency", label: "Notgroschen", icon: ShieldCheck },
   { href: "/loans", label: "Kredite", icon: HandCoins },
+  { href: "/realestate", label: "Immobilien", icon: Home },
   { href: "/fire", label: "FIRE", icon: Flame },
   { href: "/connect", label: "Verbinden", icon: QrCode },
   { href: "/settings", label: "Einstellungen", icon: Settings },

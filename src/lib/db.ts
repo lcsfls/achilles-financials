@@ -128,6 +128,38 @@ function migrate(d: Database.Database) {
       demo INTEGER DEFAULT 0
     );
 
+    -- Real estate. The value is entered by hand: a genuine automated valuation
+    -- needs a paid AVM service, and official Bodenrichtwerte only price the
+    -- land, not the building — a number from those would mislead. Whoever
+    -- enters the value also records where it came from.
+    CREATE TABLE IF NOT EXISTS properties (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      address TEXT,
+      value_eur REAL NOT NULL DEFAULT 0,
+      value_source TEXT,                -- appraisal, portal listing, own estimate …
+      valued_on TEXT,                   -- the value is only as good as its date
+      purchase_price_eur REAL,
+      purchase_date TEXT,
+      size_sqm REAL,
+      note TEXT,
+      created_at TEXT NOT NULL,
+      demo INTEGER DEFAULT 0
+    );
+
+    -- Photos live in the database, not on disk, so the encrypted backup really
+    -- contains everything. They are downscaled in the browser before upload to
+    -- keep that honest promise affordable.
+    CREATE TABLE IF NOT EXISTS property_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      property_id INTEGER NOT NULL,
+      image BLOB NOT NULL,
+      mime TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (property_id) REFERENCES properties(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_property_photos ON property_photos(property_id);
+
     -- Kredite: verliehen (Forderung) oder aufgenommen (Verbindlichkeit)
     CREATE TABLE IF NOT EXISTS loans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

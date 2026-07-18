@@ -20,6 +20,7 @@ const EN: Record<string, string> = {
   "FIRE": "FIRE",
   "Notgroschen": "Emergency fund",
   "Kredite": "Loans",
+  "Immobilien": "Real estate",
   "Zu viele Fehlversuche. Bitte {n} Sekunden warten.": "Too many failed attempts. Please wait {n} seconds.",
   "Die Datei ist zu groß — erlaubt sind maximal 20 MB.": "The file is too large — the limit is 20 MB.",
   "Verbinden": "Connect",
@@ -202,6 +203,50 @@ const EN: Record<string, string> = {
   "Es konnte keine einzige Position gelesen werden — Stückzahl- oder Kursspalte passen nicht.":
     "Not a single position could be read — the quantity or price column does not match.",
   "Watchlist": "Watchlist",
+
+  // Immobilien
+  "Adresse, Wert und Fotos — der Wert wird von Hand gepflegt.": "Address, value and photos — the value is maintained by hand.",
+  "{n} Objekte": "{n} properties",
+  "Immobilie erfassen": "Add a property",
+  "Den Wert trägst du selbst ein — eine automatische Marktbewertung bräuchte einen kostenpflichtigen Dienst, und amtliche Bodenrichtwerte bewerten nur den Boden, nicht das Gebäude. Notiere daher, woher deine Zahl stammt.":
+    "You enter the value yourself — an automated market valuation would need a paid service, and official land values price only the land, not the building. So record where your figure came from.",
+  "Bezeichnung": "Name",
+  "Wohnung Berlin": "Flat in Berlin",
+  "Adresse (optional)": "Address (optional)",
+  "Aktueller Wert (€)": "Current value (€)",
+  "Woher stammt der Wert?": "Where does the value come from?",
+  "Gutachten, Portal, Schätzung …": "Appraisal, listing portal, own estimate …",
+  "Kaufpreis (€, optional)": "Purchase price (€, optional)",
+  "Kaufdatum (optional)": "Purchase date (optional)",
+  "Wohnfläche m² (optional)": "Floor area m² (optional)",
+  "Wert vom": "Valued on",
+  "Wert vom {date}": "valued {date}",
+  "Quelle: {src}": "Source: {src}",
+  "seit Kauf": "since purchase",
+  "Foto hinzufügen": "Add photo",
+  "Foto ansehen": "View photo",
+  "Foto löschen": "Delete photo",
+  "Foto": "Photo",
+  "Wert aktualisieren": "Update value",
+  "Ein Immobilienwert altert. Halte fest, wann und woher — das unterscheidet eine gepflegte Zahl von einer geratenen.":
+    "A property value ages. Record when and from where — that is what separates a maintained figure from a guessed one.",
+  "Noch nichts erfasst. Trage eine Immobilie mit Adresse und Wert ein — Fotos kannst du danach hinzufügen.":
+    "Nothing recorded yet. Add a property with its address and value — you can attach photos afterwards.",
+  "Lade Immobilien …": "Loading real estate …",
+  "„{name}“ mit allen Fotos löschen?": "Delete {name} including every photo?",
+  "Bezeichnung erforderlich": "A name is required",
+  "Der Wert muss eine Zahl sein.": "The value must be a number.",
+  "Nur JPEG-, PNG- oder WebP-Bilder.": "Only JPEG, PNG or WebP images.",
+  "Immobilie nicht gefunden": "Property not found",
+  "Foto nicht gefunden": "Photo not found",
+  "Immobilien im Gesamtvermögen": "Real estate in net worth",
+  "Ob erfasste Objekte mitzählen": "Whether recorded properties count",
+  "Mitzählen": "Count it",
+  "Eine Immobilie, die dir gehört, ist ein Vermögenswert — anders als verliehenes Geld hältst du sie selbst. Beachte: Eine Hypothek darauf führst du unter Kredite; ob sie abgezogen wird, entscheidet die Einstellung dort.":
+    "A property you own is an asset you hold yourself, unlike money lent out. Note: a mortgage against it lives under Loans, and whether it is subtracted is decided by the setting there.",
+  "Nicht mitzählen": "Leave it out",
+  "Immobilien bleiben eine eigene Seite. Sinnvoll, wenn dein Wert eine grobe Schätzung ist und du das Gesamtvermögen nicht darauf stützen willst — eine Immobilie ist zudem nicht kurzfristig zu Geld zu machen.":
+    "Real estate stays on its own page. Sensible if your figure is a rough estimate and you would rather not rest your net worth on it — a property also cannot be turned into cash quickly.",
 
   // Kredite
   "Verliehenes und Aufgenommenes — Zahlungen von Hand erfasst.": "Money you lent out and money you took on — payments entered by hand.",

@@ -124,6 +124,15 @@ export async function GET() {
    *  both      Forderungen zählen, Schulden werden abgezogen — die bilanzielle
    *            Sicht (Vermögen minus Verbindlichkeiten).
    */
+  /**
+   * Real estate in net worth. Default is to count it: a property you own is an
+   * asset you hold, unlike money lent out. Any mortgage against it is tracked
+   * under Loans and follows that setting — the two are deliberately separate.
+   */
+  const propertyMode = getSetting("property_in_networth") ?? "include";
+  const propertyTotal = (db().prepare("SELECT COALESCE(SUM(value_eur), 0) AS total FROM properties").get() as { total: number }).total;
+  const propertyEffect = propertyMode === "include" ? propertyTotal : 0;
+
   const mode = getSetting("loans_in_networth") ?? "none";
   const loanRows = db().prepare("SELECT * FROM loans WHERE closed = 0").all() as Loan[];
   const loanPayments = db().prepare("SELECT * FROM loan_payments").all() as Array<Payment & { loan_id: number }>;
@@ -180,7 +189,8 @@ export async function GET() {
       pension: pensionValue,
     },
     loans: { mode, lent: loansLent, borrowed: loansBorrowed, effect: loansEffect },
-    netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect,
+    property: { mode: propertyMode, total: propertyTotal, effect: propertyEffect },
+    netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect + propertyEffect,
     demoMode: getSetting("demo_mode") === "1",
     lastSync: getSetting("eb_last_sync"),
     connected: getSetting("eb_auth_status") === "linked",

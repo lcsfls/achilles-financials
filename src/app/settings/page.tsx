@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins, Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { COUNTRIES } from "@/lib/countries";
 import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
+type Settings = { propertyInNetWorth: "include" | "exclude"; loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
 type UpdateInfo = {
   repo: string;
@@ -102,6 +102,15 @@ export default function SettingsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ loans_in_networth: v }),
+    });
+  };
+
+  const savePropertyMode = async (v: "include" | "exclude") => {
+    setSettings((prev) => (prev ? { ...prev, propertyInNetWorth: v } : prev));
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ property_in_networth: v }),
     });
   };
 
@@ -267,6 +276,39 @@ export default function SettingsPage() {
               )}
             >
               <div className={cn("text-sm font-medium", settings?.loansInNetWorth === v ? "text-gold-bright" : "text-foreground")}>{label}</div>
+              <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
+            </button>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Immobilien im Gesamtvermögen */}
+      <Card className="rise rise-1">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
+            <Home className="h-5 w-5 text-gold" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Immobilien im Gesamtvermögen")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Ob erfasste Objekte mitzählen")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {([
+            ["include", t("Mitzählen"), t("Eine Immobilie, die dir gehört, ist ein Vermögenswert — anders als verliehenes Geld hältst du sie selbst. Beachte: Eine Hypothek darauf führst du unter Kredite; ob sie abgezogen wird, entscheidet die Einstellung dort.")],
+            ["exclude", t("Nicht mitzählen"), t("Immobilien bleiben eine eigene Seite. Sinnvoll, wenn dein Wert eine grobe Schätzung ist und du das Gesamtvermögen nicht darauf stützen willst — eine Immobilie ist zudem nicht kurzfristig zu Geld zu machen.")],
+          ] as const).map(([v, label, why]) => (
+            <button
+              key={v}
+              onClick={() => savePropertyMode(v)}
+              className={cn(
+                "w-full cursor-pointer rounded-xl border p-4 text-left transition-all",
+                settings?.propertyInNetWorth === v
+                  ? "border-gold/40 bg-gold/10 shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                  : "border-white/10 hover:border-white/20"
+              )}
+            >
+              <div className={cn("text-sm font-medium", settings?.propertyInNetWorth === v ? "text-gold-bright" : "text-foreground")}>{label}</div>
               <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
             </button>
           ))}

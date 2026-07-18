@@ -45,6 +45,7 @@ stays on your own server.
 | 🥇 **Precious metals** | Track every purchase as its own lot — grams, cost basis, date, dealer. Live spot prices for gold, silver, platinum and palladium show current value and P/L per lot and per metal. |
 | 📈 **Investments + live prices** | Stocks, ETFs, crypto. Add a Yahoo-format symbol (`AAPL`, `VWCE.DE`, `BTC-EUR`) and refresh every price with one click, including USD→EUR conversion. |
 | 👀 **Watchlist** | Watch any symbol with its price, daily change and gain since you added it. Pin favourites to the top, drag tiles to rearrange, hover for a 6-month chart. |
+| 🏠 **Real estate** | Address, value and photos per property, with €/m² and the gain since purchase. The value is entered by hand and records **where it came from** — see the note below on why there is no "estimate my property" button. Whether it counts towards net worth is your choice. |
 | 🤝 **Loans** | Money you lent out and money you took on — privately or from a bank, with or without interest. Interest accrues daily on the outstanding balance; payments cover interest first, then principal. You choose whether they count towards net worth. |
 | 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, your FIRE number, and years to financial independence — interactive sliders, seeded from your real net worth. |
 | 🐷 **Pension tracking** | Log balances from your pension statements and split contributions across ETFs by weight; the latest balance feeds into net worth and the FIRE simulation. <br>[Screenshot](docs/screenshots/pension.png) |
@@ -112,6 +113,20 @@ docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
 
 Or use **Settings → Backup** for an encrypted `.achillesbak` you can download and restore from the
 browser — no shell needed.
+
+## Why there is no automatic property valuation
+
+A real automated valuation (AVM) is a paid, contract-only service — Sprengnetter, PriceHubble and the
+like. Nothing free and self-serve exists for a private, self-hosted app.
+
+What *is* free are the official German **Bodenrichtwerte** (standard land values) via BORIS-D. But
+those price the **land**, not the building: floor area, condition, year built and construction type
+are simply not in them. A button that produced a number from land values alone would look like a
+valuation and mislead you inside a net-worth figure.
+
+So the value is yours to enter, and Achilles records the date and the source next to it — an
+appraisal, a listing portal, your own estimate. A maintained figure with a stated origin is worth
+more than an invented one.
 
 ## Tutorials
 
