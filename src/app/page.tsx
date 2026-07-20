@@ -72,6 +72,7 @@ const ALLOC: Record<string, { color: string; label: string }> = {
   pension: { color: "#34d399", label: "Altersvorsorge" },
   property: { color: "#f59e0b", label: "Immobilien" },
   lent: { color: "#22d3ee", label: "Verliehen" },
+  business: { color: "#f472b6", label: "Unternehmen" },
 };
 
 export default function OverviewPage() {

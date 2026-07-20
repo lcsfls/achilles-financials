@@ -7,7 +7,7 @@ export type Property = {
   id: number; label: string; address: string | null; value_eur: number;
   value_source: string | null; valued_on: string | null;
   purchase_price_eur: number | null; purchase_date: string | null;
-  size_sqm: number | null; note: string | null; created_at: string;
+  size_sqm: number | null; share_pct: number; note: string | null; created_at: string;
 };
 
 export async function GET() {
@@ -17,17 +17,26 @@ export async function GET() {
   // page with several properties doesn't ship megabytes of base64.
   const photos = d.prepare("SELECT id, property_id FROM property_photos ORDER BY id").all() as Array<{ id: number; property_id: number }>;
 
-  const properties = rows.map((p) => ({
-    ...p,
-    photoIds: photos.filter((ph) => ph.property_id === p.id).map((ph) => ph.id),
-    // Gain since purchase, when both numbers are known
-    gain: p.purchase_price_eur ? p.value_eur - p.purchase_price_eur : null,
-    gainPct: p.purchase_price_eur ? ((p.value_eur - p.purchase_price_eur) / p.purchase_price_eur) * 100 : null,
-  }));
+  const properties = rows.map((p) => {
+    const share = (p.share_pct ?? 100) / 100;
+    // Everything monetary is reported as *your* portion: with a 50 % share the
+    // net worth, the gain and the €/m² must all reflect half, not the whole.
+    const myValue = p.value_eur * share;
+    const myPurchase = p.purchase_price_eur === null ? null : p.purchase_price_eur * share;
+    return {
+      ...p,
+      photoIds: photos.filter((ph) => ph.property_id === p.id).map((ph) => ph.id),
+      myValue,
+      myPurchase,
+      gain: myPurchase ? myValue - myPurchase : null,
+      gainPct: myPurchase ? ((myValue - myPurchase) / myPurchase) * 100 : null,
+    };
+  });
 
   return NextResponse.json({
     properties,
-    total: rows.reduce((s, p) => s + p.value_eur, 0),
+    // The total is the sum of the shares owned, not of the full values.
+    total: properties.reduce((s, p) => s + p.myValue, 0),
   });
 }
 
@@ -43,8 +52,8 @@ export async function POST(req: NextRequest) {
   const info = db()
     .prepare(
       `INSERT INTO properties (label, address, value_eur, value_source, valued_on,
-         purchase_price_eur, purchase_date, size_sqm, note, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         purchase_price_eur, purchase_date, size_sqm, share_pct, note, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       label,
@@ -55,6 +64,8 @@ export async function POST(req: NextRequest) {
       Number.isFinite(Number(b.purchase_price_eur)) && b.purchase_price_eur !== "" ? Number(b.purchase_price_eur) : null,
       b.purchase_date || null,
       Number.isFinite(Number(b.size_sqm)) && b.size_sqm !== "" ? Number(b.size_sqm) : null,
+      // Clamp: a share outside 0–100 % would silently distort net worth.
+      Math.min(100, Math.max(0, Number(b.share_pct) || 100)),
       b.note?.trim() || null,
       new Date().toISOString()
     );
@@ -70,8 +81,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Der Wert muss eine Zahl sein." }, { status: 400 });
   }
   db()
-    .prepare("UPDATE properties SET value_eur = ?, value_source = ?, valued_on = ? WHERE id = ?")
-    .run(value, b.value_source?.trim() || null, b.valued_on || new Date().toISOString().slice(0, 10), b.id);
+    .prepare("UPDATE properties SET value_eur = ?, value_source = ?, valued_on = ?, share_pct = COALESCE(?, share_pct) WHERE id = ?")
+    .run(
+      value,
+      b.value_source?.trim() || null,
+      b.valued_on || new Date().toISOString().slice(0, 10),
+      b.share_pct === undefined ? null : Math.min(100, Math.max(0, Number(b.share_pct) || 0)),
+      b.id
+    );
   return NextResponse.json({ ok: true });
 }
 

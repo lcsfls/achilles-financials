@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, getSetting } from "@/lib/db";
 import { loanState, type Loan, type Payment } from "@/lib/loans";
+import { valuate, type BusinessInput } from "@/lib/business";
 import { getMetalHoldings } from "@/lib/metals";
 
 export const dynamic = "force-dynamic";
@@ -130,8 +131,31 @@ export async function GET() {
    * under Loans and follows that setting — the two are deliberately separate.
    */
   const propertyMode = getSetting("property_in_networth") ?? "include";
-  const propertyTotal = (db().prepare("SELECT COALESCE(SUM(value_eur), 0) AS total FROM properties").get() as { total: number }).total;
+  // Only the share owned counts — a 50 % stake adds half the value.
+  const propertyTotal = (db().prepare("SELECT COALESCE(SUM(value_eur * COALESCE(share_pct, 100) / 100), 0) AS total FROM properties").get() as { total: number }).total;
   const propertyEffect = propertyMode === "include" ? propertyTotal : 0;
+
+  /**
+   * Owned businesses in net worth.
+   *
+   * Only entries marked "own" — a purchase target is not your asset. Default is
+   * the cautious lower bound of the range, not the midpoint: the valuation is
+   * an estimate spanning a wide corridor, and a business is the least liquid
+   * thing on the dashboard.
+   */
+  const bizMode = getSetting("business_in_networth") ?? "low";
+  const bizRows = db().prepare("SELECT inputs FROM businesses WHERE kind = 'own'").all() as Array<{ inputs: string }>;
+  let bizLow = 0, bizMid = 0;
+  for (const row of bizRows) {
+    try {
+      const v = valuate(JSON.parse(row.inputs) as BusinessInput);
+      bizLow += Math.max(0, v.equityLow);
+      bizMid += Math.max(0, v.equityMid);
+    } catch {
+      // A saved entry from an older shape must not take the dashboard down.
+    }
+  }
+  const bizEffect = bizMode === "low" ? bizLow : bizMode === "mid" ? bizMid : 0;
 
   const mode = getSetting("loans_in_networth") ?? "none";
   const loanRows = db().prepare("SELECT * FROM loans WHERE closed = 0").all() as Loan[];
@@ -190,6 +214,7 @@ export async function GET() {
     },
     loans: { mode, lent: loansLent, borrowed: loansBorrowed, effect: loansEffect },
     property: { mode: propertyMode, total: propertyTotal, effect: propertyEffect },
+    business: { mode: bizMode, low: bizLow, mid: bizMid, effect: bizEffect, count: bizRows.length },
     /**
      * Net worth split by asset class.
      *
@@ -209,6 +234,7 @@ export async function GET() {
         { key: "investments", value: invValue },
         { key: "pension", value: pensionValue },
         { key: "property", value: propertyEffect },
+        { key: "business", value: bizEffect },
         { key: "lent", value: mode === "both" ? loansLent : 0 },
       ].filter((i) => i.value > 0);
 
@@ -222,7 +248,7 @@ export async function GET() {
         items: items.map((i) => ({ ...i, pct: gross > 0 ? (i.value / gross) * 100 : 0 })),
       };
     })(),
-    netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect + propertyEffect,
+    netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect + propertyEffect + bizEffect,
     demoMode: getSetting("demo_mode") === "1",
     lastSync: getSetting("eb_last_sync"),
     connected: getSetting("eb_auth_status") === "linked",

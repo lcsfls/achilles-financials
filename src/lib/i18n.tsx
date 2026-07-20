@@ -273,6 +273,7 @@ const EN: Record<string, string> = {
   "inhabergebunden": "owner-bound",
   "Bearbeiten": "Edit",
   "{mult}× EBITDA · erfasst {date}": "{mult}× EBITDA · recorded {date}",
+  "Bearbeiten abbrechen": "Cancel editing",
   "Wie gerechnet wird": "How it is calculated",
   "Multiplikatorverfahren: bereinigtes EBITDA × Multiplikator, abzüglich Nettoverschuldung. Der Multiplikator startet beim Branchendurchschnitt und wird durch deine Antworten angepasst.":
     "Market multiple method: adjusted EBITDA × multiple, less net debt. The multiple starts at the industry average and is adjusted by your answers.",
@@ -303,6 +304,10 @@ const EN: Record<string, string> = {
   "Kaufdatum (optional)": "Purchase date (optional)",
   "Wohnfläche m² (optional)": "Floor area m² (optional)",
   "Wert vom": "Valued on",
+  "Dein Anteil in %": "Your share in %",
+  "Gehört dir nur ein Teil, trage ihn hier ein — Wert, Gewinn und Gesamtvermögen zählen dann nur deinen Anteil. 100 % = alleiniges Eigentum.":
+    "If you only own part of it, enter that here — value, gain and net worth then count your share only. 100 % = sole ownership.",
+  "{share} % von {full}": "{share} % of {full}",
   "Wert vom {date}": "valued {date}",
   "Quelle: {src}": "Source: {src}",
   "seit Kauf": "since purchase",
@@ -333,6 +338,17 @@ const EN: Record<string, string> = {
     "Nothing shorter than 6 hours is offered, on purpose: PSD2 permits at most four unattended accesses per day per account, and individual banks cap it lower. Achilles holds to that even if the setting said otherwise. Separately, your bank consent expires after 90 days and must be granted again — \"Sync now\" on the Connect page works at any time.",
   "Zuletzt automatisch: {date}": "Last automatic run: {date}",
   "Nächster Lauf: {date}": "Next run: {date}",
+  "Unternehmen im Gesamtvermögen": "Businesses in net worth",
+  "Nur als „eigenes“ erfasste Firmen — Kaufkandidaten nie": "Only entries marked as your own — never purchase targets",
+  "Unterer Wert (Empfehlung)": "Lower bound (recommended)",
+  "Der Rechner liefert eine Bandbreite, keinen Punktwert. Das untere Ende ist die vorsichtige Wahl — ein Unternehmen ist das mit Abstand illiquideste hier, und ein zu hoch angesetzter Wert schönt jede Kennzahl, die darauf aufbaut.":
+    "The calculator gives a range, not a point value. The lower end is the cautious choice — a business is by far the least liquid thing here, and an inflated figure flatters every metric built on it.",
+  "Mittelwert": "Midpoint",
+  "Die Mitte der Bandbreite. Näher an dem, was ein Verkauf realistisch bringen könnte — aber eben auch nur eine Schätzung, deren Spanne von 1× bis 7× EBITDA reicht.":
+    "The middle of the range. Closer to what a sale might realistically fetch — but still an estimate whose span runs from 1× to 7× EBITDA.",
+  "Bewertungen bleiben eine eigene Seite. Sinnvoll, solange dein Unternehmen inhabergebunden ist: Dann ist der Ertragswert ohnehin nicht das, was ein Käufer zahlt.":
+    "Valuations stay on their own page. Sensible while your business is owner-bound: the earnings value is then not what a buyer would pay anyway.",
+  "Unternehmen": "Businesses",
   "Immobilien im Gesamtvermögen": "Real estate in net worth",
   "Ob erfasste Objekte mitzählen": "Whether recorded properties count",
   "Mitzählen": "Count it",

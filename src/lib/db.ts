@@ -155,6 +155,9 @@ function migrate(d: Database.Database) {
       purchase_price_eur REAL,
       purchase_date TEXT,
       size_sqm REAL,
+      -- Your share of the property in percent. Co-ownership is common, and
+      -- counting the full value would overstate net worth.
+      share_pct REAL NOT NULL DEFAULT 100,
       note TEXT,
       created_at TEXT NOT NULL,
       demo INTEGER DEFAULT 0
@@ -222,6 +225,7 @@ function migrate(d: Database.Database) {
   // Unterscheidet importierte von handgepflegten Positionen — nur so kann ein
   // erneuter Import "ersetzen" anbieten, ohne eigene Einträge mitzulöschen.
   addColumnIfMissing(d, "investments", "source", "TEXT");
+  addColumnIfMissing(d, "properties", "share_pct", "REAL NOT NULL DEFAULT 100");
   // Bestandslisten haben noch keine Reihenfolge. Ohne Startwert stünden sie
   // alle auf 0 und neue Einträge sortierten sich vor die bestehenden — die id
   // ist aufsteigend und bildet damit die Aufnahmereihenfolge ab.

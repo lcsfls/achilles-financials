@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     displayCurrency: getSetting("display_currency") || "EUR",
     loansInNetWorth: getSetting("loans_in_networth") || "none",
     propertyInNetWorth: getSetting("property_in_networth") || "include",
+    businessInNetWorth: getSetting("business_in_networth") || "low",
     syncInterval: getInterval(),
     syncLastAuto: lastAutoSync(),
     syncNextRun: nextRun(),
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
   }
   if (["include", "exclude"].includes(body.property_in_networth)) {
     setSetting("property_in_networth", body.property_in_networth);
+  }
+  if (["low", "mid", "exclude"].includes(body.business_in_networth)) {
+    setSetting("business_in_networth", body.business_in_networth);
   }
   // Only known values — the floor lives in autosync.ts, so even a stored
   // nonsense value could never make the app exceed the PSD2 limit.

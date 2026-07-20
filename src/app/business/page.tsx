@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Briefcase, AlertTriangle, Info, Save } from "lucide-react";
+import { Trash2, Briefcase, AlertTriangle, Info, Save, Pencil, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -262,6 +262,11 @@ export default function BusinessPage() {
                 <Button onClick={save}>
                   <Save className="h-4 w-4" /> {editId ? t("Aktualisieren") : t("Speichern")}
                 </Button>
+                {editId !== null && (
+                  <Button variant="glass" onClick={() => { setEditId(null); setLabel(""); }} title={t("Bearbeiten abbrechen")}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               {error && <div className="mt-2 text-xs text-rose-soft">{error}</div>}
             </>
@@ -286,7 +291,7 @@ export default function BusinessPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
                   <button onClick={() => edit(b)} className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-white/5 hover:text-foreground group-hover:opacity-100 cursor-pointer" title={t("Bearbeiten")}>
-                    <Plus className="h-3.5 w-3.5 rotate-45" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button onClick={() => remove(b)} className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-rose-soft/10 hover:text-rose-soft group-hover:opacity-100 cursor-pointer" title={t("Löschen")}>
                     <Trash2 className="h-3.5 w-3.5" />

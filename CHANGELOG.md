@@ -3,6 +3,28 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.10.0] — 2026-07-18
+
+### Fixed
+- **Dropdowns were unreadable.** They were native `<select>` elements, and a native select hands its
+  option list to the operating system, which paints it in the system's colours — a white list on a
+  dark app that no CSS of ours could reach. All sixteen are now built on Radix (`@radix-ui/react-select`)
+  with the app's own styling, a check mark on the current choice and a near-opaque background so
+  options stay readable over any content. The existing `Select` keeps its old interface as a thin
+  compatibility layer, so every form got the fix at once; new code can use `SimpleSelect` or the
+  Radix parts directly.
+- **The edit button for a saved business valuation looked like a close icon** (a rotated plus). It is
+  a pencil now, and while editing there is an explicit cancel button next to Update.
+
+### Added
+- **Ownership share for real estate.** Enter what portion is yours — value, gain, the total and net
+  worth then count only your share, and the tile shows "50 % of €400,000" so the reduced figure never
+  looks like a mistake. Shares outside 0–100 % are clamped rather than silently distorting net worth.
+- **Owned businesses now count towards net worth**, with a setting: the cautious **lower bound of the
+  range** (default), the midpoint, or not at all. Only entries marked *own* ever count — a purchase
+  target is not your asset. The default is the lower bound because the valuation spans a wide
+  corridor and a business is the least liquid thing on the dashboard.
+
 ## [1.9.1] — 2026-07-18
 
 ### Added

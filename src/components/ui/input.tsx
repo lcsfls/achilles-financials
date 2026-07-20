@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Select as RadixSelect, SelectTrigger, SelectContent, SelectItem, SelectValue } from "./select";
 
 const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, type, ...props }, ref) => (
@@ -22,22 +23,84 @@ const Label = ({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelEleme
   <label className={cn("text-xs font-medium text-muted tracking-wide", className)} {...props} />
 );
 
-const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, children, ...props }, ref) => (
-    <select
-      ref={ref}
-      className={cn(
-        "flex h-10 w-full appearance-none rounded-xl glass-inset px-4 py-2 text-sm text-foreground transition-colors cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40",
-        "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%239ca3af%22%20stroke-width=%222%22%3E%3Cpath%20d=%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.9rem_center]",
-        className
-      )}
-      {...props}
+/**
+ * Select — a compatibility layer over the Radix select in ./select.tsx.
+ *
+ * It keeps the native API (`value`, `onChange`, `<option>` children) that all
+ * existing call sites use, but renders the Radix version underneath. A native
+ * <select> hands its option list to the operating system, which paints it in
+ * the system's colours — an unreadable white list on this dark theme that no
+ * CSS of ours can reach.
+ *
+ * New code can use `SimpleSelect` or the Radix parts directly; this exists so
+ * every existing form got the fix at once instead of sixteen rewrites.
+ */
+const Select = ({
+  value,
+  defaultValue,
+  onChange,
+  className,
+  children,
+  disabled,
+  // Native-select habits the call sites rely on, mapped onto Radix:
+  // autoFocus opens the list immediately, onBlur fires when it closes again.
+  autoFocus,
+  onBlur,
+}: {
+  value?: string | number | readonly string[];
+  defaultValue?: string | number | readonly string[];
+  onChange?: (e: { target: { value: string } }) => void;
+  className?: string;
+  children?: React.ReactNode;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  onBlur?: () => void;
+}) => {
+  // Flatten children, including arrays produced by .map(), into plain options.
+  const options: Array<{ value: string; label: string; disabled?: boolean }> = [];
+  const walk = (node: React.ReactNode) => {
+    React.Children.forEach(node, (child) => {
+      if (!React.isValidElement(child)) return;
+      if (child.type === React.Fragment) {
+        walk((child.props as { children?: React.ReactNode }).children);
+        return;
+      }
+      if (child.type === "option") {
+        const props = child.props as { value?: string | number; children?: React.ReactNode; disabled?: boolean };
+        const label = React.Children.toArray(props.children).filter((c) => typeof c === "string" || typeof c === "number").join("");
+        options.push({ value: String(props.value ?? label), label, disabled: props.disabled });
+      }
+    });
+  };
+  walk(children);
+
+  // An empty-string option is a valid placeholder in a native select, but Radix
+  // reserves "" — map it to a sentinel and translate back on change.
+  const EMPTY = "__all__";
+  const enc = (v: string) => (v === "" ? EMPTY : v);
+
+  return (
+    <RadixSelect
+      value={value !== undefined ? enc(String(value)) : undefined}
+      defaultValue={defaultValue !== undefined ? enc(String(defaultValue)) : undefined}
+      onValueChange={(v) => onChange?.({ target: { value: v === EMPTY ? "" : v } })}
+      disabled={disabled}
+      defaultOpen={autoFocus}
+      onOpenChange={(o) => { if (!o) onBlur?.(); }}
     >
-      {children}
-    </select>
-  )
-);
+      <SelectTrigger className={className}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={enc(o.value)} disabled={o.disabled}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </RadixSelect>
+  );
+};
 Select.displayName = "Select";
 
 export { Input, Label, Select };

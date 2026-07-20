@@ -7,21 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { apiJson, cn, fmtEUR, fmtEUR0, fmtDate, fmtPct } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum, fmtDate, fmtPct } from "@/lib/utils";
 
 type Property = {
   id: number; label: string; address: string | null; value_eur: number;
   value_source: string | null; valued_on: string | null;
   purchase_price_eur: number | null; purchase_date: string | null;
-  size_sqm: number | null; note: string | null; created_at: string;
-  photoIds: number[]; gain: number | null; gainPct: number | null;
+  size_sqm: number | null; share_pct: number; note: string | null; created_at: string;
+  photoIds: number[]; myValue: number; myPurchase: number | null; gain: number | null; gainPct: number | null;
 };
 type Data = { properties: Property[]; total: number };
 
 const EMPTY = {
   label: "", address: "", value_eur: "", value_source: "",
   valued_on: new Date().toISOString().slice(0, 10),
-  purchase_price_eur: "", purchase_date: "", size_sqm: "", note: "",
+  purchase_price_eur: "", purchase_date: "", size_sqm: "", share_pct: "100", note: "",
 };
 
 /**
@@ -51,7 +51,7 @@ export default function RealEstatePage() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Property | null>(null);
-  const [edit, setEdit] = useState({ value_eur: "", value_source: "", valued_on: "" });
+  const [edit, setEdit] = useState({ value_eur: "", value_source: "", valued_on: "", share_pct: "" });
   const [uploadFor, setUploadFor] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -72,6 +72,7 @@ export default function RealEstatePage() {
         value_eur: num(form.value_eur),
         purchase_price_eur: num(form.purchase_price_eur),
         size_sqm: num(form.size_sqm),
+        share_pct: form.share_pct === "" ? 100 : num(form.share_pct),
       }),
     });
     if (!res.ok) { setError(t((await res.json()).error)); return; }
@@ -85,7 +86,7 @@ export default function RealEstatePage() {
     const res = await fetch("/api/properties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editing.id, value_eur: num(edit.value_eur), value_source: edit.value_source, valued_on: edit.valued_on }),
+      body: JSON.stringify({ id: editing.id, value_eur: num(edit.value_eur), value_source: edit.value_source, valued_on: edit.valued_on, share_pct: edit.share_pct === "" ? undefined : num(edit.share_pct) }),
     });
     if (!res.ok) { setError(t((await res.json()).error)); return; }
     setEditing(null);
@@ -178,6 +179,13 @@ export default function RealEstatePage() {
                 <Input type="date" value={form.valued_on} onChange={(e) => setForm({ ...form, valued_on: e.target.value })} />
               </div>
               <div className="col-span-2 space-y-1.5">
+                <Label>{t("Dein Anteil in %")}</Label>
+                <Input inputMode="decimal" placeholder="100" value={form.share_pct} onChange={(e) => setForm({ ...form, share_pct: e.target.value })} />
+                <p className="text-[11px] leading-relaxed text-muted-2">
+                  {t("Gehört dir nur ein Teil, trage ihn hier ein — Wert, Gewinn und Gesamtvermögen zählen dann nur deinen Anteil. 100 % = alleiniges Eigentum.")}
+                </p>
+              </div>
+              <div className="col-span-2 space-y-1.5">
                 <Label>{t("Notiz (optional)")}</Label>
                 <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
               </div>
@@ -253,7 +261,7 @@ export default function RealEstatePage() {
                       <ImagePlus className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => { setEditing(p); setEdit({ value_eur: String(p.value_eur).replace(".", ","), value_source: p.value_source ?? "", valued_on: p.valued_on ?? new Date().toISOString().slice(0, 10) }); }}
+                      onClick={() => { setEditing(p); setEdit({ value_eur: String(p.value_eur).replace(".", ","), value_source: p.value_source ?? "", valued_on: p.valued_on ?? new Date().toISOString().slice(0, 10), share_pct: String(p.share_pct ?? 100).replace(".", ",") }); }}
                       className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-white/5 hover:text-foreground group-hover:opacity-100 cursor-pointer"
                       title={t("Wert aktualisieren")}
                     >
@@ -272,7 +280,13 @@ export default function RealEstatePage() {
                 <div className="mt-4 flex items-end justify-between gap-3">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-2">{t("Wert")}</div>
-                    <div className="num text-2xl font-semibold tracking-tight">{fmtEUR0(p.value_eur)}</div>
+                    <div className="num text-2xl font-semibold tracking-tight">{fmtEUR0(p.myValue)}</div>
+                    {p.share_pct < 100 && (
+                      // Say both numbers — otherwise a halved figure looks wrong
+                      <div className="mt-0.5 text-[11px] text-muted-2">
+                        {t("{share} % von {full}", { share: fmtNum(p.share_pct, 0), full: fmtEUR0(p.value_eur) })}
+                      </div>
+                    )}
                   </div>
                   {p.gain !== null && p.gainPct !== null && (
                     <div className="text-right text-[11px]">
@@ -290,6 +304,7 @@ export default function RealEstatePage() {
                     <span className="flex items-center gap-1"><Ruler className="h-3 w-3" />{p.size_sqm} m²</span>
                   ) : null}
                   {p.size_sqm ? <span className="num">{fmtEUR0(p.value_eur / p.size_sqm)}/m²</span> : null}
+                  {p.share_pct < 100 && <span className="num text-gold/80">{fmtNum(p.share_pct, 0)} %</span>}
                   {p.valued_on && (
                     <span className="flex items-center gap-1">
                       <CalendarClock className="h-3 w-3" />
@@ -324,6 +339,10 @@ export default function RealEstatePage() {
             <div className="space-y-1.5">
               <Label>{t("Wert vom")}</Label>
               <Input type="date" value={edit.valued_on} onChange={(e) => setEdit({ ...edit, valued_on: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("Dein Anteil in %")}</Label>
+              <Input inputMode="decimal" value={edit.share_pct} onChange={(e) => setEdit({ ...edit, share_pct: e.target.value })} />
             </div>
           </div>
           {error && <div className="mt-3 text-xs text-rose-soft">{error}</div>}

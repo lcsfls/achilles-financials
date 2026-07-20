@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins, Home, Timer } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins, Home, Timer, Briefcase } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { COUNTRIES } from "@/lib/countries";
 import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { syncInterval: "manual" | "6h" | "12h" | "24h" | "7d"; syncLastAuto: string | null; syncNextRun: string | null; propertyInNetWorth: "include" | "exclude"; loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
+type Settings = { businessInNetWorth: "low" | "mid" | "exclude"; syncInterval: "manual" | "6h" | "12h" | "24h" | "7d"; syncLastAuto: string | null; syncNextRun: string | null; propertyInNetWorth: "include" | "exclude"; loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
 type UpdateInfo = {
   repo: string;
@@ -122,6 +122,15 @@ export default function SettingsPage() {
       body: JSON.stringify({ sync_interval: v }),
     });
     load();
+  };
+
+  const saveBusinessMode = async (v: "low" | "mid" | "exclude") => {
+    setSettings((prev) => (prev ? { ...prev, businessInNetWorth: v } : prev));
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_in_networth: v }),
+    });
   };
 
   const logout = async () => {
@@ -371,6 +380,40 @@ export default function SettingsPage() {
               )}
             >
               <div className={cn("text-sm font-medium", settings?.propertyInNetWorth === v ? "text-gold-bright" : "text-foreground")}>{label}</div>
+              <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
+            </button>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Unternehmen im Gesamtvermögen */}
+      <Card className="rise rise-1">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 border border-gold/20">
+            <Briefcase className="h-5 w-5 text-gold" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Unternehmen im Gesamtvermögen")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Nur als „eigenes“ erfasste Firmen — Kaufkandidaten nie")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {([
+            ["low", t("Unterer Wert (Empfehlung)"), t("Der Rechner liefert eine Bandbreite, keinen Punktwert. Das untere Ende ist die vorsichtige Wahl — ein Unternehmen ist das mit Abstand illiquideste hier, und ein zu hoch angesetzter Wert schönt jede Kennzahl, die darauf aufbaut.")],
+            ["mid", t("Mittelwert"), t("Die Mitte der Bandbreite. Näher an dem, was ein Verkauf realistisch bringen könnte — aber eben auch nur eine Schätzung, deren Spanne von 1× bis 7× EBITDA reicht.")],
+            ["exclude", t("Nicht mitzählen"), t("Bewertungen bleiben eine eigene Seite. Sinnvoll, solange dein Unternehmen inhabergebunden ist: Dann ist der Ertragswert ohnehin nicht das, was ein Käufer zahlt.")],
+          ] as const).map(([v, label, why]) => (
+            <button
+              key={v}
+              onClick={() => saveBusinessMode(v)}
+              className={cn(
+                "w-full cursor-pointer rounded-xl border p-4 text-left transition-all",
+                settings?.businessInNetWorth === v
+                  ? "border-gold/40 bg-gold/10 shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                  : "border-white/10 hover:border-white/20"
+              )}
+            >
+              <div className={cn("text-sm font-medium", settings?.businessInNetWorth === v ? "text-gold-bright" : "text-foreground")}>{label}</div>
               <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
             </button>
           ))}
