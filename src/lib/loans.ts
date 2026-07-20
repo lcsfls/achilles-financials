@@ -29,6 +29,8 @@ export type Loan = {
   due_date: string | null;
   note: string | null;
   closed: number;
+  /** Vereinbarte Monatsrate; ohne sie gibt es keinen Tilgungsplan. */
+  monthly_payment_eur: number | null;
 };
 
 export type LoanState = {

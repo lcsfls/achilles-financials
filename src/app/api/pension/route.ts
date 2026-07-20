@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { contractStats, type Statement } from "@/lib/pension";
+import { contractStats, waterfall, type Statement } from "@/lib/pension";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,11 @@ export async function GET() {
   const all = d.prepare("SELECT * FROM pension_statements ORDER BY statement_date").all() as Array<Statement & { contract_id: number | null }>;
 
   const withStats = contracts.map((c) => {
-    const statements = all.filter((s) => s.contract_id === c.id);
+    const statements = all
+      .filter((s) => s.contract_id === c.id)
+      // The waterfall travels with the row so the table can expand without a
+      // second request per statement.
+      .map((s) => ({ ...s, waterfall: waterfall(s) }));
     return { ...c, statements, stats: contractStats(statements) };
   });
 
@@ -56,9 +60,22 @@ export async function POST(req: NextRequest) {
   const exists = db().prepare("SELECT id FROM pension_contracts WHERE id = ?").get(Number(contract_id));
   if (!exists) return NextResponse.json({ error: "Vertrag nicht gefunden" }, { status: 404 });
 
+  // Optional line items — an empty field must stay NULL rather than become 0,
+  // or a statement nobody detailed would claim its costs were zero.
+  const opt = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+
   db()
-    .prepare("INSERT INTO pension_statements (contract_id, statement_date, balance_eur, contribution_eur, note) VALUES (?, ?, ?, ?, ?)")
-    .run(Number(contract_id), statement_date, Number(balance_eur), contribution_eur == null ? null : Number(contribution_eur), note?.trim() || null);
+    .prepare(`INSERT INTO pension_statements
+      (contract_id, statement_date, balance_eur, contribution_eur, note,
+       prev_balance_eur, fund_performance_eur, earned_returns_eur,
+       acquisition_costs_eur, admin_costs_eur, total_paid_eur)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(
+      Number(contract_id), statement_date, Number(balance_eur),
+      opt(contribution_eur), note?.trim() || null,
+      opt(b.prev_balance_eur), opt(b.fund_performance_eur), opt(b.earned_returns_eur),
+      opt(b.acquisition_costs_eur), opt(b.admin_costs_eur), opt(b.total_paid_eur)
+    );
   return NextResponse.json({ ok: true });
 }
 

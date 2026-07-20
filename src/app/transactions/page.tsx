@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ManualAccounts } from "@/components/manual-accounts";
 import { CATEGORIES, CATEGORY_COLORS } from "@/lib/categorize";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtDate } from "@/lib/utils";
@@ -72,6 +73,7 @@ export default function TransactionsPage() {
             {t("{n} Buchungen", { n: txs.length })} · <span className="text-rose-soft">−{fmtEUR(spent)}</span> · <span className="text-emerald-soft">+{fmtEUR(earned)}</span>
           </p>
         </div>
+        <ManualAccounts onChange={load} />
       </div>
 
       <Card className="rise rise-1 p-4">

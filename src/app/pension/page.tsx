@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Plus, Trash2, PiggyBank, Shield, Info } from "lucide-react";
+import { Plus, Trash2, PiggyBank, Shield, Info, ChevronRight, AlertTriangle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -13,16 +13,21 @@ import { PensionAllocation } from "@/components/pension-allocation";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtDate } from "@/lib/utils";
-import type { ContractStats, Statement } from "@/lib/pension";
+import { PensionStatutory } from "@/components/pension-statutory";
+import type { ContractStats, Statement, Waterfall } from "@/lib/pension";
 
 type Contract = {
   id: number; label: string; kind: "pension" | "life";
   provider: string | null; monthly_eur: number | null; note: string | null;
-  statements: Statement[]; stats: ContractStats;
+  statements: Array<Statement & { waterfall: Waterfall | null }>; stats: ContractStats;
 };
 type Data = { contracts: Contract[]; totalBalance: number; totalContrib: number; totalReturn: number };
 
-const EMPTY_STMT = { statement_date: new Date().toISOString().slice(0, 10), balance_eur: "", contribution_eur: "", note: "" };
+const EMPTY_STMT = {
+  statement_date: new Date().toISOString().slice(0, 10), balance_eur: "", contribution_eur: "", note: "",
+  prev_balance_eur: "", fund_performance_eur: "", earned_returns_eur: "",
+  acquisition_costs_eur: "", admin_costs_eur: "", total_paid_eur: "",
+};
 const EMPTY_CONTRACT = { label: "", kind: "pension" as "pension" | "life", provider: "", monthly_eur: "" };
 
 export default function PensionPage() {
@@ -36,6 +41,8 @@ export default function PensionPage() {
   const [form, setForm] = useState(EMPTY_STMT);
   const [contract, setContract] = useState(EMPTY_CONTRACT);
   const [error, setError] = useState<string | null>(null);
+  const [details, setDetails] = useState(false);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   const load = useCallback(
     () =>
@@ -49,6 +56,7 @@ export default function PensionPage() {
   useEffect(() => { load(); }, [load]);
 
   const num = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+  const opt = (v: string) => (v.trim() ? num(v) : null);
 
   const saveContract = async () => {
     setError(null);
@@ -84,6 +92,14 @@ export default function PensionPage() {
         balance_eur: num(form.balance_eur),
         contribution_eur: form.contribution_eur ? num(form.contribution_eur) : null,
         note: form.note || null,
+        // Empty stays empty: an untouched field must not be stored as a zero
+        // that would claim the costs were nil.
+        prev_balance_eur: opt(form.prev_balance_eur),
+        fund_performance_eur: opt(form.fund_performance_eur),
+        earned_returns_eur: opt(form.earned_returns_eur),
+        acquisition_costs_eur: opt(form.acquisition_costs_eur),
+        admin_costs_eur: opt(form.admin_costs_eur),
+        total_paid_eur: opt(form.total_paid_eur),
       }),
     });
     if (!res.ok) { setError(t((await res.json()).error || "Fehler beim Speichern")); return; }
@@ -186,7 +202,11 @@ export default function PensionPage() {
                 <Card className="glass-hover rise rise-2 p-6">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-muted-2">{t("Erfasste Beiträge")}</div>
                   <div className="num mt-2 text-2xl font-semibold">{fmtEUR0(s.totalContrib)}</div>
-                  <div className="mt-1 text-xs text-muted-2">{t("Summe über {n} Auszüge", { n: active.statements.length })}</div>
+                  <div className="mt-1 text-xs text-muted-2">
+                    {s.contribFromStatement
+                      ? t("laut Auszug seit Vertragsbeginn")
+                      : t("Summe über {n} Auszüge", { n: active.statements.length })}
+                  </div>
                 </Card>
                 {/* The honest headline: the balance change minus the money paid in */}
                 <Card className="glass-hover rise rise-3 p-6">
@@ -317,6 +337,8 @@ export default function PensionPage() {
 
               <PensionAllocation onChange={load} />
 
+              <PensionStatutory />
+
               <Card className="rise rise-5 overflow-hidden">
                 <CardHeader><CardTitle>{t("Kontoauszüge")}</CardTitle></CardHeader>
                 <CardContent className="p-0">
@@ -342,9 +364,19 @@ export default function PensionPage() {
                             const delta = prev ? x.balance_eur - prev.balance_eur : null;
                             // This row's own return: the change minus what was paid in
                             const ret = delta === null ? null : delta - (x.contribution_eur ?? 0);
+                            const w = x.waterfall;
                             return (
-                              <tr key={x.id} className="transition-colors hover:bg-white/[0.03]">
-                                <td className="px-6 py-3.5">{fmtDate(x.statement_date)}</td>
+                              <Fragment key={x.id}>
+                              <tr
+                                className={cn("transition-colors hover:bg-white/[0.03]", w && "cursor-pointer")}
+                                onClick={() => w && setExpanded(expanded === x.id ? null : x.id)}
+                              >
+                                <td className="px-6 py-3.5">
+                                  <span className="flex items-center gap-1.5">
+                                    {w && <ChevronRight className={cn("h-3 w-3 text-muted-2 transition-transform", expanded === x.id && "rotate-90")} />}
+                                    {fmtDate(x.statement_date)}
+                                  </span>
+                                </td>
                                 <td className="num px-4 py-3.5 font-medium">{fmtEUR(x.balance_eur)}</td>
                                 <td className="num px-4 py-3.5 text-muted">{x.contribution_eur != null ? fmtEUR(x.contribution_eur) : "—"}</td>
                                 <td className="num px-4 py-3.5 text-muted">{delta === null ? "—" : `${delta >= 0 ? "+" : ""}${fmtEUR(delta)}`}</td>
@@ -353,11 +385,74 @@ export default function PensionPage() {
                                 </td>
                                 <td className="hidden max-w-[220px] truncate px-4 py-3.5 text-xs text-muted-2 md:table-cell">{x.note || "—"}</td>
                                 <td className="px-3 py-3.5">
-                                  <button onClick={() => removeStatement(x.id)} className="rounded-lg p-1.5 text-muted-2 transition-colors hover:bg-rose-soft/10 hover:text-rose-soft cursor-pointer" title={t("Löschen")}>
+                                  <button onClick={(e) => { e.stopPropagation(); removeStatement(x.id); }} className="rounded-lg p-1.5 text-muted-2 transition-colors hover:bg-rose-soft/10 hover:text-rose-soft cursor-pointer" title={t("Löschen")}>
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </td>
                               </tr>
+
+                              {/* The year, line by line, exactly as the statement prints it */}
+                              {w && expanded === x.id && (
+                                <tr className="bg-white/[0.02]">
+                                  <td colSpan={7} className="px-6 py-5">
+                                    <div className="max-w-xl space-y-1.5 text-xs">
+                                      {[
+                                        [t("Vorheriges Vertragsguthaben"), w.prevBalance, false],
+                                        [t("Eingezahlte Beiträge"), w.contribution, false],
+                                        [t("Wert aus Entwicklung des Fondsportfolios"), w.fundPerformance, false],
+                                        [t("Erwirtschaftete Erträge"), w.earnedReturns, false],
+                                        [t("Abschluss- und Vertriebskosten"), -w.acquisitionCosts, true],
+                                        [t("Verwaltungskosten"), -w.adminCosts, true],
+                                      ].map(([label, value, isCost]) => (
+                                        <div key={label as string} className="flex justify-between gap-4 border-b border-white/[0.04] pb-1.5">
+                                          <span className={isCost ? "text-rose-soft/80" : "text-muted"}>{label as string}</span>
+                                          <span className="num" style={{ color: isCost ? "#fb7185" : undefined }}>
+                                            {(value as number) >= 0 ? "" : "−"}{fmtEUR(Math.abs(value as number))}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      <div className="flex justify-between gap-4 pt-1.5 font-medium">
+                                        <span>{t("Vertragsguthaben")}</span>
+                                        <span className="num">{fmtEUR(x.balance_eur)}</span>
+                                      </div>
+
+                                      <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 rounded-lg border border-white/[0.06] p-3">
+                                        <div>
+                                          <div className="text-[10px] uppercase tracking-wider text-muted-2">{t("Ertrag nach Kosten")}</div>
+                                          <div className="num mt-0.5 text-sm" style={{ color: w.netGain >= 0 ? "#34d399" : "#fb7185" }}>
+                                            {w.netGain >= 0 ? "+" : ""}{fmtEUR(w.netGain)}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[10px] uppercase tracking-wider text-muted-2">{t("Kosten gesamt")}</div>
+                                          <div className="num mt-0.5 text-sm text-rose-soft">{fmtEUR(w.costsTotal)}</div>
+                                        </div>
+                                        {w.costRatio !== null && (
+                                          <div>
+                                            <div className="text-[10px] uppercase tracking-wider text-muted-2">{t("davon vom Jahresbeitrag")}</div>
+                                            <div className="num mt-0.5 text-sm">{(w.costRatio * 100).toFixed(1).replace(".", ",")} %</div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Only when the gap is too big to be rounding */}
+                                      {w.mismatch && (
+                                        <div className="mt-3 flex gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-3 text-[11px] leading-relaxed text-amber-200/90">
+                                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                          <span>
+                                            {t("Die Posten ergeben {computed}, im Auszug steht {actual} — Differenz {diff}. Vermutlich ein Tippfehler oder ein Posten, den dieser Vertrag anders ausweist.", {
+                                              computed: fmtEUR(w.computed),
+                                              actual: fmtEUR(x.balance_eur),
+                                              diff: fmtEUR(Math.abs(w.difference)),
+                                            })}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              </Fragment>
                             );
                           })}
                         </tbody>
@@ -429,6 +524,52 @@ export default function PensionPage() {
               <Input placeholder={t("Jahresmitteilung")} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </div>
           </div>
+
+          {/* Collapsed by default: a plain balance is a complete statement, and
+              six more fields on first open would look like they were required. */}
+          <button
+            onClick={() => setDetails((v) => !v)}
+            className="mt-5 flex w-full cursor-pointer items-center gap-2 text-xs text-muted-2 transition-colors hover:text-foreground"
+          >
+            <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", details && "rotate-90")} />
+            {t("Weitere Angaben vom Auszug (optional)")}
+          </button>
+
+          {details && (
+            <div className="mt-4 space-y-4 rounded-xl border border-white/[0.06] p-4">
+              <p className="text-[11px] leading-relaxed text-muted-2">
+                {t("Diese Posten stehen so auf deiner Jahresmitteilung. Trägst du sie ein, zeigt Achilles für das Jahr, wie viel Ertrag der Vertrag erwirtschaftet hat und wie viel davon in Kosten geflossen ist.")}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("Vorheriges Vertragsguthaben (€)")}</Label>
+                  <Input inputMode="decimal" value={form.prev_balance_eur} onChange={(e) => setForm({ ...form, prev_balance_eur: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Beiträge insgesamt bisher (€)")}</Label>
+                  <Input inputMode="decimal" value={form.total_paid_eur} onChange={(e) => setForm({ ...form, total_paid_eur: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Wert aus Entwicklung des Fondsportfolios (€)")}</Label>
+                  <Input inputMode="decimal" value={form.fund_performance_eur} onChange={(e) => setForm({ ...form, fund_performance_eur: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Erwirtschaftete Erträge — Zinsen, Überschüsse (€)")}</Label>
+                  <Input inputMode="decimal" value={form.earned_returns_eur} onChange={(e) => setForm({ ...form, earned_returns_eur: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Abschluss- und Vertriebskosten (€)")}</Label>
+                  <Input inputMode="decimal" value={form.acquisition_costs_eur} onChange={(e) => setForm({ ...form, acquisition_costs_eur: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Verwaltungskosten (€)")}</Label>
+                  <Input inputMode="decimal" value={form.admin_costs_eur} onChange={(e) => setForm({ ...form, admin_costs_eur: e.target.value })} />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-2">{t("Kosten als positive Beträge eintragen — sie werden als Abzug gerechnet.")}</p>
+            </div>
+          )}
+
           {error && <div className="mt-3 text-xs text-rose-soft">{error}</div>}
           <Button className="mt-6 w-full" onClick={addStatement}>{t("Speichern")}</Button>
         </DialogContent>

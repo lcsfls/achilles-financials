@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { loanState, type Loan, type Payment } from "@/lib/loans";
+import { schedule } from "@/lib/amortization";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,18 @@ export async function GET() {
   const asOf = today();
   const withState = loans.map((l) => {
     const own = payments.filter((p) => p.loan_id === l.id);
-    return { ...l, payments: own, state: loanState(l, own, asOf) };
+    const state = loanState(l, own, asOf);
+    // The plan starts from what is still owed today, not from the original
+    // principal — otherwise it would ignore every payment already made.
+    const plan = l.monthly_payment_eur
+      ? schedule({
+          balance: state.outstanding,
+          interestPct: l.interest_pct,
+          monthlyPayment: l.monthly_payment_eur,
+          startDate: asOf,
+        })
+      : null;
+    return { ...l, payments: own, state, plan };
   });
 
   // Verliehenes ist eine Forderung, Aufgenommenes eine Schuld — getrennt
@@ -42,8 +54,8 @@ export async function POST(req: NextRequest) {
 
   const info = db()
     .prepare(
-      `INSERT INTO loans (direction, counterparty, kind, principal_eur, interest_pct, start_date, due_date, note)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO loans (direction, counterparty, kind, principal_eur, interest_pct, start_date, due_date, note, monthly_payment_eur)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       b.direction,
@@ -53,16 +65,25 @@ export async function POST(req: NextRequest) {
       Math.max(0, Number(b.interest_pct) || 0),
       b.start_date || today(),
       b.due_date || null,
-      b.note?.trim() || null
+      b.note?.trim() || null,
+      Number(b.monthly_payment_eur) || null
     );
   return NextResponse.json({ ok: true, id: info.lastInsertRowid });
 }
 
-/** Abschließen / wieder öffnen. */
+/** Abschließen / wieder öffnen, oder die Rate ändern. */
 export async function PATCH(req: NextRequest) {
-  const { id, closed } = await req.json();
+  const { id, closed, monthly_payment_eur } = await req.json();
   if (typeof id !== "number") return NextResponse.json({ error: "id erforderlich" }, { status: 400 });
-  db().prepare("UPDATE loans SET closed = ? WHERE id = ?").run(closed ? 1 : 0, id);
+
+  if (monthly_payment_eur !== undefined) {
+    // 0 or empty clears the rate, which removes the schedule
+    db().prepare("UPDATE loans SET monthly_payment_eur = ? WHERE id = ?")
+      .run(Number(monthly_payment_eur) || null, id);
+  }
+  if (closed !== undefined) {
+    db().prepare("UPDATE loans SET closed = ? WHERE id = ?").run(closed ? 1 : 0, id);
+  }
   return NextResponse.json({ ok: true });
 }
 

@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, HandCoins, ArrowUpRight, ArrowDownLeft, Landmark, User, CheckCircle2, RotateCcw, CalendarClock } from "lucide-react";
+import { Plus, Trash2, HandCoins, ArrowUpRight, ArrowDownLeft, Landmark, User, CheckCircle2, RotateCcw, CalendarClock, FileDown, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { type ScheduleRow } from "@/lib/amortization";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtDate, fmtPct } from "@/lib/utils";
 import type { Loan, LoanState, Payment } from "@/lib/loans";
 
-type Row = Loan & { payments: Payment[]; state: LoanState };
+type Plan = {
+  rows: ScheduleRow[]; totalInterest: number; totalPaid: number;
+  payoffDate: string | null; months: number; neverPaysOff: boolean; minPayment: number | null;
+};
+type Row = Loan & { payments: Payment[]; state: LoanState; plan: Plan | null };
 type Data = { loans: Row[]; totals: { lent: number; borrowed: number } };
 
 const EMPTY = {
@@ -20,6 +25,7 @@ const EMPTY = {
   kind: "private" as "private" | "bank",
   principal_eur: "",
   interest_pct: "",
+  monthly_payment_eur: "",
   start_date: new Date().toISOString().slice(0, 10),
   due_date: "",
   note: "",
@@ -35,6 +41,7 @@ export default function LoansPage() {
   const [payFor, setPayFor] = useState<Row | null>(null);
   const [pay, setPay] = useState({ amount_eur: "", paid_on: new Date().toISOString().slice(0, 10), note: "" });
   const [payError, setPayError] = useState<string | null>(null);
+  const [planFor, setPlanFor] = useState<Row | null>(null);
 
   const load = useCallback(() => apiJson<Data>("/api/loans").then(setData), []);
   useEffect(() => { load(); }, [load]);
@@ -51,6 +58,7 @@ export default function LoansPage() {
         ...form,
         principal_eur: num(form.principal_eur),
         interest_pct: form.interest_pct ? num(form.interest_pct) : 0,
+        monthly_payment_eur: form.monthly_payment_eur ? num(form.monthly_payment_eur) : null,
         due_date: form.due_date || null,
       }),
     });
@@ -164,6 +172,11 @@ export default function LoansPage() {
               <div className="space-y-1.5">
                 <Label>{t("Zinssatz % p. a. (leer = zinslos)")}</Label>
                 <Input inputMode="decimal" placeholder="0" value={form.interest_pct} onChange={(e) => setForm({ ...form, interest_pct: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Monatliche Rate (€, optional)")}</Label>
+                <Input inputMode="decimal" placeholder="200" value={form.monthly_payment_eur} onChange={(e) => setForm({ ...form, monthly_payment_eur: e.target.value })} />
+                <p className="text-[11px] text-muted-2">{t("Nur mit Rate lässt sich ein Tilgungsplan vorausberechnen.")}</p>
               </div>
               <div className="space-y-1.5">
                 <Label>{t("Beginn")}</Label>
@@ -310,15 +323,108 @@ export default function LoansPage() {
                       </span>
                     )}
                   </div>
-                  <Button variant="glass" size="sm" onClick={() => { setPayFor(l); setPayError(null); }}>
-                    {l.payments.length === 1 ? t("1 Zahlung") : t("{n} Zahlungen", { n: l.payments.length })}
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="glass" size="sm" onClick={() => { setPayFor(l); setPayError(null); }}>
+                      {l.payments.length === 1 ? t("1 Zahlung") : t("{n} Zahlungen", { n: l.payments.length })}
+                    </Button>
+                    <button
+                      onClick={() => window.open(`/loans/print?id=${l.id}`, "_blank")}
+                      className="cursor-pointer rounded-lg p-2 text-muted-2 transition-colors hover:bg-white/5 hover:text-foreground"
+                      title={t("Als PDF exportieren")}
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Schedule summary — the full table lives in the export */}
+                {l.plan && !l.closed && (
+                  l.plan.neverPaysOff ? (
+                    <div className="mt-3 flex gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-2.5 text-[11px] leading-relaxed text-amber-200/90">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{t("Die Rate deckt nicht einmal die Zinsen — die Schuld würde wachsen. Nötig wären mindestens {amount}/Monat.", { amount: fmtEUR(l.plan.minPayment ?? 0) })}</span>
+                    </div>
+                  ) : l.plan.months > 0 ? (
+                    <button
+                      onClick={() => setPlanFor(l)}
+                      className="mt-3 flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-white/[0.06] px-3 py-2 text-[11px] transition-colors hover:bg-white/[0.03]"
+                    >
+                      <span className="text-muted-2">
+                        {t("Bei {rate}/Monat schuldenfrei in {months} Monaten", {
+                          rate: fmtEUR0(l.monthly_payment_eur ?? 0),
+                          months: String(l.plan.months),
+                        })}
+                      </span>
+                      <span className="shrink-0 text-muted">{t("Tilgungsplan")} →</span>
+                    </button>
+                  ) : null
+                )}
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Tilgungsplan */}
+      <Dialog open={Boolean(planFor)} onOpenChange={(o) => { if (!o) setPlanFor(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogTitle>{t("Tilgungsplan · {name}", { name: planFor?.counterparty ?? "" })}</DialogTitle>
+          <DialogDescription>
+            {planFor && t("Vorausberechnet ab heute auf {outstanding} Restschuld bei {rate} monatlich. Kein Kontoauszug — was tatsächlich gezahlt wurde, steht unter Zahlungen.", {
+              outstanding: fmtEUR(planFor.state.outstanding),
+              rate: fmtEUR(planFor.monthly_payment_eur ?? 0),
+            })}
+          </DialogDescription>
+
+          {planFor?.plan && (
+            <>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {[
+                  { label: t("Laufzeit"), value: t("{n} Monate", { n: planFor.plan.months }) },
+                  { label: t("Zinsen gesamt"), value: fmtEUR(planFor.plan.totalInterest) },
+                  { label: t("Letzte Rate"), value: planFor.plan.payoffDate ? fmtDate(planFor.plan.payoffDate) : "—" },
+                ].map((k) => (
+                  <div key={k.label} className="rounded-xl border border-white/[0.06] p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-2">{k.label}</div>
+                    <div className="num mt-1 text-sm font-medium">{k.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 max-h-[45vh] overflow-y-auto rounded-xl border border-white/[0.06]">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-[#0c0e14] text-left text-[10px] uppercase tracking-wider text-muted-2">
+                    <tr className="border-b border-white/[0.06]">
+                      <th className="px-3 py-2.5 font-medium">{t("Nr.")}</th>
+                      <th className="px-3 py-2.5 font-medium">{t("Fällig")}</th>
+                      <th className="px-3 py-2.5 text-right font-medium">{t("Rate")}</th>
+                      <th className="px-3 py-2.5 text-right font-medium">{t("Zinsen")}</th>
+                      <th className="px-3 py-2.5 text-right font-medium">{t("Tilgung")}</th>
+                      <th className="px-3 py-2.5 text-right font-medium">{t("Danach offen")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {planFor.plan.rows.map((r) => (
+                      <tr key={r.n} className="transition-colors hover:bg-white/[0.03]">
+                        <td className="px-3 py-2 text-muted-2">{r.n}</td>
+                        <td className="px-3 py-2">{fmtDate(r.date)}</td>
+                        <td className="num px-3 py-2 text-right">{fmtEUR(r.payment)}</td>
+                        <td className="num px-3 py-2 text-right text-rose-soft/80">{fmtEUR(r.interest)}</td>
+                        <td className="num px-3 py-2 text-right text-emerald-soft/90">{fmtEUR(r.principal)}</td>
+                        <td className="num px-3 py-2 text-right text-muted">{fmtEUR(r.closing)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Button variant="glass" className="mt-4 w-full" onClick={() => window.open(`/loans/print?id=${planFor.id}`, "_blank")}>
+                <FileDown className="h-4 w-4" /> {t("Als PDF exportieren")}
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Zahlungen */}
       <Dialog open={Boolean(payFor)} onOpenChange={(o) => { if (!o) setPayFor(null); }}>

@@ -132,6 +132,30 @@ function migrate(d: Database.Database) {
       demo INTEGER DEFAULT 0
     );
 
+    /*
+     * German statutory pension notices (Renteninformation / Rentenbescheid).
+     *
+     * Kept apart from pension_contracts on purpose: these are monthly income
+     * entitlements, not capital. There is no balance to sell, so nothing here
+     * may ever be added to net worth — it belongs in the retirement income
+     * projection instead.
+     */
+    CREATE TABLE IF NOT EXISTS pension_statutory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      notice_date TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'renteninformation',  -- renteninformation | rentenbescheid
+      -- Rente wegen voller Erwerbsminderung (monatlich)
+      disability_eur REAL,
+      -- Bisher erreichte Anwartschaft, ohne weitere Beiträge (monatlich)
+      earned_eur REAL,
+      -- Hochrechnung bei gleichbleibenden Beiträgen (monatlich)
+      projected_eur REAL,
+      -- Entgeltpunkte
+      points REAL,
+      note TEXT,
+      demo INTEGER DEFAULT 0
+    );
+
     -- Fondsaufteilung der Altersvorsorge: welche ETFs mit welcher Gewichtung
     CREATE TABLE IF NOT EXISTS pension_allocation (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -240,6 +264,27 @@ function migrate(d: Database.Database) {
   addColumnIfMissing(d, "investments", "source", "TEXT");
   addColumnIfMissing(d, "properties", "share_pct", "REAL NOT NULL DEFAULT 100");
   addColumnIfMissing(d, "pension_statements", "contract_id", "INTEGER");
+
+  /*
+   * The line items a German pension statement actually prints. All optional —
+   * a plain balance stays a valid statement — but when they are filled in they
+   * reconstruct the year's waterfall and show what the costs really were.
+   */
+  addColumnIfMissing(d, "pension_statements", "prev_balance_eur", "REAL");
+  addColumnIfMissing(d, "pension_statements", "fund_performance_eur", "REAL");
+  addColumnIfMissing(d, "pension_statements", "earned_returns_eur", "REAL");
+  addColumnIfMissing(d, "pension_statements", "acquisition_costs_eur", "REAL");
+  addColumnIfMissing(d, "pension_statements", "admin_costs_eur", "REAL");
+  // Contributions paid since inception, as printed — not the sum of our rows,
+  // which only goes back to the first statement the user happened to enter.
+  addColumnIfMissing(d, "pension_statements", "total_paid_eur", "REAL");
+
+  // Fixed rate for the amortisation schedule; without one there is nothing to
+  // project forward from.
+  addColumnIfMissing(d, "loans", "monthly_payment_eur", "REAL");
+
+  // Accounts kept by hand: never touched by a bank sync, balance edited directly.
+  addColumnIfMissing(d, "accounts", "manual", "INTEGER DEFAULT 0");
 
   /*
    * Existing statements predate contracts and would otherwise vanish from a
