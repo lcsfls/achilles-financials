@@ -8,6 +8,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { type ScheduleRow } from "@/lib/amortization";
+import { LoanReportDialog } from "@/components/loan-report-dialog";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtDate, fmtPct } from "@/lib/utils";
 import type { Loan, LoanState, Payment } from "@/lib/loans";
@@ -42,6 +43,7 @@ export default function LoansPage() {
   const [pay, setPay] = useState({ amount_eur: "", paid_on: new Date().toISOString().slice(0, 10), note: "" });
   const [payError, setPayError] = useState<string | null>(null);
   const [planFor, setPlanFor] = useState<Row | null>(null);
+  const [reportFor, setReportFor] = useState<Row | null>(null);
 
   const load = useCallback(() => apiJson<Data>("/api/loans").then(setData), []);
   useEffect(() => { load(); }, [load]);
@@ -328,7 +330,7 @@ export default function LoansPage() {
                       {l.payments.length === 1 ? t("1 Zahlung") : t("{n} Zahlungen", { n: l.payments.length })}
                     </Button>
                     <button
-                      onClick={() => window.open(`/loans/print?id=${l.id}`, "_blank")}
+                      onClick={() => setReportFor(l)}
                       className="cursor-pointer rounded-lg p-2 text-muted-2 transition-colors hover:bg-white/5 hover:text-foreground"
                       title={t("Als PDF exportieren")}
                     >
@@ -364,6 +366,8 @@ export default function LoansPage() {
           })}
         </div>
       )}
+
+      <LoanReportDialog loan={reportFor} onClose={() => setReportFor(null)} />
 
       {/* Tilgungsplan */}
       <Dialog open={Boolean(planFor)} onOpenChange={(o) => { if (!o) setPlanFor(null); }}>
@@ -418,7 +422,7 @@ export default function LoansPage() {
                 </table>
               </div>
 
-              <Button variant="glass" className="mt-4 w-full" onClick={() => window.open(`/loans/print?id=${planFor.id}`, "_blank")}>
+              <Button variant="glass" className="mt-4 w-full" onClick={() => { setReportFor(planFor); setPlanFor(null); }}>
                 <FileDown className="h-4 w-4" /> {t("Als PDF exportieren")}
               </Button>
             </>

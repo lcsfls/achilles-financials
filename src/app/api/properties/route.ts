@@ -80,13 +80,29 @@ export async function PATCH(req: NextRequest) {
   if (!Number.isFinite(value) || value < 0) {
     return NextResponse.json({ error: "Der Wert muss eine Zahl sein." }, { status: 400 });
   }
+  // Label and address are optional here: an empty string means "leave it",
+  // not "clear it" — a rename dialog that blanks the name on an untouched
+  // field would be worse than not offering the rename at all.
+  const label = typeof b.label === "string" && b.label.trim() ? b.label.trim() : null;
+  const address = b.address === undefined ? null : String(b.address).trim() || null;
+
   db()
-    .prepare("UPDATE properties SET value_eur = ?, value_source = ?, valued_on = ?, share_pct = COALESCE(?, share_pct) WHERE id = ?")
+    .prepare(
+      `UPDATE properties
+          SET value_eur = ?, value_source = ?, valued_on = ?,
+              share_pct = COALESCE(?, share_pct),
+              label = COALESCE(?, label),
+              address = CASE WHEN ? THEN ? ELSE address END
+        WHERE id = ?`
+    )
     .run(
       value,
       b.value_source?.trim() || null,
       b.valued_on || new Date().toISOString().slice(0, 10),
       b.share_pct === undefined ? null : Math.min(100, Math.max(0, Number(b.share_pct) || 0)),
+      label,
+      b.address === undefined ? 0 : 1,
+      address,
       b.id
     );
   return NextResponse.json({ ok: true });

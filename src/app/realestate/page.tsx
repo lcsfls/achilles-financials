@@ -51,12 +51,16 @@ export default function RealEstatePage() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Property | null>(null);
-  const [edit, setEdit] = useState({ value_eur: "", value_source: "", valued_on: "", share_pct: "" });
+  const [edit, setEdit] = useState({ label: "", address: "", value_eur: "", value_source: "", valued_on: "", share_pct: "" });
   const [uploadFor, setUploadFor] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(() => apiJson<Data>("/api/properties").then(setData), []);
+  // Returns the fresh data so callers can also refresh a copy they are holding
+  const load = useCallback(
+    () => apiJson<Data>("/api/properties").then((d) => { setData(d); return d; }),
+    []
+  );
   useEffect(() => { load(); }, [load]);
 
   // German input: 350.000,50 → 350000.50
@@ -86,7 +90,7 @@ export default function RealEstatePage() {
     const res = await fetch("/api/properties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editing.id, value_eur: num(edit.value_eur), value_source: edit.value_source, valued_on: edit.valued_on, share_pct: edit.share_pct === "" ? undefined : num(edit.share_pct) }),
+      body: JSON.stringify({ id: editing.id, label: edit.label, address: edit.address, value_eur: num(edit.value_eur), value_source: edit.value_source, valued_on: edit.valued_on, share_pct: edit.share_pct === "" ? undefined : num(edit.share_pct) }),
     });
     if (!res.ok) { setError(t((await res.json()).error)); return; }
     setEditing(null);
@@ -102,7 +106,10 @@ export default function RealEstatePage() {
       const res = await fetch("/api/properties/photo", { method: "POST", body: fd });
       if (!res.ok) { setError(t((await res.json()).error)); break; }
     }
-    load();
+    const fresh = await load();
+    // The edit dialog renders its own copy of the property, so a new photo
+    // would not show up there until the dialog is reopened.
+    setEditing((prev) => (prev ? fresh?.properties.find((p) => p.id === prev.id) ?? prev : prev));
   };
 
   const removePhoto = async (id: number) => {
@@ -261,7 +268,7 @@ export default function RealEstatePage() {
                       <ImagePlus className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => { setEditing(p); setEdit({ value_eur: String(p.value_eur).replace(".", ","), value_source: p.value_source ?? "", valued_on: p.valued_on ?? new Date().toISOString().slice(0, 10), share_pct: String(p.share_pct ?? 100).replace(".", ",") }); }}
+                      onClick={() => { setEditing(p); setEdit({ label: p.label, address: p.address ?? "", value_eur: String(p.value_eur).replace(".", ","), value_source: p.value_source ?? "", valued_on: p.valued_on ?? new Date().toISOString().slice(0, 10), share_pct: String(p.share_pct ?? 100).replace(".", ",") }); }}
                       className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-white/5 hover:text-foreground group-hover:opacity-100 cursor-pointer"
                       title={t("Wert aktualisieren")}
                     >
@@ -323,11 +330,19 @@ export default function RealEstatePage() {
       {/* Update the value */}
       <Dialog open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null); }}>
         <DialogContent>
-          <DialogTitle>{t("Wert aktualisieren")}</DialogTitle>
+          <DialogTitle>{t("Immobilie bearbeiten")}</DialogTitle>
           <DialogDescription>
             {t("Ein Immobilienwert altert. Halte fest, wann und woher — das unterscheidet eine gepflegte Zahl von einer geratenen.")}
           </DialogDescription>
           <div className="mt-5 space-y-4">
+            <div className="space-y-1.5">
+              <Label>{t("Bezeichnung")}</Label>
+              <Input value={edit.label} onChange={(e) => setEdit({ ...edit, label: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("Adresse")}</Label>
+              <Input value={edit.address} onChange={(e) => setEdit({ ...edit, address: e.target.value })} />
+            </div>
             <div className="space-y-1.5">
               <Label>{t("Aktueller Wert (€)")}</Label>
               <Input inputMode="decimal" value={edit.value_eur} onChange={(e) => setEdit({ ...edit, value_eur: e.target.value })} />
@@ -345,6 +360,40 @@ export default function RealEstatePage() {
               <Input inputMode="decimal" value={edit.share_pct} onChange={(e) => setEdit({ ...edit, share_pct: e.target.value })} />
             </div>
           </div>
+
+          {/* Photos, managed where everything else about the property is edited */}
+          <div className="mt-5 space-y-2">
+            <Label>{t("Fotos")}</Label>
+            <div className="flex flex-wrap gap-2">
+              {editing?.photoIds.map((pid) => (
+                <div key={pid} className="group relative h-20 w-20 overflow-hidden rounded-lg border border-white/10">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/properties/photo?id=${pid}`} alt="" className="h-full w-full object-cover" />
+                  <button
+                    onClick={async () => {
+                      if (!confirm(t("Dieses Foto wirklich löschen?"))) return;
+                      await removePhoto(pid);
+                      // The dialog holds a copy of the property, so refresh the
+                      // one it renders or the deleted photo would linger.
+                      setEditing((prev) => (prev ? { ...prev, photoIds: prev.photoIds.filter((x) => x !== pid) } : prev));
+                    }}
+                    className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/60 opacity-0 transition-opacity hover:opacity-100"
+                    title={t("Foto löschen")}
+                  >
+                    <Trash2 className="h-4 w-4 text-rose-soft" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => { if (editing) { setUploadFor(editing.id); fileRef.current?.click(); } }}
+                className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 text-muted-2 transition-colors hover:border-white/30 hover:text-foreground"
+              >
+                <ImagePlus className="h-4 w-4" />
+                <span className="text-[10px]">{t("Hinzufügen")}</span>
+              </button>
+            </div>
+          </div>
+
           {error && <div className="mt-3 text-xs text-rose-soft">{error}</div>}
           <Button className="mt-6 w-full" onClick={saveValue}>{t("Speichern")}</Button>
         </DialogContent>
