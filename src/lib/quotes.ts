@@ -145,14 +145,39 @@ export type HistoryPoint = { t: number; c: number };
 const historyCache = new Map<string, { at: number; data: HistoryPoint[] }>();
 const HISTORY_TTL_MS = 60 * 60 * 1000;
 
-export async function getHistory(symbol: string, range = "6mo"): Promise<HistoryPoint[] | null> {
-  const key = `${symbol}|${range}`;
+/**
+ * Selectable ranges and the candle interval each one needs.
+ *
+ * The interval has to follow the range: asking for one day at a daily interval
+ * returns a single point and draws nothing, while five years at a daily
+ * interval is ~1300 points of needless payload. An allowlist also keeps
+ * user input from reaching Yahoo's query string.
+ */
+export const RANGES = {
+  "1d": "5m",
+  "5d": "30m",
+  "1mo": "1d",
+  "6mo": "1d",
+  "1y": "1d",
+  "5y": "1wk",
+} as const;
+
+export type Range = keyof typeof RANGES;
+
+export function isRange(v: unknown): v is Range {
+  return typeof v === "string" && v in RANGES;
+}
+
+export async function getHistory(symbol: string, range: Range | string = "6mo"): Promise<HistoryPoint[] | null> {
+  const safeRange: Range = isRange(range) ? range : "6mo";
+  const interval = RANGES[safeRange];
+  const key = `${symbol}|${safeRange}`;
   const hit = historyCache.get(key);
   if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.data;
 
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${safeRange}`,
       { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store" }
     );
     if (!res.ok) return hit?.data ?? null;

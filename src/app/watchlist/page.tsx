@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuoteHoverCard } from "@/components/quote-hover-card";
+import { QuoteDetailDialog } from "@/components/quote-detail-dialog";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, displayCurrency, fmtEUR, fmtNum, fmtPct, fmtDate, fmtDateTime } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export default function WatchlistPage() {
   // drives the target's highlight.
   const overIdRef = useRef<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
+  const [detail, setDetail] = useState<WatchItem | null>(null);
 
   // Live references to the tile elements, used to measure their positions so a
   // swap can slide the two tiles toward each other instead of snapping.
@@ -176,7 +178,15 @@ export default function WatchlistPage() {
     const d = dragRef.current;
     dragRef.current = null;
     const target = overIdRef.current != null ? items?.find((i) => i.id === overIdRef.current) : null;
-    if (d?.engaged && target && target.pinned === d.pinned) swap(d.id, target.id);
+    if (d?.engaged && target && target.pinned === d.pinned) {
+      swap(d.id, target.id);
+    } else if (d && !d.engaged) {
+      // Pressed and released without passing the drag threshold — that's a
+      // click, so show the details. Presses that started on a button never get
+      // here (onDragPointerDown ignores them), so pin and delete still work.
+      const clicked = items?.find((i) => i.id === d.id);
+      if (clicked) setDetail(clicked);
+    }
     overIdRef.current = null;
     setDrag(null);
     setOverId(null);
@@ -443,6 +453,12 @@ export default function WatchlistPage() {
           })}
         </div>
       )}
+
+      <QuoteDetailDialog
+        item={detail}
+        open={detail !== null}
+        onOpenChange={(o) => { if (!o) setDetail(null); }}
+      />
 
       {hovered?.quote && !drag && (
         <QuoteHoverCard

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getHistory } from "@/lib/quotes";
+import { getHistory, isRange } from "@/lib/quotes";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const params = new URL(req.url).searchParams;
   const symbol = params.get("symbol");
-  const range = params.get("range") ?? "6mo";
+  const raw = params.get("range") ?? "6mo";
+  const range = isRange(raw) ? raw : "6mo";
   if (!symbol) return NextResponse.json({ error: "symbol erforderlich" }, { status: 400 });
 
   const data = await getHistory(symbol, range);

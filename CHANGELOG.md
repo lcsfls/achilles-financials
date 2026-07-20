@@ -3,6 +3,21 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.8.0] — 2026-07-18
+
+### Added
+- **Click a watchlist tile for the full picture.** A detail dialog opens with the price, today's
+  change, a large chart and a range switcher — **1D, 1W, 1M, 6M, 1Y, 5Y** — plus the change over the
+  selected range, when you added the symbol, the gain since then, and how fresh the quote is.
+- The chart interval now follows the range instead of always being daily: five-minute candles for a
+  day, half-hourly for a week, daily up to a year, weekly for five. Asking for one day at a daily
+  interval had returned a single point and drawn nothing. Only known ranges reach the upstream API.
+
+### Note
+Click and drag share the tile without fighting: a press that never passes the 6px drag threshold
+counts as a click and opens the dialog, a press that does lifts the tile, and a press that starts on
+the pin or delete button does neither. All three verified.
+
 ## [1.7.0] — 2026-07-18
 
 ### Added
