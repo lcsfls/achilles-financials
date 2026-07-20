@@ -71,19 +71,46 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: info.lastInsertRowid });
 }
 
-/** Abschließen / wieder öffnen, oder die Rate ändern. */
+/**
+ * Abschließen / wieder öffnen, oder die Konditionen ändern.
+ *
+ * Jedes Feld ist einzeln optional: Der Karten-Knopf zum Abschließen schickt nur
+ * `closed`, der Bearbeiten-Dialog die Konditionen. Würde ein fehlendes Feld als
+ * "leeren" gelten, löschte der Abschließen-Knopf nebenbei den halben Kredit.
+ */
 export async function PATCH(req: NextRequest) {
-  const { id, closed, monthly_payment_eur } = await req.json();
+  const b = await req.json();
+  const { id } = b;
   if (typeof id !== "number") return NextResponse.json({ error: "id erforderlich" }, { status: 400 });
 
-  if (monthly_payment_eur !== undefined) {
-    // 0 or empty clears the rate, which removes the schedule
-    db().prepare("UPDATE loans SET monthly_payment_eur = ? WHERE id = ?")
-      .run(Number(monthly_payment_eur) || null, id);
+  const exists = db().prepare("SELECT id FROM loans WHERE id = ?").get(id);
+  if (!exists) return NextResponse.json({ error: "Kredit nicht gefunden" }, { status: 404 });
+
+  if (b.counterparty !== undefined && !String(b.counterparty).trim()) {
+    return NextResponse.json({ error: "Name erforderlich" }, { status: 400 });
   }
-  if (closed !== undefined) {
-    db().prepare("UPDATE loans SET closed = ? WHERE id = ?").run(closed ? 1 : 0, id);
+  if (b.principal_eur !== undefined && !(Number(b.principal_eur) > 0)) {
+    return NextResponse.json({ error: "Die Summe muss größer als 0 sein." }, { status: 400 });
   }
+
+  const d = db();
+  const set = (col: string, value: unknown) =>
+    d.prepare(`UPDATE loans SET ${col} = ? WHERE id = ?`).run(value, id);
+
+  if (b.counterparty !== undefined) set("counterparty", String(b.counterparty).trim());
+  if (b.note !== undefined) set("note", String(b.note).trim() || null);
+  if (b.kind !== undefined) set("kind", b.kind === "bank" ? "bank" : "private");
+  if (b.direction !== undefined && (b.direction === "lent" || b.direction === "borrowed")) {
+    set("direction", b.direction);
+  }
+  if (b.principal_eur !== undefined) set("principal_eur", Number(b.principal_eur));
+  if (b.interest_pct !== undefined) set("interest_pct", Math.max(0, Number(b.interest_pct) || 0));
+  if (b.start_date !== undefined && b.start_date) set("start_date", b.start_date);
+  if (b.due_date !== undefined) set("due_date", b.due_date || null);
+  // 0 or empty clears the rate, which removes the schedule
+  if (b.monthly_payment_eur !== undefined) set("monthly_payment_eur", Number(b.monthly_payment_eur) || null);
+  if (b.closed !== undefined) set("closed", b.closed ? 1 : 0);
+
   return NextResponse.json({ ok: true });
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, HandCoins, ArrowUpRight, ArrowDownLeft, Landmark, User, CheckCircle2, RotateCcw, CalendarClock, FileDown, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, HandCoins, ArrowUpRight, ArrowDownLeft, Landmark, User, CheckCircle2, RotateCcw, CalendarClock, FileDown, AlertTriangle, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -44,6 +44,8 @@ export default function LoansPage() {
   const [payError, setPayError] = useState<string | null>(null);
   const [planFor, setPlanFor] = useState<Row | null>(null);
   const [reportFor, setReportFor] = useState<Row | null>(null);
+  // id of the loan being edited; null means the dialog creates a new one
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const load = useCallback(() => apiJson<Data>("/api/loans").then(setData), []);
   useEffect(() => { load(); }, [load]);
@@ -53,21 +55,40 @@ export default function LoansPage() {
 
   const submit = async () => {
     setError(null);
+    const payload = {
+      ...form,
+      principal_eur: num(form.principal_eur),
+      interest_pct: form.interest_pct ? num(form.interest_pct) : 0,
+      monthly_payment_eur: form.monthly_payment_eur ? num(form.monthly_payment_eur) : null,
+      due_date: form.due_date || null,
+    };
     const res = await fetch("/api/loans", {
-      method: "POST",
+      method: editingId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        principal_eur: num(form.principal_eur),
-        interest_pct: form.interest_pct ? num(form.interest_pct) : 0,
-        monthly_payment_eur: form.monthly_payment_eur ? num(form.monthly_payment_eur) : null,
-        due_date: form.due_date || null,
-      }),
+      body: JSON.stringify(editingId ? { id: editingId, ...payload } : payload),
     });
     if (!res.ok) { setError(t((await res.json()).error)); return; }
     setOpen(false);
+    setEditingId(null);
     setForm(EMPTY);
     load();
+  };
+
+  const openEdit = (l: Row) => {
+    setEditingId(l.id);
+    setError(null);
+    setForm({
+      direction: l.direction,
+      counterparty: l.counterparty,
+      kind: l.kind,
+      principal_eur: String(l.principal_eur).replace(".", ","),
+      interest_pct: l.interest_pct ? String(l.interest_pct).replace(".", ",") : "",
+      monthly_payment_eur: l.monthly_payment_eur ? String(l.monthly_payment_eur).replace(".", ",") : "",
+      start_date: l.start_date,
+      due_date: l.due_date ?? "",
+      note: l.note ?? "",
+    });
+    setOpen(true);
   };
 
   const addPayment = async () => {
@@ -122,12 +143,14 @@ export default function LoansPage() {
             {t("Verliehenes und Aufgenommenes — Zahlungen von Hand erfasst.")}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); setError(null); }}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); setError(null); if (!o) { setEditingId(null); setForm(EMPTY); } }}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4" /> {t("Kredit erfassen")}</Button>
+            <Button size="sm" onClick={() => { setEditingId(null); setForm(EMPTY); }}>
+              <Plus className="h-4 w-4" /> {t("Kredit erfassen")}
+            </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogTitle>{t("Kredit erfassen")}</DialogTitle>
+            <DialogTitle>{editingId ? t("Kredit bearbeiten") : t("Kredit erfassen")}</DialogTitle>
             <DialogDescription>
               {t("Zinsen laufen taggenau auf den jeweiligen Restbetrag. Eine Zahlung tilgt erst die aufgelaufenen Zinsen, dann das Kapital. Ohne Zinssatz wird nur getilgt.")}
             </DialogDescription>
@@ -266,6 +289,13 @@ export default function LoansPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      onClick={() => openEdit(l)}
+                      className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-white/5 hover:text-foreground group-hover:opacity-100 cursor-pointer"
+                      title={t("Bearbeiten")}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => toggleClosed(l)}
                       className="rounded-lg p-1.5 text-muted-2 opacity-0 transition-all hover:bg-white/5 hover:text-foreground group-hover:opacity-100 cursor-pointer"

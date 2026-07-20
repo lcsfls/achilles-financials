@@ -371,36 +371,19 @@ export default function OverviewPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <Card className="rise rise-4 xl:col-span-3">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>{t("Letzte Transaktionen")}</CardTitle>
-            <Link href="/transactions" className="text-xs text-gold-bright hover:underline">{t("Alle ansehen →")}</Link>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {data.recent.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.04]">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{tx.merchant || tx.description || "—"}</div>
-                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-2">
-                    {fmtDate(tx.booking_date)}
-                    <Badge color={CATEGORY_COLORS[tx.category] ?? "#6b7280"}>{t(tx.category)}</Badge>
-                  </div>
-                </div>
-                <span className={cn("num shrink-0 text-sm font-semibold", tx.amount > 0 ? "text-emerald-soft" : "text-foreground")}>
-                  {tx.amount > 0 ? "+" : ""}{fmtEUR(tx.amount)}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {/* Square on xl so it reads as a single gauge beside the wider cards.
+            self-start is what makes it square at all: a grid item stretches to
+            the row height by default, and aspect-ratio is ignored once both
+            dimensions are fixed. On narrow screens a forced square would just
+            be a tall empty box, so it only applies from xl up. */}
+        <EmergencyFund
+          monthlySpending={data.thisMonth.spent}
+          onChange={load}
+          className="xl:col-span-1 xl:aspect-square xl:self-start"
+        />
 
-        <div className="space-y-4 xl:col-span-2">
-        <EmergencyFund monthlySpending={data.thisMonth.spent} onChange={load} />
-        <Card className="rise rise-5">
+        <Card className="rise rise-5 xl:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>{t("Edelmetall-Allokation")}</CardTitle>
             <Link href="/metals" className="text-xs text-gold-bright hover:underline">{t("Details →")}</Link>
@@ -433,7 +416,33 @@ export default function OverviewPage() {
             })}
           </CardContent>
         </Card>
-        </div>
+      </div>
+
+      {/* Bottom row — transactions now have the width to themselves */}
+      <div className="grid grid-cols-1 gap-4">
+        <Card className="rise rise-4">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle>{t("Letzte Transaktionen")}</CardTitle>
+            <Link href="/transactions" className="text-xs text-gold-bright hover:underline">{t("Alle ansehen →")}</Link>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {data.recent.map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.04]">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{tx.merchant || tx.description || "—"}</div>
+                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-2">
+                    {fmtDate(tx.booking_date)}
+                    <Badge color={CATEGORY_COLORS[tx.category] ?? "#6b7280"}>{t(tx.category)}</Badge>
+                  </div>
+                </div>
+                <span className={cn("num shrink-0 text-sm font-semibold", tx.amount > 0 ? "text-emerald-soft" : "text-foreground")}>
+                  {tx.amount > 0 ? "+" : ""}{fmtEUR(tx.amount)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );

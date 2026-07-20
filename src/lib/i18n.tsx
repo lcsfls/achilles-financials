@@ -439,6 +439,7 @@ const EN: Record<string, string> = {
   "Summe über {n} Auszüge": "Total across {n} statements",
   "Entwicklung seit Beginn": "Growth since start",
   "Auszug": "Statement",
+  "Kredit bearbeiten": "Edit loan",
   "Adresse": "Address",
   "Immobilie bearbeiten": "Edit property",
   "Fotos": "Photos",

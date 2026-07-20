@@ -164,6 +164,73 @@ export function seedDemoData() {
     alloc.run("AGGH.MI", "iShares Global Aggregate Bond", 15);
   }
 
+  /*
+   * Eine Immobilie mit Teileigentum: 50 % zeigt, dass ins Vermögen der Anteil
+   * eingeht und nicht der volle Wert — der häufigste Denkfehler an der Stelle.
+   * Ohne Fotos, die müssten als Binärdaten im Repo liegen.
+   */
+  const propCount = (d.prepare("SELECT COUNT(*) AS c FROM properties").get() as { c: number }).c;
+  if (propCount === 0) {
+    d.prepare(
+      `INSERT INTO properties (label, address, value_eur, value_source, valued_on,
+                               purchase_price_eur, purchase_date, size_sqm, share_pct, note, created_at, demo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    ).run(
+      "Eigentumswohnung (Demo)",
+      "Lindenstraße 14, 40217 Düsseldorf",
+      395000,
+      "Maklergutachten",
+      iso(-120),
+      312000,
+      iso(-2100),
+      78,
+      50,
+      "Hälftiger Anteil, gemeinsam mit Geschwisterteil",
+      now.toISOString()
+    );
+  }
+
+  /*
+   * Zwei Firmen, weil erst der Vergleich den Punkt des Rechners zeigt: dieselbe
+   * Methode ergibt 1,7 für die kleine inhabernahe Agentur und 5,4 für den
+   * größeren Betrieb mit zweiter Führungsebene.
+   *
+   * Die Werte sind bewusst so gewählt, dass beide INNERHALB des Korridors
+   * landen. Mit härteren Annahmen schlagen beide an Boden bzw. Decke an — das
+   * zeigt dann nur die Deckelung und nicht, dass das Modell unterscheidet.
+   */
+  const bizCount = (d.prepare("SELECT COUNT(*) AS c FROM businesses").get() as { c: number }).c;
+  if (bizCount === 0) {
+    const biz = d.prepare(
+      "INSERT INTO businesses (label, kind, inputs, note, created_at, demo) VALUES (?, ?, ?, ?, ?, 1)"
+    );
+    const ts = now.toISOString();
+
+    biz.run(
+      "Eigene Agentur (Demo)",
+      "own",
+      JSON.stringify({
+        revenue: 420000, ebitda: 95000, assets: 40000, netDebt: 15000,
+        ownerDependency: "medium", employees: "1-4", secondLevel: false,
+        concentration: "medium", recurring: "medium", growth: "flat", documented: true,
+      }),
+      "Klein und inhabernah — Multiple 1,7 statt der 5,7 des Durchschnitts",
+      ts
+    );
+
+    biz.run(
+      "Kaufobjekt: Handwerksbetrieb (Demo)",
+      "target",
+      JSON.stringify({
+        revenue: 1800000, ebitda: 260000, assets: 320000, netDebt: 180000,
+        ownerDependency: "medium", employees: "5-19", secondLevel: true,
+        concentration: "medium", recurring: "medium", growth: "growing", documented: true,
+      }),
+      "Zweite Führungsebene, breitere Kundschaft — deshalb das höhere Multiple",
+      ts
+    );
+  }
+
   // Zwei zusätzliche Szenarien, damit der Vergleich im Demo sichtbar ist.
   // Das automatisch angelegte Basis-Szenario ist Nutzer-Konfiguration und
   // bleibt deshalb unmarkiert.
@@ -174,6 +241,20 @@ export function seedDemoData() {
     const base = { age: 33, monthlyExpenses: 2500, inflationPct: 2, startNetWorth: null, include: { cash: true, metals: true, investments: true, pension: true } };
     scen.run("Sparsam (Demo)", JSON.stringify({ ...base, monthlySavings: 900, annualReturnPct: 5, withdrawalRatePct: 3.5 }), ts, 1);
     scen.run("Optimistisch (Demo)", JSON.stringify({ ...base, monthlySavings: 2500, annualReturnPct: 8, withdrawalRatePct: 4 }), ts, 2);
+  }
+
+  /*
+   * Notgroschen auf das Demo-Konto legen.
+   *
+   * Ohne das zeigt die Kachel im Demo nur den Einrichtungstext — das Dashboard
+   * wirkt dort unfertig, und die Kachel wird höher als breit. Nur setzen, wenn
+   * der Nutzer noch keines gewählt hat: seine Zuordnung ist Konfiguration, kein
+   * Demo-Inhalt.
+   */
+  if (!getSetting("emergency_account_id")) {
+    setSetting("emergency_account_id", "demo-main");
+    setSetting("emergency_target_eur", "9000");
+    setSetting("emergency_months", "3");
   }
 
   setSetting("demo_mode", "1");
@@ -230,6 +311,17 @@ export function clearDemoData() {
     // Zahlungen zuerst: Sie hängen an den Krediten und blieben sonst verwaist.
     d.prepare("DELETE FROM loan_payments WHERE loan_id IN (SELECT id FROM loans WHERE demo = 1)").run();
     d.prepare("DELETE FROM loans WHERE demo = 1").run();
+    // Fotos zuerst: sie zeigen sonst auf eine Immobilie, die es nicht mehr gibt
+    d.prepare("DELETE FROM property_photos WHERE property_id IN (SELECT id FROM properties WHERE demo = 1)").run();
+    d.prepare("DELETE FROM properties WHERE demo = 1").run();
+    d.prepare("DELETE FROM businesses WHERE demo = 1").run();
+    // Nur die eigene Zuordnung zurücknehmen; zeigt sie woanders hin, hat der
+    // Nutzer sie selbst gesetzt und sie bleibt.
+    if (getSetting("emergency_account_id") === "demo-main") {
+      deleteSetting("emergency_account_id");
+      deleteSetting("emergency_target_eur");
+      deleteSetting("emergency_months");
+    }
     if (getSetting("pension_provider") === "Muster Direktversicherung (Demo)") {
       deleteSetting("pension_provider");
       deleteSetting("pension_monthly");

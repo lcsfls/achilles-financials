@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { apiJson, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
+import { cn, apiJson, fmtEUR, fmtEUR0, fmtNum } from "@/lib/utils";
 
 type Data = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null }>;
@@ -18,7 +18,7 @@ type Data = {
 };
 
 /** Notgroschen: ein Konto zweckbinden, Ziel setzen, Fortschritt sehen. */
-export function EmergencyFund({ monthlySpending, onChange }: { monthlySpending: number; onChange?: () => void }) {
+export function EmergencyFund({ monthlySpending, onChange, className }: { monthlySpending: number; onChange?: () => void; className?: string }) {
   const { t } = useI18n();
   const [data, setData] = useState<Data | null>(null);
   const [open, setOpen] = useState(false);
@@ -67,7 +67,7 @@ export function EmergencyFund({ monthlySpending, onChange }: { monthlySpending: 
 
   return (
     <>
-      <Card className="glass-hover rise rise-2">
+      <Card className={cn("glass-hover rise rise-2 flex flex-col", className)}>
         <CardHeader className="flex-row items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-soft/10 border border-emerald-soft/20">
@@ -90,7 +90,7 @@ export function EmergencyFund({ monthlySpending, onChange }: { monthlySpending: 
             <Pencil className="h-3.5 w-3.5" />
           </button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-1 flex-col justify-center">
           {!configured ? (
             <div className="py-2">
               <p className="text-sm leading-relaxed text-muted">
