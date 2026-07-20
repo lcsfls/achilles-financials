@@ -21,6 +21,8 @@ export function InstrumentSearch({
   onSubmit,
   placeholder,
   className,
+  inputClassName,
+  compact,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -30,6 +32,9 @@ export function InstrumentSearch({
   onSubmit?: () => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
+  /** Denser layout for inline use next to other small fields. */
+  compact?: boolean;
 }) {
   const { t } = useI18n();
   const [hits, setHits] = useState<Hit[]>([]);
@@ -37,10 +42,19 @@ export function InstrumentSearch({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
+  /*
+   * The value a pick just wrote into the field. Choosing a hit sets the input
+   * to the resolved ticker, which is a value change like any other and would
+   * immediately fire a fresh search — reopening the list the pick just closed.
+   */
+  const pickedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const q = value.trim();
     if (q.length < 2) { setHits([]); setLoading(false); return; }
+
+    // Do not search for what a pick just filled in
+    if (pickedRef.current === q) { setLoading(false); return; }
 
     // Debounced, and every response checks whether it is still the current
     // query — otherwise a slow early request can overwrite a newer result.
@@ -74,8 +88,10 @@ export function InstrumentSearch({
   }, []);
 
   const pick = (hit: Hit) => {
+    pickedRef.current = hit.symbol;
     setOpen(false);
     setHits([]);
+    setLoading(false);
     onPick(hit.symbol);
   };
 
@@ -95,16 +111,16 @@ export function InstrumentSearch({
   return (
     <div ref={boxRef} className={cn("relative", className)}>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-2" />
+        <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-2", compact ? "left-2.5 h-3.5 w-3.5" : "left-3.5 h-4 w-4")} />
         <Input
-          className="pl-10"
+          className={cn(compact ? "h-9 pl-8 text-xs" : "pl-10", inputClassName)}
           placeholder={placeholder ?? t("Name, Symbol oder ISIN — z. B. VWCE.DE oder IE00BK5BQT80")}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => { pickedRef.current = null; onChange(e.target.value); }}
           onFocus={() => hits.length > 0 && setOpen(true)}
           onKeyDown={onKeyDown}
         />
-        {loading && <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-2" />}
+        {loading && <Loader2 className={cn("absolute top-1/2 -translate-y-1/2 animate-spin text-muted-2", compact ? "right-2.5 h-3.5 w-3.5" : "right-3.5 h-4 w-4")} />}
       </div>
 
       {open && (hits.length > 0 || (!loading && value.trim().length >= 2)) && (
@@ -128,8 +144,8 @@ export function InstrumentSearch({
                 )}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm text-foreground">{h.name}</div>
-                  <div className="text-xs text-muted-2">
+                  <div className={cn("truncate text-foreground", compact ? "text-xs" : "text-sm")}>{h.name}</div>
+                  <div className={compact ? "text-[10px] text-muted-2" : "text-xs text-muted-2"}>
                     {h.symbol}
                     {h.exchange && ` · ${h.exchange}`}
                   </div>

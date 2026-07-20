@@ -70,9 +70,32 @@ export async function POST(req: NextRequest) {
 
   // Symbol gegen die Kursquelle prüfen, damit keine Karteileiche entsteht
   const { getQuote } = await import("@/lib/quotes");
-  const quote = await getQuote(sym, true);
+  let resolved = sym;
+  let quote = await getQuote(sym, true);
+
+  /*
+   * An ISIN is what the fact sheet prints, so it is what people paste here —
+   * but it is not a Yahoo ticker and carries no quote. Resolve it rather than
+   * rejecting it and telling the user to go find the ticker themselves. Also
+   * covers a plain fund name.
+   */
   if (!quote) {
-    return NextResponse.json({ error: `Kein Kurs für "${sym}" gefunden. Yahoo-Format verwenden, z. B. IWDA.AS oder VWCE.DE.` }, { status: 404 });
+    const { searchInstruments, isIsin } = await import("@/lib/search");
+    const hits = await searchInstruments(sym, 3).catch(() => []);
+    for (const hit of hits) {
+      const q = await getQuote(hit.symbol, true);
+      if (q) { quote = q; resolved = hit.symbol; break; }
+    }
+    if (!quote) {
+      return NextResponse.json(
+        {
+          error: isIsin(sym)
+            ? `Zu der ISIN "${sym}" ließ sich kein handelbares Kürzel mit Kursdaten finden.`
+            : `Kein Kurs für "${sym}" gefunden. Suche nach Name oder ISIN und wähle einen Treffer aus.`,
+        },
+        { status: 404 }
+      );
+    }
   }
 
   const d = db();
@@ -85,7 +108,7 @@ export async function POST(req: NextRequest) {
   }
 
   d.prepare("INSERT INTO pension_allocation (symbol, name, weight_pct) VALUES (?, ?, ?)")
-    .run(sym, name || quote.name, weight_pct);
+    .run(resolved, name || quote.name, weight_pct);
   return NextResponse.json({ ok: true });
 }
 

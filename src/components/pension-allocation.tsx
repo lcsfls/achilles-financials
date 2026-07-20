@@ -6,6 +6,7 @@ import { Plus, Trash2, Layers, CalendarClock, AlertTriangle } from "lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { InstrumentSearch } from "@/components/instrument-search";
 import { useI18n } from "@/lib/i18n";
 import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum, fmtDate } from "@/lib/utils";
 
@@ -86,7 +87,10 @@ export function PensionAllocation({ onChange }: { onChange?: () => void }) {
   const complete = Math.abs(data.totalWeight - 100) < 0.05;
 
   return (
-    <Card className="rise rise-4">
+    // relative z-20: .rise animates a transform, so every Card is its own
+    // stacking context — the search results would otherwise be painted under
+    // the cards that follow, regardless of their own z-index.
+    <Card className="rise rise-4 relative z-20">
       <CardHeader className="flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-soft/10 border border-violet-soft/20">
@@ -202,14 +206,16 @@ export function PensionAllocation({ onChange }: { onChange?: () => void }) {
 
         {/* Fonds hinzufügen */}
         <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-[140px] flex-1 space-y-1.5">
-            <Label>{t("ETF-Symbol (Yahoo-Format)")}</Label>
-            <Input
-              className="h-9 text-xs"
-              placeholder="IWDA.AS"
+          <div className="min-w-[180px] flex-1 space-y-1.5">
+            <Label>{t("Fonds suchen")}</Label>
+            <InstrumentSearch
+              compact
               value={symbol}
-              onChange={(e) => { setSymbol(e.target.value); setError(null); }}
-              onKeyDown={(e) => e.key === "Enter" && add()}
+              onChange={(v) => { setSymbol(v); setError(null); }}
+              // Unlike the watchlist, picking only fills the symbol: the weight
+              // still has to be entered before this row means anything.
+              onPick={(sym) => { setSymbol(sym); setError(null); }}
+              placeholder={t("Name oder ISIN, z. B. IE00B4L5Y983")}
             />
           </div>
           <div className="w-24 space-y-1.5">

@@ -439,6 +439,8 @@ const EN: Record<string, string> = {
   "Summe über {n} Auszüge": "Total across {n} statements",
   "Entwicklung seit Beginn": "Growth since start",
   "Auszug": "Statement",
+  "Fonds suchen": "Search fund",
+  "Name oder ISIN, z. B. IE00B4L5Y983": "Name or ISIN, e.g. IE00B4L5Y983",
   "Im Druckdialog „Als PDF sichern“ wählen.": "Choose “Save as PDF” in the print dialog.",
   "/Monat": "/month",
   "Monat": "month",
