@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins, Home } from "lucide-react";
+import { KeyRound, Database, Sparkles, CheckCircle2, ExternalLink, Languages, RefreshCw, Download, GitBranch, AlertTriangle, Terminal, Lock, LogOut, Archive, Upload, Coins, ShieldCheck, HandCoins, Home, Timer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { COUNTRIES } from "@/lib/countries";
 import { apiJson, cn, fmtDateTime } from "@/lib/utils";
 
-type Settings = { propertyInNetWorth: "include" | "exclude"; loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
+type Settings = { syncInterval: "manual" | "6h" | "12h" | "24h" | "7d"; syncLastAuto: string | null; syncNextRun: string | null; propertyInNetWorth: "include" | "exclude"; loansInNetWorth: "none" | "borrowed" | "both"; ebConfigured: boolean; ebAppIdMasked: string | null; country: string; demoMode: boolean; language: string; authEnabled: boolean; authUser: string | null; appUrl: string; appUrlSource: "setting" | "env" | "request"; effectiveOrigin: string; callbackUrl: string };
 
 type UpdateInfo = {
   repo: string;
@@ -112,6 +112,16 @@ export default function SettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ property_in_networth: v }),
     });
+  };
+
+  const saveInterval = async (v: Settings["syncInterval"]) => {
+    setSettings((prev) => (prev ? { ...prev, syncInterval: v } : prev));
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sync_interval: v }),
+    });
+    load();
   };
 
   const logout = async () => {
@@ -279,6 +289,58 @@ export default function SettingsPage() {
               <div className="mt-1 text-xs leading-relaxed text-muted-2">{why}</div>
             </button>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Automatischer Bankabruf */}
+      <Card className="rise rise-1">
+        <CardHeader className="flex-row items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-soft/10 border border-sky-soft/20">
+            <Timer className="h-5 w-5 text-sky-soft" strokeWidth={1.7} />
+          </div>
+          <div>
+            <CardTitle className="normal-case text-base font-semibold tracking-normal text-foreground">{t("Automatischer Abruf")}</CardTitle>
+            <div className="text-xs text-muted-2">{t("Wie oft Achilles von sich aus bei der Bank nachfragt")}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {([
+              ["6h", t("alle 6 Std.")],
+              ["12h", t("alle 12 Std.")],
+              ["24h", t("täglich")],
+              ["7d", t("wöchentlich")],
+              ["manual", t("nur manuell")],
+            ] as const).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => saveInterval(v)}
+                className={cn(
+                  "cursor-pointer rounded-xl border px-3 py-2.5 text-sm font-medium transition-all",
+                  settings?.syncInterval === v
+                    ? "border-gold/40 bg-gold/10 text-gold-bright shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                    : "border-white/10 text-muted hover:border-white/20 hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Das Limit ist der Grund für die Auswahl — deshalb steht es hier,
+              nicht in einer Fußnote. */}
+          <p className="text-xs leading-relaxed text-muted-2">
+            {t("Kürzer als 6 Stunden gibt es bewusst nicht: PSD2 erlaubt höchstens vier unbeaufsichtigte Abrufe pro Tag und Konto, und einzelne Banken deckeln strenger. Achilles hält sich auch dann daran, wenn die Einstellung anders gesetzt würde. Unabhängig davon läuft deine Bank-Zustimmung nach 90 Tagen ab und muss neu erteilt werden — „Jetzt syncen“ auf der Verbinden-Seite geht jederzeit.")}
+          </p>
+
+          {settings?.syncLastAuto && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-2">
+              <span>{t("Zuletzt automatisch: {date}", { date: fmtDateTime(settings.syncLastAuto) })}</span>
+              {settings.syncNextRun && settings.syncInterval !== "manual" && (
+                <span>{t("Nächster Lauf: {date}", { date: fmtDateTime(settings.syncNextRun) })}</span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

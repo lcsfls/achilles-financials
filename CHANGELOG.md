@@ -3,6 +3,23 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.7.0] — 2026-07-18
+
+### Added
+- **Scheduled bank sync** (Settings → Automatic sync): every 6 h, every 12 h, daily, weekly, or manual
+  only. Default is daily. The app checks every 15 minutes whether a run is due, so the schedule
+  survives a container restart without ever polling the bank more often than allowed.
+
+  **Nothing shorter than 6 hours is offered, and that is a legal limit, not a preference.** PSD2
+  permits at most **four unattended accesses per day per account** — where "unattended" means you
+  are not present — and individual banks cap it lower still. The 6-hour floor is enforced in the
+  code, not just in the picker: a hand-edited or nonsense value in the database falls back to daily
+  and can never make the app exceed the limit. Covered by 10 tests.
+
+  The card also states what no schedule can fix: a PSD2 consent **expires after 90 days** and has to
+  be granted again. "Sync now" on the Connect page stays available at any time, since that is an
+  attended access and not subject to the four-per-day rule.
+
 ## [1.6.0] — 2026-07-18
 
 ### Added

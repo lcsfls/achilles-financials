@@ -3,6 +3,7 @@ import { deleteSetting, getSetting, setSetting } from "@/lib/db";
 import { SESSION_COOKIE, authEnabled, createSession, disableAuth, getUsername, setCredentials, verifyPassword } from "@/lib/auth";
 import { callbackUrl, publicOrigin, validateAppUrl } from "@/lib/app-url";
 import { isSupported } from "@/lib/currency";
+import { getInterval, isInterval, lastAutoSync, nextRun } from "@/lib/autosync";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest) {
     displayCurrency: getSetting("display_currency") || "EUR",
     loansInNetWorth: getSetting("loans_in_networth") || "none",
     propertyInNetWorth: getSetting("property_in_networth") || "include",
+    syncInterval: getInterval(),
+    syncLastAuto: lastAutoSync(),
+    syncNextRun: nextRun(),
     setupDone: getSetting("setup_done") === "1",
     authEnabled: authEnabled(),
     authUser: getUsername(),
@@ -45,6 +49,11 @@ export async function POST(req: NextRequest) {
   }
   if (["include", "exclude"].includes(body.property_in_networth)) {
     setSetting("property_in_networth", body.property_in_networth);
+  }
+  // Only known values — the floor lives in autosync.ts, so even a stored
+  // nonsense value could never make the app exceed the PSD2 limit.
+  if (isInterval(body.sync_interval)) {
+    setSetting("sync_interval", body.sync_interval);
   }
 
   // Login einrichten / ändern / abschalten
