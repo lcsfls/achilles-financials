@@ -372,15 +372,12 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
 
-        {/* Square on xl so it reads as a single gauge beside the wider cards.
-            self-start is what makes it square at all: a grid item stretches to
-            the row height by default, and aspect-ratio is ignored once both
-            dimensions are fixed. On narrow screens a forced square would just
-            be a tall empty box, so it only applies from xl up. */}
+        {/* One column wide, height left to the grid so it lines up with the
+            cards either side of it. */}
         <EmergencyFund
           monthlySpending={data.thisMonth.spent}
           onChange={load}
-          className="xl:col-span-1 xl:aspect-square xl:self-start"
+          className="xl:col-span-1"
         />
 
         <Card className="rise rise-5 xl:col-span-2">
