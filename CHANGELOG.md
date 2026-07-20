@@ -3,6 +3,18 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.9.1] — 2026-07-18
+
+### Added
+- **Net worth by allocation** on the overview: a donut plus a list showing every asset class with
+  **both its amount and its share** — cash, precious metals, investments, pension, real estate and
+  money lent out.
+
+  Shares are of **gross assets, not of net worth**: debt reduces the total but is not a slice of it,
+  and showing it as one would push the shares past 100 %. So the ring is what you own, and what you
+  owe appears below it as the step down to net worth. The breakdown reconciles exactly with the
+  figure in the header under every loan setting — verified for all three.
+
 ## [1.9.0] — 2026-07-18
 
 ### Added

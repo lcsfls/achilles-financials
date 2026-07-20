@@ -14,7 +14,7 @@ import { CATEGORY_COLORS } from "@/lib/categorize";
 import { EmergencyFund } from "@/components/emergency-fund";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import { useI18n } from "@/lib/i18n";
-import { apiJson, cn, fmtEUR, fmtEUR0, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
+import { apiJson, cn, fmtEUR, fmtEUR0, fmtNum, fmtUSD, fmtUSD0, fmtDate, fmtPct } from "@/lib/utils";
 
 type Summary = {
   accounts: Array<{ id: string; name: string; balance: number; iban: string | null; last_synced: string | null }>;
@@ -38,6 +38,11 @@ type Summary = {
     txCount: number;
   };
   netWorth: number;
+  allocation: {
+    gross: number;
+    liabilities: number;
+    items: Array<{ key: string; value: number; pct: number }>;
+  };
   demoMode: boolean;
   lastSync: string | null;
 };
@@ -58,6 +63,16 @@ function CashflowTooltip({ active, payload, label }: { active?: boolean; payload
     </ChartTooltip>
   );
 }
+
+/** Colours and labels per asset class — same hues the section pages use. */
+const ALLOC: Record<string, { color: string; label: string }> = {
+  cash: { color: "#38bdf8", label: "Liquidität" },
+  metals: { color: "#d4af37", label: "Edelmetalle" },
+  investments: { color: "#a78bfa", label: "Investments" },
+  pension: { color: "#34d399", label: "Altersvorsorge" },
+  property: { color: "#f59e0b", label: "Immobilien" },
+  lent: { color: "#22d3ee", label: "Verliehen" },
+};
 
 export default function OverviewPage() {
   const { t, lang } = useI18n();
@@ -264,6 +279,63 @@ export default function OverviewPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        {data.allocation.gross > 0 && (
+          <Card className="rise rise-4 xl:col-span-2">
+            <CardHeader><CardTitle>{t("Vermögensaufteilung")}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <div className="relative h-[190px] w-[190px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={data.allocation.items} dataKey="value" nameKey="key" innerRadius={62} outerRadius={88} paddingAngle={3} strokeWidth={0}>
+                        {data.allocation.items.map((a) => (
+                          <Cell key={a.key} fill={ALLOC[a.key]?.color ?? "#6b7280"} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[10px] uppercase tracking-widest text-muted-2">{t("Gesamt")}</span>
+                    <span className="num text-lg font-semibold">{fmtEUR0(data.allocation.gross)}</span>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  {data.allocation.items.map((a) => (
+                    <div key={a.key} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex min-w-0 items-center gap-2 text-muted">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ALLOC[a.key]?.color ?? "#6b7280" }} />
+                        <span className="truncate">{t(ALLOC[a.key]?.label ?? a.key)}</span>
+                      </span>
+                      {/* Both, because a share without the amount says as
+                          little as an amount without the share. */}
+                      <span className="flex shrink-0 items-baseline gap-2">
+                        <span className="num font-medium">{fmtEUR0(a.value)}</span>
+                        <span className="num w-11 text-right text-muted-2">{fmtNum(a.pct, 1)} %</span>
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Debt is not a slice of what you own — shown as the step
+                      from gross assets down to net worth. */}
+                  {data.allocation.liabilities > 0 && (
+                    <>
+                      <div className="hairline my-2" />
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-2">{t("abzüglich Schulden")}</span>
+                        <span className="num font-medium text-rose-soft">−{fmtEUR0(data.allocation.liabilities)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium">{t("Gesamtvermögen")}</span>
+                        <span className="num font-semibold">{fmtEUR0(data.netWorth)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="rise rise-4 xl:col-span-2">
           <CardHeader><CardTitle>{t("Ausgaben nach Kategorie · {month}", { month: monthShort(new Date().getMonth()) })}</CardTitle></CardHeader>

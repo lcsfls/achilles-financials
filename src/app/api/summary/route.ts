@@ -190,6 +190,38 @@ export async function GET() {
     },
     loans: { mode, lent: loansLent, borrowed: loansBorrowed, effect: loansEffect },
     property: { mode: propertyMode, total: propertyTotal, effect: propertyEffect },
+    /**
+     * Net worth split by asset class.
+     *
+     * Shares are of *gross assets*, not of net worth: debts reduce the total
+     * but are not a slice of it — showing them as one would push the shares
+     * past 100 %. So the pie is what you own, and what you owe is stated
+     * separately with the net figure as the result.
+     *
+     * Money lent out only appears as an asset where the setting counts it, and
+     * borrowed money only as a liability where the setting subtracts it — the
+     * breakdown always adds up to the net worth shown above it.
+     */
+    allocation: (() => {
+      const items = [
+        { key: "cash", value: cashTotal },
+        { key: "metals", value: metals.totalValue },
+        { key: "investments", value: invValue },
+        { key: "pension", value: pensionValue },
+        { key: "property", value: propertyEffect },
+        { key: "lent", value: mode === "both" ? loansLent : 0 },
+      ].filter((i) => i.value > 0);
+
+      const gross = items.reduce((s, i) => s + i.value, 0);
+      const liabilities = mode === "none" ? 0 : loansBorrowed;
+
+      return {
+        gross,
+        liabilities,
+        // Guard against dividing by zero on an empty install
+        items: items.map((i) => ({ ...i, pct: gross > 0 ? (i.value / gross) * 100 : 0 })),
+      };
+    })(),
     netWorth: cashTotal + metals.totalValue + invValue + pensionValue + loansEffect + propertyEffect,
     demoMode: getSetting("demo_mode") === "1",
     lastSync: getSetting("eb_last_sync"),
