@@ -20,8 +20,14 @@ const NAV = [
   { href: "/business", label: "Unternehmenswert", icon: Briefcase },
   { href: "/fire", label: "FIRE", icon: Flame },
   { href: "/connect", label: "Verbinden", icon: QrCode },
-  { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
+
+/**
+ * Sits apart from the list above: settings is not a place you go to look at
+ * something, it is where you go to change something — and it is where the
+ * update notice belongs.
+ */
+const SETTINGS = { href: "/settings", label: "Einstellungen", icon: Settings };
 
 /** Seiten, die statt der Lesebreite die ganze Fensterbreite bekommen. */
 const FULL_WIDTH = new Set(["/watchlist"]);
@@ -31,6 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t } = useI18n();
   const [checked, setChecked] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   // Ersteinrichtung: ohne abgeschlossenes Setup zum Wizard umleiten.
   //
@@ -49,6 +56,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => setChecked(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  /*
+   * Once per page load, not per navigation: the shell survives client-side
+   * route changes, and the release lookup goes out to GitHub. The server caches
+   * it for ten minutes anyway, but there is no reason to ask again just because
+   * someone clicked a link.
+   *
+   * Only `true` shows the badge — the endpoint reports null when it could not
+   * check, and an unknown state must not be dressed up as a pending update.
+   */
+  useEffect(() => {
+    if (pathname === "/login" || pathname === "/setup") return;
+    apiJson<{ updateAvailable: boolean | null }>("/api/update")
+      .then((u) => setUpdateAvailable(u.updateAvailable === true))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (pathname === "/setup" || pathname === "/login") {
     return (
@@ -100,6 +124,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="hairline my-4" />
+
+          <Link
+            href={SETTINGS.href}
+            className={cn(
+              "group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all duration-200",
+              pathname === SETTINGS.href
+                ? "bg-gradient-to-r from-gold/15 to-transparent text-gold-bright border border-gold/20 shadow-[0_0_24px_-8px_rgba(212,175,55,0.4)]"
+                : "text-muted hover:text-foreground hover:bg-white/[0.05] border border-transparent"
+            )}
+          >
+            <SETTINGS.icon
+              className={cn("h-[18px] w-[18px] transition-colors", pathname === SETTINGS.href ? "text-gold" : "text-muted-2 group-hover:text-foreground")}
+              strokeWidth={1.8}
+            />
+            {t(SETTINGS.label)}
+            {updateAvailable && (
+              <span
+                className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-semibold text-[#1a1405] shadow-[0_0_12px_-2px_rgba(212,175,55,0.8)]"
+                title={t("Ein Update ist verfügbar")}
+              >
+                1
+              </span>
+            )}
+          </Link>
+
+          <div className="hairline my-4" />
           <div className="px-2 text-[10px] leading-relaxed text-muted-2">
             Private Wealth Dashboard
             <br />
@@ -111,19 +161,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile top nav */}
       <div className="fixed inset-x-0 top-0 z-40 p-3 lg:hidden">
         <div className="glass flex items-center gap-1 overflow-x-auto rounded-2xl p-2">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {[...NAV, SETTINGS].map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs",
+                  "relative flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs",
                   active ? "bg-gold/15 text-gold-bright" : "text-muted"
                 )}
               >
                 <Icon className="h-4 w-4" strokeWidth={1.8} />
                 <span className="hidden sm:inline">{t(label)}</span>
+                {href === SETTINGS.href && updateAvailable && (
+                  // Overlaid rather than inline: the labels are hidden on narrow
+                  // screens, so a badge in the flow would sit next to nothing.
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-semibold text-[#1a1405]">
+                    1
+                  </span>
+                )}
               </Link>
             );
           })}
