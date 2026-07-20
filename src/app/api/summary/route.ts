@@ -111,7 +111,14 @@ export async function GET() {
   const pensionRow = d
     .prepare("SELECT statement_date, balance_eur FROM pension_statements ORDER BY statement_date DESC LIMIT 1")
     .get() as { statement_date: string; balance_eur: number } | undefined;
-  const pensionValue = pensionRow?.balance_eur ?? 0;
+  // Latest balance per contract, summed — with several contracts a single
+  // global "latest statement" would silently report only one of them.
+  const pensionValue = (d
+    .prepare(`SELECT COALESCE(SUM(b), 0) AS total FROM (
+                SELECT (SELECT balance_eur FROM pension_statements s
+                         WHERE s.contract_id = c.id ORDER BY s.statement_date DESC LIMIT 1) AS b
+                  FROM pension_contracts c)`)
+    .get() as { total: number }).total;
 
   /**
    * Kredite im Gesamtvermögen — Einstellung, weil es hier keine objektiv

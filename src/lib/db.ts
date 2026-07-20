@@ -110,6 +110,19 @@ function migrate(d: Database.Database) {
       fetched_at TEXT NOT NULL
     );
 
+    -- One row per contract: a company pension, a private one, a life policy.
+    -- Statements hang off a contract so several can be tracked side by side.
+    CREATE TABLE IF NOT EXISTS pension_contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'pension',   -- pension | life
+      provider TEXT,
+      monthly_eur REAL,
+      note TEXT,
+      created_at TEXT NOT NULL,
+      demo INTEGER DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS pension_statements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       statement_date TEXT NOT NULL,
@@ -226,6 +239,22 @@ function migrate(d: Database.Database) {
   // erneuter Import "ersetzen" anbieten, ohne eigene Einträge mitzulöschen.
   addColumnIfMissing(d, "investments", "source", "TEXT");
   addColumnIfMissing(d, "properties", "share_pct", "REAL NOT NULL DEFAULT 100");
+  addColumnIfMissing(d, "pension_statements", "contract_id", "INTEGER");
+
+  /*
+   * Existing statements predate contracts and would otherwise vanish from a
+   * page that filters by contract. Move them into one contract built from the
+   * old single-contract settings, once.
+   */
+  const orphans = (d.prepare("SELECT COUNT(*) AS c FROM pension_statements WHERE contract_id IS NULL").get() as { c: number }).c;
+  if (orphans > 0) {
+    const provider = (d.prepare("SELECT value FROM settings WHERE key = 'pension_provider'").get() as { value: string } | undefined)?.value;
+    const monthly = (d.prepare("SELECT value FROM settings WHERE key = 'pension_monthly'").get() as { value: string } | undefined)?.value;
+    const info = d
+      .prepare("INSERT INTO pension_contracts (label, kind, provider, monthly_eur, created_at) VALUES (?, 'pension', ?, ?, ?)")
+      .run(provider || "Altersvorsorge", provider || null, Number(monthly || 0) || null, new Date().toISOString());
+    d.prepare("UPDATE pension_statements SET contract_id = ? WHERE contract_id IS NULL").run(info.lastInsertRowid);
+  }
   // Bestandslisten haben noch keine Reihenfolge. Ohne Startwert stünden sie
   // alle auf 0 und neue Einträge sortierten sich vor die bestehenden — die id
   // ist aufsteigend und bildet damit die Aufnahmereihenfolge ab.

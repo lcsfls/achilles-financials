@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Eye, RefreshCw, TrendingUp, TrendingDown, CalendarPlus, Pin, GripVertical } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InstrumentSearch } from "@/components/instrument-search";
 import { QuoteHoverCard } from "@/components/quote-hover-card";
 import { QuoteDetailDialog } from "@/components/quote-detail-dialog";
 import { useI18n } from "@/lib/i18n";
@@ -62,14 +62,17 @@ export default function WatchlistPage() {
     apiJson<{ watchlist: WatchItem[] }>(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((d) => setItems(d.watchlist)), []);
   useEffect(() => { load(); }, [load]);
 
-  const add = async () => {
-    if (!symbol.trim()) return;
+  const add = async (explicit?: string) => {
+    // Taking the symbol as an argument: choosing a hit sets the state and adds
+    // in the same tick, where `symbol` would still hold the search text.
+    const sym = (explicit ?? symbol).trim();
+    if (!sym) return;
     setBusy(true);
     setError(null);
     const res = await fetch("/api/watchlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol }),
+      body: JSON.stringify({ symbol: sym }),
     });
     setBusy(false);
     if (!res.ok) { setError(t((await res.json()).error)); return; }
@@ -249,16 +252,19 @@ export default function WatchlistPage() {
         </Button>
       </div>
 
-      <Card className="rise rise-1 p-4">
+      {/* relative z-20: .rise animates a transform, which makes every Card its own
+          stacking context — without this the search results are painted under the
+          tiles below regardless of their own z-index. */}
+      <Card className="rise rise-1 relative z-20 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
+          <InstrumentSearch
             className="min-w-[200px] flex-1"
-            placeholder={t("Symbol, z. B. NVDA, VWCE.DE, BTC-EUR, ^GSPC")}
             value={symbol}
-            onChange={(e) => { setSymbol(e.target.value); setError(null); }}
-            onKeyDown={(e) => e.key === "Enter" && add()}
+            onChange={(v) => { setSymbol(v); setError(null); }}
+            onPick={(sym) => { setSymbol(sym); add(sym); }}
+            onSubmit={() => add()}
           />
-          <Button disabled={busy || !symbol.trim()} onClick={add}>
+          <Button disabled={busy || !symbol.trim()} onClick={() => add()}>
             {busy ? t("Prüfe …") : <><Plus className="h-4 w-4" /> {t("Hinzufügen")}</>}
           </Button>
         </div>
@@ -269,7 +275,7 @@ export default function WatchlistPage() {
         <Card className="rise rise-2 flex flex-col items-center gap-4 p-14 text-center">
           <Eye className="h-10 w-10 text-sky-soft/60" strokeWidth={1.2} />
           <p className="max-w-sm text-sm text-muted">
-            {t("Noch leer — füge Symbole hinzu, um Kurse zu beobachten (Yahoo-Format: AAPL, VWCE.DE, IWDA.AS, BTC-EUR, ^GSPC).")}
+            {t("Noch leer — suche nach Name, Symbol oder ISIN, um Kurse zu beobachten.")}
           </p>
         </Card>
       ) : (
