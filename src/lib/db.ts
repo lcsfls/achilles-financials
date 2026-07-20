@@ -128,6 +128,19 @@ function migrate(d: Database.Database) {
       demo INTEGER DEFAULT 0
     );
 
+    -- Saved business valuations: your own company, or a target you are looking
+    -- at. Inputs are stored as JSON so a new question doesn't need a migration.
+    CREATE TABLE IF NOT EXISTS businesses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'own',   -- own | target
+      inputs TEXT NOT NULL,               -- JSON, see BusinessInput
+      note TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      demo INTEGER DEFAULT 0
+    );
+
     -- Real estate. The value is entered by hand: a genuine automated valuation
     -- needs a paid AVM service, and official Bodenrichtwerte only price the
     -- land, not the building — a number from those would mislead. Whoever

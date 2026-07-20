@@ -3,6 +3,38 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [1.9.0] — 2026-07-18
+
+### Added
+- **Business value calculator** — a new section in the nav, in German and English. Enter revenue,
+  adjusted EBITDA, assets and net debt, answer seven questions about how the business actually runs,
+  and get an **orientation range** for the equity value. Save valuations for your own company or for
+  an acquisition target, and re-open them later; they are re-valued on read, so a change to the model
+  applies to everything saved rather than leaving stale figures behind.
+
+#### The questions that matter, and why
+The dominant factor for a small business is not the industry — it is whether the business survives
+without its owner. The calculator asks it directly and shows each answer's effect on the multiple:
+owner dependency, employees, a second management level, customer concentration, recurring revenue,
+trend, and whether processes are documented, plus a size discount.
+
+Where the owner is critical **and** there is nobody to take over, the tool says plainly that an
+earnings multiple is the wrong basis: what transfers is the substance, not the profit. That is the
+honest answer to "would this still work if I sold it", and it names the fix — build someone up,
+document the processes.
+
+#### Where the numbers come from
+- Base multiple **5.7× adjusted EBITDA**, the cross-industry mid-market average (DUB KMU multiples
+  Q1/2026), with the usual corridor at 4.1–7.3×.
+- **Micro businesses trade 30–50 % below** larger firms in the same industry — built in as a size
+  discount.
+- Owner dependency is weighted heaviest because the German **AWH standard** for craft businesses
+  prices it at capitalisation rates of 15–25 %, i.e. multiples of only 4–6.7× before other risks.
+
+The result is always a **range, never a single figure**, with the asset value as a floor. The method
+dialog states outright that this is an orientation — not an appraisal and not investment advice —
+and that a defensible valuation needs a professional.
+
 ## [1.8.0] — 2026-07-18
 
 ### Added

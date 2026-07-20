@@ -21,6 +21,7 @@ const EN: Record<string, string> = {
   "Notgroschen": "Emergency fund",
   "Kredite": "Loans",
   "Immobilien": "Real estate",
+  "Unternehmenswert": "Business value",
   "Zu viele Fehlversuche. Bitte {n} Sekunden warten.": "Too many failed attempts. Please wait {n} seconds.",
   "Die Datei ist zu groß — erlaubt sind maximal 20 MB.": "The file is too large — the limit is 20 MB.",
   "Verbinden": "Connect",
@@ -210,6 +211,78 @@ const EN: Record<string, string> = {
   "Es konnte keine einzige Position gelesen werden — Stückzahl- oder Kursspalte passen nicht.":
     "Not a single position could be read — the quantity or price column does not match.",
   "Watchlist": "Watchlist",
+
+  // Unternehmenswert
+  "Eine Orientierungs-Bandbreite für dein eigenes Unternehmen oder einen Kaufkandidaten — nach dem Multiplikatorverfahren, wie es im Mittelstand üblich ist.":
+    "An orientation range for your own company or an acquisition target, using the market multiple method common for mid-sized businesses.",
+  "Methode": "Method",
+  "Zahlen": "Figures",
+  "Jahresumsatz (€)": "Annual revenue (€)",
+  "EBITDA bereinigt (€)": "Adjusted EBITDA (€)",
+  "Vermögen (€)": "Assets (€)",
+  "Nettoverschuldung (€)": "Net debt (€)",
+  "Bereinigt heißt: ein marktübliches Geschäftsführergehalt ist abgezogen, private und einmalige Posten sind heraus. Nettoverschuldung = Schulden minus Kasse; sie mindert, was beim Verkauf bei dir ankommt.":
+    "Adjusted means: a market-rate manager's salary is deducted and private or one-off items are removed. Net debt = debt minus cash; it reduces what actually reaches you on a sale.",
+  "Läuft es ohne dich?": "Does it run without you?",
+  "Das ist bei kleinen Unternehmen der größte Werthebel — größer als die Branche.":
+    "For a small business this is the biggest lever on value — bigger than the industry.",
+  "Ohne dich läuft …": "Without you …",
+  "gar nichts — alles hängt an mir": "nothing runs — it all depends on me",
+  "wenig — ich bin täglich nötig": "little — I am needed daily",
+  "einiges — für Wochen ginge es": "much of it — it would cope for weeks",
+  "alles — Führung ist eingesetzt": "everything — management is in place",
+  "Mitarbeitende": "Employees",
+  "keine — Einzelunternehmen": "none — sole operator",
+  "Größter Kunde": "Largest customer",
+  "über 50 % vom Umsatz": "over 50 % of revenue",
+  "20–50 %": "20–50 %",
+  "unter 20 %": "under 20 %",
+  "Wiederkehrende Umsätze": "Recurring revenue",
+  "kaum — Projektgeschäft": "little — project work",
+  "teilweise": "partly",
+  "überwiegend — Verträge, Abos": "mostly — contracts, subscriptions",
+  "Entwicklung": "Trend",
+  "rückläufig": "declining",
+  "stabil": "flat",
+  "wachsend": "growing",
+  "Übergabefähigkeit": "Transferability",
+  "2. Ebene": "2nd level",
+  "Prozesse dok.": "Processes doc.",
+  "Ergebnis": "Result",
+  "Trage Umsatz und bereinigtes EBITDA ein — ohne Ertrag lässt sich kein Ertragswert bilden.":
+    "Enter revenue and adjusted EBITDA — without earnings there is no earnings-based value.",
+  "Bandbreite (Eigenkapitalwert)": "Range (equity value)",
+  "Mittelwert {mid} · {mult}× EBITDA": "Midpoint {mid} · {mult}× EBITDA",
+  "Ohne dich läuft nichts, und es gibt niemanden, der übernehmen könnte. Für einen Käufer ist der Ertrag dann nicht übertragbar — realistisch verkaufst du eher die Substanz als das Unternehmen. Wer den Wert heben will, fängt genau hier an: jemanden aufbauen, Prozesse dokumentieren.":
+    "Nothing runs without you, and there is nobody who could take over. For a buyer the earnings are then not transferable — realistically you would be selling the substance, not the business. Raising the value starts exactly here: build someone up, document the processes.",
+  "Der Ertragswert liegt unter dem Substanzwert von {v}. Ein Käufer zahlt kaum weniger als das, was er beim Weiterverkauf der Vermögenswerte bekäme.":
+    "The earnings value is below the asset value of {v}. A buyer will rarely pay less than what reselling the assets would return.",
+  "Was den Multiplikator bewegt": "What moves the multiple",
+  "Inhaberabhängigkeit": "Owner dependency",
+  "Zweite Führungsebene": "Second management level",
+  "Kundenkonzentration": "Customer concentration",
+  "Dokumentierte Prozesse": "Documented processes",
+  "Größenklasse": "Size class",
+  "Speichern als": "Save as",
+  "Meine GmbH": "My company",
+  "eigenes": "own",
+  "Kaufkandidat": "target",
+  "inhabergebunden": "owner-bound",
+  "Bearbeiten": "Edit",
+  "{mult}× EBITDA · erfasst {date}": "{mult}× EBITDA · recorded {date}",
+  "Wie gerechnet wird": "How it is calculated",
+  "Multiplikatorverfahren: bereinigtes EBITDA × Multiplikator, abzüglich Nettoverschuldung. Der Multiplikator startet beim Branchendurchschnitt und wird durch deine Antworten angepasst.":
+    "Market multiple method: adjusted EBITDA × multiple, less net debt. The multiple starts at the industry average and is adjusted by your answers.",
+  "Der Ausgangswert von {m}× ist der branchenübergreifende Mittelstands-Durchschnitt (DUB KMU-Multiples Q1/2026); der übliche Korridor liegt bei 4,1–7,3×.":
+    "The starting point of {m}× is the cross-industry mid-market average (DUB KMU multiples Q1/2026); the usual corridor is 4.1–7.3×.",
+  "Kleinstunternehmen erzielen 30–50 % niedrigere Multiplikatoren als größere Betriebe derselben Branche — das ist als Größenabschlag hinterlegt.":
+    "Micro businesses achieve 30–50 % lower multiples than larger firms in the same industry — that is built in as a size discount.",
+  "Die Inhaberabhängigkeit wiegt am schwersten. Der AWH-Standard des Handwerks bildet sie mit Kapitalisierungszinsen von 15–25 % ab, was Multiplikatoren von nur 4–6,7× entspricht — noch bevor andere Risiken einfließen.":
+    "Owner dependency weighs heaviest. The German AWH standard for craft businesses reflects it with capitalisation rates of 15–25 %, equivalent to multiples of only 4–6.7× before any other risk is considered.",
+  "Das ist eine Orientierung, kein Gutachten und keine Anlageberatung. Ein tatsächlicher Preis hängt von Verhandlung, Käufertyp, Finanzierung und Due Diligence ab. Für eine belastbare Bewertung — etwa für Nachfolge, Finanzierung oder Steuer — brauchst du eine Fachperson.":
+    "This is an orientation, not an appraisal and not investment advice. An actual price depends on negotiation, buyer type, financing and due diligence. For a defensible valuation — for succession, financing or tax — you need a professional.",
+  "„{name}“ löschen?": "Delete {name}?",
+  "Eingaben fehlen": "Inputs are missing",
 
   // Immobilien
   "Adresse, Wert und Fotos — der Wert wird von Hand gepflegt.": "Address, value and photos — the value is maintained by hand.",
@@ -447,7 +520,6 @@ const EN: Record<string, string> = {
   "Das letzte Szenario kann nicht gelöscht werden.": "The last scenario can't be deleted.",
   "Parameter anpassen — die Vorschau rechnet live mit.": "Adjust the parameters — the preview updates live.",
   "z. B. Optimistisch, Sparsam, Basis": "e.g. Optimistic, Frugal, Base",
-  "Bearbeiten": "Edit",
   "Abbrechen": "Cancel",
   "Welches Vermögen zählt ins Startkapital?": "Which assets count toward starting capital?",
   "Summe Startkapital": "Starting capital total",
