@@ -70,6 +70,25 @@ npm run dev        # → http://localhost:3000
 The setup wizard walks you through language, the optional bank connection, and demo data. Demo mode
 fills the dashboard with realistic sample data so you can explore before connecting anything real.
 
+## System requirements
+
+Modest — this is a single Node process with a SQLite file. Measured on a Debian 12 container running
+the `.deb`, with demo data loaded and after 30 page loads:
+
+| | |
+|---|---|
+| **RAM** | ~80 MB in use. Verified to run under a hard 256 MB limit; 512 MB total system memory is comfortable. |
+| **Disk** | 188 MB installed (117 MB of that is the bundled Node runtime), plus the database — under 1 MB with a year of demo data. |
+| **CPU** | Any x86-64 or ARM64. Service start takes ~7 ms; a Raspberry Pi 4 is more than enough. |
+| **OS** | Debian 12+/Ubuntu 22.04+ for the `.deb` (needs systemd). Docker or Proxmox otherwise. macOS 11+ Apple Silicon for the desktop app. |
+| **Node** | Not needed. The `.deb` and the macOS app bring their own; Docker builds its own. Only the `npm run dev` route needs Node 20+ installed. |
+
+The database grows with your transaction history, not with time — a few thousand transactions stay
+in the low single-digit megabytes.
+
+**HTTPS** is not needed to run it, but is required if you want to connect a bank — see
+[Connecting your bank](#connecting-your-bank). CSV import works without it.
+
 ## Deployment
 
 ### Proxmox — one command
@@ -118,9 +137,16 @@ curl -fsSLO https://github.com/lcsfls/achilles-financials/releases/latest/downlo
 sudo apt install ./achilles-financials_amd64.deb
 ```
 
-That is it — the service is enabled and started, listening on port 3000. There is no `nodejs`
-dependency: the package brings its own Node runtime, because the native SQLite module is compiled
-against one specific Node version and the distributions ship different ones.
+That is it — the service is enabled and started, listening on port 3000, and it survives reboots.
+It is **standalone**: no Docker, no database server, no reverse proxy needed to run it, and no
+`nodejs` dependency. The package brings its own Node runtime, because the native SQLite module is
+compiled against one specific Node version and the distributions ship different ones (Debian 12 has
+18, Ubuntu 24.04 has 20). It needs systemd and nothing else.
+
+It is a background service, not a desktop program — you use it in a browser at
+`http://<host>:3000`. On a desktop Linux that works too, just at `localhost`. If you want an actual
+application window, that is what the [macOS app](#macos-app) is (Linux and Windows builds are
+planned).
 
 | | |
 |---|---|
@@ -129,11 +155,17 @@ against one specific Node version and the distributions ship different ones.
 | Service | `systemctl status achilles-financials` |
 | Logs | `journalctl -u achilles-financials -f` |
 
-Set `APP_URL` in the config to the address reachable from your phone, then
-`sudo systemctl restart achilles-financials`.
+Edit `PORT`, `HOSTNAME` or `APP_URL` in `/etc/achilles-financials/env`, then
+`sudo systemctl restart achilles-financials`. Set `HOSTNAME=127.0.0.1` if a reverse proxy sits in
+front of it; the default `0.0.0.0` makes it reachable from the whole network.
 
-Upgrades keep your data and your edited config. `apt remove` leaves the database in place;
-only `apt purge` deletes it.
+The service runs as its own system user under `ProtectSystem=strict` with no access to home
+directories. The data directory is `0750` and the config `0640` — both hold bank credentials, so
+other users on the machine cannot read them.
+
+Upgrades keep your data and your edited config, and restart the service only if it was running
+before. `apt remove` leaves the database in place; only `apt purge` deletes it, along with the
+config and the system user.
 
 Building the packages yourself needs Docker (they are built in a Debian container):
 
@@ -161,6 +193,28 @@ docker run --rm -v achilles-data:/data -v $(pwd):/backup debian \
 
 Or use **Settings → Backup** for an encrypted `.achillesbak` you can download and restore from the
 browser — no shell needed.
+
+## First run
+
+However you installed it, the first open lands in a setup wizard: **language → optional bank
+credentials → demo data or start empty**. You can skip the bank part and add it later; nothing is
+required to get a working dashboard.
+
+Three things worth doing right after:
+
+1. **Turn on the login.** It is **off by default**, so a fresh install can't lock you out before you
+   have credentials — which also means anyone who can reach the host can read your finances until
+   you enable it. **Settings → Login**, before the machine is reachable by anyone else.
+2. **Set the public address.** **Settings → Public address of this instance**. Only needed for the
+   bank connection, but it is the single most common reason the QR flow fails — without it the app
+   guesses its own URL from the request, and behind a proxy that guess is wrong.
+3. **Load demo data and click around.** **Settings → Demo mode**. It fills every page with realistic
+   numbers so you can see what the app does before deciding what to feed it. Removing it later
+   deletes only the demo rows, never yours.
+
+Backups are **Settings → Backup**: a password-protected `.achillesbak` you can download and restore
+from the browser. It contains your banking private key, which is why it is encrypted and why the
+password cannot be recovered.
 
 ## Why there is no automatic property valuation
 
