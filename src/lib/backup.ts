@@ -28,7 +28,12 @@ function deriveKey(password: string, salt: Buffer): Buffer {
   return crypto.scryptSync(password, salt, 32, { N: SCRYPT_N, r: 8, p: 1 });
 }
 
-export class BackupError extends Error {}
+export class BackupError extends Error {
+  // Ohne das meldet sich die Klasse im Log als "Error". Bei einem Pfad, der im
+  // Ernstfall die einzige Datenrettung ist, will man sehen, welcher Fehler es
+  // war — "Nutzerfehler" (falsches Passwort) vs. "kaputt" hängt daran.
+  name = "BackupError";
+}
 
 export async function createBackup(password: string): Promise<Buffer> {
   if (password.length < 8) throw new BackupError("Das Backup-Passwort muss mindestens 8 Zeichen haben.");
@@ -118,22 +123,37 @@ export async function restoreBackup(file: Buffer, password: string): Promise<{ t
     const cols = (schema: string, table: string) =>
       (live.prepare(`PRAGMA ${schema}.table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name);
 
-    const copy = live.transaction(() => {
-      live.pragma("foreign_keys = OFF");
-      for (const table of bakTables) {
-        // Tabellen, die es hier nicht (mehr) gibt, überspringen statt scheitern
-        if (!mainTables.includes(table)) continue;
-        // Nur gemeinsame Spalten: ein älteres Backup kennt neuere nicht
-        const shared = cols("bak", table).filter((c) => cols("main", table).includes(c));
-        if (shared.length === 0) continue;
-        const list = shared.map((c) => `"${c}"`).join(", ");
-        live.prepare(`DELETE FROM main."${table}"`).run();
-        live.prepare(`INSERT INTO main."${table}" (${list}) SELECT ${list} FROM bak."${table}"`).run();
-        tableCount++;
-      }
-    });
-    copy();
-    live.pragma("foreign_keys = ON");
+    /*
+     * Fremdschlüssel VOR der Transaktion abschalten, nicht darin.
+     *
+     * SQLite behandelt `PRAGMA foreign_keys` innerhalb einer offenen
+     * Transaktion als No-op — es ist dort wirkungslos, ohne einen Fehler zu
+     * melden. Die Prüfung blieb also aktiv, und das erste DELETE auf einer
+     * referenzierten Tabelle brach die Wiederherstellung mit
+     * "FOREIGN KEY constraint failed" ab. Die Tabellen werden bewusst in
+     * beliebiger Reihenfolge ersetzt, deshalb muss die Prüfung ruhen.
+     */
+    live.pragma("foreign_keys = OFF");
+    try {
+      const copy = live.transaction(() => {
+        for (const table of bakTables) {
+          // Tabellen, die es hier nicht (mehr) gibt, überspringen statt scheitern
+          if (!mainTables.includes(table)) continue;
+          // Nur gemeinsame Spalten: ein älteres Backup kennt neuere nicht
+          const shared = cols("bak", table).filter((c) => cols("main", table).includes(c));
+          if (shared.length === 0) continue;
+          const list = shared.map((c) => `"${c}"`).join(", ");
+          live.prepare(`DELETE FROM main."${table}"`).run();
+          live.prepare(`INSERT INTO main."${table}" (${list}) SELECT ${list} FROM bak."${table}"`).run();
+          tableCount++;
+        }
+      });
+      copy();
+    } finally {
+      // Auch nach einem Abbruch wieder einschalten, sonst liefe die App
+      // danach ohne Fremdschlüsselprüfung weiter.
+      live.pragma("foreign_keys = ON");
+    }
   } finally {
     try { live.prepare("DETACH DATABASE bak").run(); } catch { /* egal */ }
     fs.rmSync(tmp, { force: true });
