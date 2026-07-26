@@ -94,6 +94,20 @@ CTID=120 STORAGE=local-zfs BRIDGE=vmbr0 NET_IP=192.168.1.50/24 NET_GW=192.168.1.
   bash <(curl -fsSL https://raw.githubusercontent.com/lcsfls/achilles-financials/main/deploy/proxmox-install.sh)
 ```
 
+### macOS app
+
+**[Download for Apple Silicon](https://github.com/lcsfls/achilles-financials/releases/latest/download/Achilles-Financials-macOS-arm64.dmg)** — no server, no Docker.
+
+The app carries the server with it and runs it locally. Data lives in
+`~/Library/Application Support/achilles-financials/data`.
+
+> **First launch:** the app is unsigned (signing needs an Apple Developer account), so macOS blocks
+> it. Right-click the app → **Open** once, then confirm.
+
+One difference from running it as a server: the scheduled bank sync only runs while the app is open.
+PSD2 allows four unattended calls a day either way, but "always current" becomes "current since I
+last opened it". Intel Macs are not built for.
+
 ### Debian / Ubuntu package
 
 For a plain VM or bare metal, without Docker or Proxmox. Grab the `.deb` for your architecture from
