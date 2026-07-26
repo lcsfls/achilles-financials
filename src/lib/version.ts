@@ -17,6 +17,31 @@ const CONTROL_DIR = process.env.CONTROL_DIR || "/control";
 export const REPO = process.env.REPO_SLUG || "lcsfls/achilles-financials";
 export const BRANCH = process.env.REPO_BRANCH || "main";
 
+/**
+ * Wie wurde die App installiert?
+ *
+ * Der In-App-Updater baut Docker-Images neu — richtig für die Proxmox- und
+ * Compose-Installation, falsch für ein .deb, wo apt die Paketverwaltung ist.
+ * Das Paket legt dazu eine Marker-Datei neben server.js; ohne sie bleibt es
+ * beim bisherigen Verhalten.
+ */
+export type InstallMethod = "docker" | "deb";
+
+export function installMethod(): InstallMethod {
+  try {
+    const marker = fs.readFileSync(path.join(process.cwd(), "install-method"), "utf8").trim();
+    if (marker === "deb") return "deb";
+  } catch { /* keine Marker-Datei = Docker */ }
+  return "docker";
+}
+
+/** Wie der Nutzer bei dieser Installationsart selbst aktualisiert. */
+export function shellUpdateCommand(): string {
+  return installMethod() === "deb"
+    ? "sudo apt update && sudo apt install --only-upgrade achilles-financials"
+    : "cd /opt/achilles-financials && ./deploy/update.sh";
+}
+
 export type Version = { version: string | null; sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
 export type UpdateState = "idle" | "requested" | "running" | "success" | "error";
 export type UpdateStatus = {

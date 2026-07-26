@@ -1,0 +1,52 @@
+#!/bin/sh
+# Runs after unpacking, on install and on upgrade.
+set -e
+
+case "$1" in
+  configure)
+    # System user without a login shell or home: the service needs an identity
+    # to own its data, not an account anyone could log into.
+    if ! getent passwd achilles >/dev/null; then
+      adduser --system --group --no-create-home \
+              --home /var/lib/achilles-financials \
+              --shell /usr/sbin/nologin achilles >/dev/null
+    fi
+
+    # 0750: the database holds bank credentials and balances. Other users on
+    # the machine have no business reading it.
+    mkdir -p /var/lib/achilles-financials
+    chown achilles:achilles /var/lib/achilles-financials
+    chmod 0750 /var/lib/achilles-financials
+
+    # The config file may contain an APP_URL and later secrets.
+    chown root:achilles /etc/achilles-financials/env
+    chmod 0640 /etc/achilles-financials/env
+
+    systemctl daemon-reload >/dev/null 2>&1 || true
+
+    if [ -z "$2" ]; then
+      # First install: enable and start, then tell the user where it is.
+      systemctl enable --now achilles-financials.service >/dev/null 2>&1 || true
+      PORT=$(sed -n 's/^PORT=\(.*\)/\1/p' /etc/achilles-financials/env | head -1)
+      echo ""
+      echo "  Achilles Financials läuft auf Port ${PORT:-3000}."
+      echo "  Konfiguration: /etc/achilles-financials/env"
+      echo "  Daten:         /var/lib/achilles-financials"
+      echo ""
+      echo "  Wichtig: APP_URL in der Konfiguration auf die Adresse setzen,"
+      echo "  unter der das Dashboard vom Handy erreichbar ist — sonst führt"
+      echo "  der Rücksprung von der Bank ins Leere."
+      echo ""
+    else
+      # Upgrade: start again only if prerm found it running. Someone who
+      # stopped the service deliberately should not find it started by an
+      # upgrade — and someone who was running it must not be left with it off.
+      if [ -e /run/achilles-financials/was-running ]; then
+        rm -f /run/achilles-financials/was-running
+        systemctl start achilles-financials.service >/dev/null 2>&1 || true
+      fi
+    fi
+    ;;
+esac
+
+exit 0

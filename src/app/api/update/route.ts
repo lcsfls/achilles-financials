@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   BRANCH, FIX_PERMISSIONS_COMMAND, REPO, compareSemver, controlState, fetchLatestRelease,
-  getUpdateLog, getUpdateStatus, getVersion, parseSemver, requestUpdate,
-} from "@/lib/version";
+  getUpdateLog, getUpdateStatus, getVersion, parseSemver, requestUpdate, installMethod, shellUpdateCommand } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +45,8 @@ export async function GET(req: NextRequest) {
     checkFailed,
     upToDate: updateAvailable === false,
     releasesUrl: `https://github.com/${REPO}/releases`,
-    shellCommand: "cd /opt/achilles-financials && ./deploy/update.sh",
+    installMethod: installMethod(),
+    shellCommand: shellUpdateCommand(),
   });
 }
 
@@ -65,8 +65,16 @@ export async function POST() {
     );
   }
   if (control === "missing") {
+    // Bei einer Paketinstallation ist das kein Defekt, sondern der Normalfall:
+    // apt ist die Paketverwaltung, die App hat sich da nicht einzumischen.
     return NextResponse.json(
-      { error: "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren." },
+      {
+        error:
+          installMethod() === "deb"
+            ? "Diese Installation wird über apt aktualisiert."
+            : "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.",
+        shellCommand: shellUpdateCommand(),
+      },
       { status: 501 }
     );
   }

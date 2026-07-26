@@ -94,6 +94,40 @@ CTID=120 STORAGE=local-zfs BRIDGE=vmbr0 NET_IP=192.168.1.50/24 NET_GW=192.168.1.
   bash <(curl -fsSL https://raw.githubusercontent.com/lcsfls/achilles-financials/main/deploy/proxmox-install.sh)
 ```
 
+### Debian / Ubuntu package
+
+For a plain VM or bare metal, without Docker or Proxmox. Grab the `.deb` for your architecture from
+the [latest release](https://github.com/lcsfls/achilles-financials/releases/latest):
+
+```bash
+curl -fsSLO https://github.com/lcsfls/achilles-financials/releases/latest/download/achilles-financials_amd64.deb
+sudo apt install ./achilles-financials_amd64.deb
+```
+
+That is it — the service is enabled and started, listening on port 3000. There is no `nodejs`
+dependency: the package brings its own Node runtime, because the native SQLite module is compiled
+against one specific Node version and the distributions ship different ones.
+
+| | |
+|---|---|
+| Configuration | `/etc/achilles-financials/env` |
+| Data | `/var/lib/achilles-financials` |
+| Service | `systemctl status achilles-financials` |
+| Logs | `journalctl -u achilles-financials -f` |
+
+Set `APP_URL` in the config to the address reachable from your phone, then
+`sudo systemctl restart achilles-financials`.
+
+Upgrades keep your data and your edited config. `apt remove` leaves the database in place;
+only `apt purge` deletes it.
+
+Building the packages yourself needs Docker (they are built in a Debian container):
+
+```bash
+deploy/deb/build.sh          # both architectures → dist-deb/
+deploy/deb/build.sh amd64    # just one
+```
+
 ### Docker Compose (any host)
 
 ```bash
@@ -304,6 +338,13 @@ Neither applies to the CSV import, which is why it exists.
 > different banks in parallel isn't supported yet.
 
 ## Updating
+
+Installed from the `.deb`? Then apt owns the package and the in-app update button will say so:
+
+```bash
+sudo apt update && sudo apt install --only-upgrade achilles-financials
+```
+
 
 **In the app:** *Settings → Updates* checks this repo, lists what's new since your version, and
 installs it on click. The app writes a request to `control/`, a systemd watcher on the host runs

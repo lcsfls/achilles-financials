@@ -1,0 +1,35 @@
+[Unit]
+Description=Achilles Financials — self-hosted wealth dashboard
+Documentation=https://github.com/lcsfls/achilles-financials
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=achilles
+Group=achilles
+WorkingDirectory=/opt/achilles-financials
+EnvironmentFile=/etc/achilles-financials/env
+ExecStart=/opt/achilles-financials/runtime/bin/node /opt/achilles-financials/server.js
+Restart=on-failure
+RestartSec=5
+
+# The app holds bank credentials and account balances, so it gets no more of
+# the system than it needs: no new privileges, its own /tmp, a read-only view
+# of everything except its data directory, and no access to other users' homes.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/achilles-financials
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+# Outbound HTTPS to the bank and the price sources; nothing else is needed.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

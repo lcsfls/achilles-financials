@@ -1,0 +1,18 @@
+Package: achilles-financials
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: lcsfls <info@it-flores.de>
+Installed-Size: @INSTALLED_SIZE@
+Depends: adduser, systemd
+Section: web
+Priority: optional
+Homepage: https://github.com/lcsfls/achilles-financials
+Description: Self-hosted private wealth dashboard
+ Achilles Financials tracks accounts, investments, precious metals, pensions,
+ loans, real estate and business value in one place, on your own hardware.
+ Bank data is fetched over PSD2; nothing leaves the machine except the calls
+ to your bank and to public price sources.
+ .
+ The package ships its own Node runtime, so it does not depend on the
+ distribution's Node version. Data lives in /var/lib/achilles-financials and
+ is preserved across upgrades and removal (purge deletes it).

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Runs before files are removed, on both remove and upgrade.
+set -e
+
+case "$1" in
+  remove|upgrade|deconfigure)
+    # Remember whether it was running, so postinst can put it back the way it
+    # found it. Without this an upgrade stops the service and never starts it
+    # again: postinst cannot ask "was it active?" after we just stopped it.
+    # /run is tmpfs, which is the right lifetime for a flag like this.
+    if systemctl is-active --quiet achilles-financials.service 2>/dev/null; then
+      mkdir -p /run/achilles-financials
+      touch /run/achilles-financials/was-running
+    fi
+    # Stop before the binaries disappear underneath the running process.
+    systemctl stop achilles-financials.service >/dev/null 2>&1 || true
+    ;;
+esac
+
+exit 0
