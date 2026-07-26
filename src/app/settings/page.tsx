@@ -31,7 +31,8 @@ type UpdateInfo = {
   checkFailed: boolean;
   upToDate: boolean;
   releasesUrl: string;
-  shellCommand: string;
+  shellCommand: string | null;
+  installMethod?: "docker" | "deb" | "desktop";
 };
 
 export default function SettingsPage() {
@@ -658,14 +659,36 @@ export default function SettingsPage() {
             )}
           </div>
 
+          {/* Desktop-App: kein Befehl, sondern ein Download */}
+          {upd && !upd.canUpdate && upd.installMethod === "desktop" && (
+            <div className="glass-inset rounded-xl p-4">
+              <div className="flex items-start gap-2 text-xs leading-relaxed text-muted">
+                <Download className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-2" />
+                <span>
+                  {t("Neue Version herunterladen und über die alte in den Programme-Ordner ziehen. Deine Daten bleiben erhalten.")}
+                </span>
+              </div>
+              <a
+                href={upd.releasesUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-gold-bright hover:underline"
+              >
+                {t("Zu den Downloads")} →
+              </a>
+            </div>
+          )}
+
           {/* Fallback ohne Control-Kanal */}
-          {upd && !upd.canUpdate && (
+          {upd && !upd.canUpdate && upd.installMethod !== "desktop" && upd.shellCommand && (
             <div className="glass-inset rounded-xl p-4">
               <div className="flex items-center gap-2 text-xs text-muted">
                 <Terminal className="h-3.5 w-3.5 shrink-0 text-muted-2" />
                 {upd.control === "readonly"
                   ? t("Keine Schreibrechte im Control-Verzeichnis — einmalig in der Proxmox-Shell ausführen (kein Container-Passwort nötig):")
-                  : t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
+                  : upd.installMethod === "deb"
+                    ? t("Diese Installation wird über apt aktualisiert:")
+                    : t("In-App-Updates sind hier nicht eingerichtet. Per Shell aktualisieren:")}
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-black/40 px-3 py-2 text-[11px] text-gold-bright">
@@ -674,7 +697,7 @@ export default function SettingsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { navigator.clipboard.writeText(upd.fixCommand ?? upd.shellCommand); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  onClick={() => { navigator.clipboard.writeText(upd.fixCommand ?? upd.shellCommand ?? ""); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                 >
                   {copied ? t("Kopiert") : t("Kopieren")}
                 </Button>

@@ -72,7 +72,9 @@ export async function POST() {
         error:
           installMethod() === "deb"
             ? "Diese Installation wird über apt aktualisiert."
-            : "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.",
+            : installMethod() === "desktop"
+              ? "Die Desktop-App aktualisierst du, indem du die neue Version herunterlädst und über die alte ziehst. Deine Daten bleiben dabei erhalten."
+              : "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.",
         shellCommand: shellUpdateCommand(),
       },
       { status: 501 }

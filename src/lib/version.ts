@@ -25,21 +25,28 @@ export const BRANCH = process.env.REPO_BRANCH || "main";
  * Das Paket legt dazu eine Marker-Datei neben server.js; ohne sie bleibt es
  * beim bisherigen Verhalten.
  */
-export type InstallMethod = "docker" | "deb";
+export type InstallMethod = "docker" | "deb" | "desktop";
 
 export function installMethod(): InstallMethod {
   try {
     const marker = fs.readFileSync(path.join(process.cwd(), "install-method"), "utf8").trim();
-    if (marker === "deb") return "deb";
+    if (marker === "deb" || marker === "desktop") return marker;
   } catch { /* keine Marker-Datei = Docker */ }
   return "docker";
 }
 
 /** Wie der Nutzer bei dieser Installationsart selbst aktualisiert. */
-export function shellUpdateCommand(): string {
-  return installMethod() === "deb"
-    ? "sudo apt update && sudo apt install --only-upgrade achilles-financials"
-    : "cd /opt/achilles-financials && ./deploy/update.sh";
+export function shellUpdateCommand(): string | null {
+  switch (installMethod()) {
+    case "deb":
+      return "sudo apt update && sudo apt install --only-upgrade achilles-financials";
+    // Die Desktop-App wird durch ein neues DMG ersetzt — es gibt keinen Befehl,
+    // den man dem Nutzer geben könnte, nur einen Download.
+    case "desktop":
+      return null;
+    default:
+      return "cd /opt/achilles-financials && ./deploy/update.sh";
+  }
 }
 
 export type Version = { version: string | null; sha: string | null; shortSha: string | null; deployedAt: string | null; branch: string };
