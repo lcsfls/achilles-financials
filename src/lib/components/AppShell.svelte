@@ -60,9 +60,6 @@
     { href: "/fire", label: "FIRE", icon: Flame },
   ];
 
-  /** Pages that get the full window width instead of the reading width. */
-  const FULL_WIDTH = new Set(["/watchlist"]);
-
   let drawer = $state(false);
   let updateAvailable = $state(false);
 
@@ -223,9 +220,9 @@
   {/if}
 
   <main class="min-w-0 px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-9 lg:pb-14">
-    <!-- 1280px is a reading width — right for tables and text. A tile grid gains
-         with every column that fits and may use the whole window. -->
-    <div class={cn("mx-auto", FULL_WIDTH.has(path) ? "max-w-none" : "max-w-[1280px]")}>
+    <!-- Full window width on every page: the grids reflow by breakpoint, so a
+         wide screen shows more side by side instead of empty margins. -->
+    <div class="w-full">
       {@render children()}
     </div>
   </main>

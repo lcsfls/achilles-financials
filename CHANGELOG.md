@@ -3,6 +3,23 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.0.1] — 2026-10-07
+
+### Fixed
+- **The watchlist loaded slowly.** It waited for Yahoo on every visit once the 5-minute quote cache
+  had expired, and the sparkline history lived only in memory — empty after each restart. Now the
+  page paints at once from the stored quotes and refreshes outdated ones in the background (the
+  refresh icon spins meanwhile). Sparkline history is kept in SQLite (`history_cache`), served from
+  there and renewed in the background when it expires; all curves arrive in one request instead of
+  one per tile. Every call to Yahoo and the FX source now times out after 8 seconds, so one hanging
+  symbol can no longer stall the page.
+- **Right-aligned table headings** (value, P/L) were rendered left-aligned.
+
+### Changed
+- **Full window width on every page** instead of a 1280px column. On very wide screens the overview
+  gains a fourth column and the settings show their cards in two columns.
+- Screenshots refreshed with demo data.
+
 ## [2.0.0] — 2026-10-07
 
 ### Changed

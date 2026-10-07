@@ -257,10 +257,10 @@
       </div>
     </nav>
 
-    <div class="min-w-0 max-w-3xl space-y-8">
+    <div class="min-w-0 space-y-8">
       <!-- General -->
-      <section id="general" class="scroll-mt-6 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-faint">{t("Allgemein")}</h2>
+      <section id="general" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full text-xs font-semibold uppercase tracking-wider text-faint">{t("Allgemein")}</h2>
 
         {#snippet langBody()}
           <div class="grid grid-cols-2 gap-2">
@@ -297,8 +297,8 @@
       </section>
 
       <!-- Net worth -->
-      <section id="networth" class="scroll-mt-6 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-faint">{t("Gesamtvermögen")}</h2>
+      <section id="networth" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full text-xs font-semibold uppercase tracking-wider text-faint">{t("Gesamtvermögen")}</h2>
 
         {#snippet loansBody()}
           <!-- Reasons next to the options: the choice is a stance, not a setting — explained where it is made. -->
@@ -329,8 +329,8 @@
       </section>
 
       <!-- Banks -->
-      <section id="banks" class="scroll-mt-6 space-y-4">
-        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-faint"><PlugZap class="size-3.5" /> {t("Bankanbindungen")}</h2>
+      <section id="banks" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-faint"><PlugZap class="size-3.5" /> {t("Bankanbindungen")}</h2>
         <IntegrationsSection onchange={load} />
 
         {#snippet syncBody()}
@@ -352,8 +352,8 @@
       </section>
 
       <!-- Security -->
-      <section id="security" class="scroll-mt-6 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-faint">{t("Login")}</h2>
+      <section id="security" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full text-xs font-semibold uppercase tracking-wider text-faint">{t("Login")}</h2>
         {#snippet authBadge()}
           {#if settings?.authEnabled}
             <Badge tone="pos"><CheckCircle2 class="size-3" /> {t("Aktiv")} ({settings.authUser})</Badge>
@@ -395,8 +395,8 @@
       </section>
 
       <!-- Data -->
-      <section id="data" class="scroll-mt-6 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-faint">{t("Daten & Backup")}</h2>
+      <section id="data" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full text-xs font-semibold uppercase tracking-wider text-faint">{t("Daten & Backup")}</h2>
 
         {#snippet backupBody()}
           <p class="text-xs leading-relaxed text-muted">{t("Die Datei enthält alles: Konten, Buchungen, Bestände, Szenarien — und deinen Bank-Private-Key. Sie wird mit AES-256 aus deinem Passwort verschlüsselt. Ohne dieses Passwort ist sie nicht wiederherstellbar; es gibt keine Hintertür.")}</p>
@@ -444,8 +444,8 @@
       </section>
 
       <!-- Updates -->
-      <section id="updates" class="scroll-mt-6 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-faint">{t("Updates")}</h2>
+      <section id="updates" class="scroll-mt-6 grid items-start gap-4 2xl:grid-cols-2">
+        <h2 class="col-span-full text-xs font-semibold uppercase tracking-wider text-faint">{t("Updates")}</h2>
         {#snippet updBadge()}
           {#if upd}
             {#if upd.checkFailed}<Badge>{t("Prüfung fehlgeschlagen")}</Badge>
