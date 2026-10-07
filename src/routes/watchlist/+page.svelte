@@ -37,21 +37,40 @@
   let offset = $state({ dx: 0, dy: 0 });
   let overId = $state<number | null>(null);
 
-  const load = (refresh = false) =>
-    apiJson<{ watchlist: WatchItem[] }>(`/api/watchlist${refresh ? "?refresh=1" : ""}`).then((d) => {
-      items = d.watchlist;
-      for (const w of d.watchlist) if (!(w.symbol in spark)) loadSpark(w.symbol);
-    });
-
-  function loadSpark(sym: string) {
-    spark[sym] = null;
-    fetch(`/api/watchlist/history?symbol=${encodeURIComponent(sym)}&range=6mo`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d: { points: Array<{ c: number }> }) => (spark[sym] = d.points.map((p) => p.c)))
-      .catch(() => (spark[sym] = []));
+  /**
+   * cached: what the server has stored, at once — for the first paint.
+   * live:   quotes older than five minutes fetched again.
+   * force:  every quote fetched again (the refresh button).
+   */
+  async function load(mode: "cached" | "live" | "force" = "live") {
+    const q = mode === "cached" ? "?cached=1" : mode === "force" ? "?refresh=1" : "";
+    const d = await apiJson<{ watchlist: WatchItem[]; outdated?: boolean }>(`/api/watchlist${q}`);
+    items = d.watchlist;
+    return d.outdated === true;
   }
 
-  onMount(() => { load(); });
+  /** All sparklines in one request; the server answers from its cache. */
+  async function loadSparks() {
+    for (const w of items ?? []) if (!(w.symbol in spark)) spark[w.symbol] = null;
+    try {
+      const d = await apiJson<{ sparklines: Record<string, number[]> }>("/api/watchlist/sparklines");
+      for (const w of items ?? []) spark[w.symbol] = d.sparklines[w.symbol] ?? [];
+    } catch {
+      for (const w of items ?? []) if (spark[w.symbol] === null) spark[w.symbol] = [];
+    }
+  }
+
+  onMount(async () => {
+    // Paint from the cache first, then bring stale prices up to date in the
+    // background — the page no longer waits on Yahoo before showing anything.
+    const outdated = await load("cached");
+    loadSparks();
+    if (outdated) {
+      refreshing = true;
+      await load("live").catch(() => {});
+      refreshing = false;
+    }
+  });
 
   async function add(explicit?: string) {
     const sym = (explicit ?? symbol).trim();
@@ -66,7 +85,8 @@
     busy = false;
     if (!res.ok) { error = t((await res.json()).error); return; }
     symbol = "";
-    load();
+    await load();
+    loadSparks();
   }
 
   /** Same order as the backend (pinned DESC, sort_order). */
@@ -148,12 +168,12 @@
 
   async function remove(id: number) {
     await fetch(`/api/watchlist?id=${id}`, { method: "DELETE" });
-    load();
+    load("cached");
   }
 
   async function refresh() {
     refreshing = true;
-    await load(true);
+    await load("force");
     refreshing = false;
   }
 

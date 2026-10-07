@@ -157,8 +157,8 @@
     </div>
 
     <!-- Net worth + assets -->
-    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
-      <Card class="xl:col-span-2">
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3 3xl:grid-cols-4">
+      <Card class="xl:col-span-2 3xl:col-span-3">
         <div class="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
           <div>
             <div class="text-[13px] font-medium text-muted">{t("Gesamtvermögen")}</div>
@@ -260,8 +260,8 @@
     </Card>
 
     <!-- Cash flow + categories -->
-    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
-      <Card class="xl:col-span-2">
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3 3xl:grid-cols-4">
+      <Card class="xl:col-span-2 3xl:col-span-3">
         <CardHeader title={t("Cashflow")} subtitle={t("Einnahmen und Ausgaben der letzten Monate")}>
           {#snippet actions()}
             <Legend items={[{ label: t("Einnahmen"), color: "var(--pos)" }, { label: t("Ausgaben"), color: "var(--neg)" }]} />
@@ -318,8 +318,8 @@
     </div>
 
     <!-- Recent transactions + side cards -->
-    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
-      <Card class="xl:col-span-2">
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3 3xl:grid-cols-4">
+      <Card class="xl:col-span-2 3xl:col-span-3">
         <CardHeader title={t("Letzte Transaktionen")}>
           {#snippet actions()}
             <Button variant="ghost" size="sm" href="/transactions">{t("Alle ansehen")} <ChevronRight /></Button>

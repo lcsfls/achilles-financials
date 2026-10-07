@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestEvent } from "@sveltejs/kit";
 import { db } from "$lib/server/db";
-import { getQuote, getQuotes } from "$lib/server/quotes";
+import { getQuote, getQuotes, isOutdated } from "$lib/server/quotes";
 
 
 type Row = {
@@ -12,13 +12,19 @@ type Row = {
 };
 
 export async function GET({ request: req }: RequestEvent) {
-  const force = new URL(req.url).searchParams.get("refresh") === "1";
+  const params = new URL(req.url).searchParams;
+  // refresh=1  every quote live (the "Kurse aktualisieren" button)
+  // cached=1   whatever is stored, at once — the first paint must not wait on
+  //            Yahoo; the page asks again without it for the fresh prices
+  const mode = params.get("refresh") === "1" ? "force" : params.get("cached") === "1" ? "cache-first" : "ttl";
   // Angepinnte zuerst — die Reihenfolge kommt aus der Datenbank, damit sie
   // auf jedem Gerät gleich ist und nicht erst im Browser entsteht.
   const rows = db().prepare("SELECT * FROM watchlist ORDER BY pinned DESC, sort_order, added_at").all() as Row[];
-  const quotes = await getQuotes(rows.map((r) => r.symbol), force);
+  const quotes = await getQuotes(rows.map((r) => r.symbol), mode);
 
   return json({
+    // Tells the page whether a second, live request is worth making.
+    outdated: [...quotes.values()].some(isOutdated),
     watchlist: rows.map((r) => {
       const quote = quotes.get(r.symbol) ?? null;
 

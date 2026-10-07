@@ -7,6 +7,11 @@ import { db } from "./db";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const UA = "Mozilla/5.0";
+/**
+ * Upper bound for one call to Yahoo or the FX source. Without it a hanging
+ * connection held the whole page: the watchlist waited for every quote.
+ */
+const FETCH_TIMEOUT_MS = 8000;
 
 export type Quote = {
   symbol: string;
@@ -27,7 +32,7 @@ async function toEurRate(currency: string): Promise<number | null> {
   const hit = fxCache.get(currency);
   if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.rate;
   try {
-    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${currency}&to=EUR`, { cache: "no-store" });
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${currency}&to=EUR`, { cache: "no-store", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) return null;
     const rate = (await res.json()).rates?.EUR;
     if (typeof rate !== "number") return null;
@@ -42,7 +47,7 @@ async function fetchYahoo(symbol: string): Promise<Omit<Quote, "priceEur" | "fet
   try {
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-      { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store" }
+      { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
     );
     if (!res.ok) return null;
     const meta = (await res.json())?.chart?.result?.[0]?.meta;
@@ -71,14 +76,26 @@ async function fetchYahoo(symbol: string): Promise<Omit<Quote, "priceEur" | "fet
   }
 }
 
-export async function getQuote(symbol: string, force = false): Promise<Quote | null> {
+/**
+ * How a quote may be served:
+ *  ttl          cached while younger than 5 minutes, otherwise fetched live
+ *  cache-first  any cached quote, however old — live only if there is none.
+ *               For a first paint that must not wait on Yahoo; the caller
+ *               refreshes afterwards.
+ *  force        always live
+ */
+export type QuoteMode = "ttl" | "cache-first" | "force";
+
+export async function getQuote(symbol: string, mode: QuoteMode | boolean = "ttl"): Promise<Quote | null> {
+  // Older call sites pass a boolean "force".
+  const m: QuoteMode = mode === true ? "force" : mode === false ? "ttl" : mode;
   const d = db();
   const cached = d.prepare("SELECT * FROM quote_cache WHERE symbol = ?").get(symbol) as
     | { symbol: string; price: number; prev_close: number | null; currency: string; name: string | null; price_eur: number | null; fetched_at: string }
     | undefined;
 
   const fresh = cached && Date.now() - new Date(cached.fetched_at).getTime() <= CACHE_TTL_MS;
-  if (!force && fresh) {
+  if (cached && (m === "cache-first" || (m === "ttl" && fresh))) {
     return {
       symbol: cached.symbol,
       name: cached.name,
@@ -123,27 +140,66 @@ export async function getQuote(symbol: string, force = false): Promise<Quote | n
   return { ...live, symbol, priceEur, fetchedAt, stale: false };
 }
 
-export async function getQuotes(symbols: string[], force = false): Promise<Map<string, Quote>> {
+export async function getQuotes(symbols: string[], mode: QuoteMode | boolean = "ttl"): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
-  // sequenziell mit kleiner Parallelität, um Yahoo nicht zu triggern
-  const chunks: string[][] = [];
-  for (let i = 0; i < symbols.length; i += 4) chunks.push(symbols.slice(i, i + 4));
-  for (const chunk of chunks) {
-    const results = await Promise.all(chunk.map((s) => getQuote(s, force)));
-    results.forEach((q, i) => { if (q) out.set(chunk[i], q); });
-  }
+  // A small pool instead of strict batches: one slow symbol no longer holds
+  // up the next four. Kept small so Yahoo doesn't throttle us.
+  const queue = [...symbols];
+  const worker = async () => {
+    for (let s = queue.shift(); s !== undefined; s = queue.shift()) {
+      const q = await getQuote(s, mode);
+      if (q) out.set(s, q);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, symbols.length) }, worker));
   return out;
 }
 
+/** True when a quote is older than the cache window — the UI then refreshes it. */
+export function isOutdated(q: Quote): boolean {
+  return Date.now() - new Date(q.fetchedAt).getTime() > CACHE_TTL_MS;
+}
 
 /* ---------- Kursverlauf für den Hover-Chart ---------- */
 
 export type HistoryPoint = { t: number; c: number };
 
-// Verlauf ändert sich täglich, nicht sekündlich — großzügig cachen, sonst
-// feuert jedes Überfahren mit der Maus eine Anfrage an Yahoo.
-const historyCache = new Map<string, { at: number; data: HistoryPoint[] }>();
-const HISTORY_TTL_MS = 60 * 60 * 1000;
+/*
+ * History is stored in SQLite (history_cache), not only in memory: the
+ * sparklines on every watchlist tile read it, and an in-memory cache was empty
+ * after each restart — every tile then waited on Yahoo again.
+ *
+ * Daily candles change once a day, intraday ones every few minutes.
+ */
+const HISTORY_TTL_MS: Record<string, number> = {
+  "1d": 5 * 60 * 1000,
+  "5d": 30 * 60 * 1000,
+};
+const HISTORY_TTL_DEFAULT_MS = 6 * 60 * 60 * 1000;
+
+function readHistory(symbol: string, range: string): { at: number; data: HistoryPoint[] } | null {
+  const row = db()
+    .prepare("SELECT fetched_at, data FROM history_cache WHERE symbol = ? AND range = ?")
+    .get(symbol, range) as { fetched_at: string; data: string } | undefined;
+  if (!row) return null;
+  try {
+    return { at: new Date(row.fetched_at).getTime(), data: JSON.parse(row.data) as HistoryPoint[] };
+  } catch {
+    return null;
+  }
+}
+
+function writeHistory(symbol: string, range: string, data: HistoryPoint[]) {
+  db()
+    .prepare(
+      `INSERT INTO history_cache (symbol, range, fetched_at, data) VALUES (?, ?, ?, ?)
+       ON CONFLICT(symbol, range) DO UPDATE SET fetched_at = excluded.fetched_at, data = excluded.data`
+    )
+    .run(symbol, range, new Date().toISOString(), JSON.stringify(data));
+}
+
+/** Symbols whose history is being fetched right now — no duplicate requests. */
+const inFlight = new Map<string, Promise<HistoryPoint[] | null>>();
 
 /**
  * Selectable ranges and the candle interval each one needs.
@@ -168,19 +224,48 @@ export function isRange(v: unknown): v is Range {
   return typeof v === "string" && v in RANGES;
 }
 
-export async function getHistory(symbol: string, range: Range | string = "6mo"): Promise<HistoryPoint[] | null> {
+/**
+ * Price history for a symbol.
+ *
+ * cacheFirst: return whatever is stored, however old, and refresh it in the
+ * background when it has expired — for the sparklines, where yesterday's
+ * curve is fine and waiting is not.
+ */
+export async function getHistory(
+  symbol: string,
+  range: Range | string = "6mo",
+  opts: { cacheFirst?: boolean } = {}
+): Promise<HistoryPoint[] | null> {
   const safeRange: Range = isRange(range) ? range : "6mo";
-  const interval = RANGES[safeRange];
-  const key = `${symbol}|${safeRange}`;
-  const hit = historyCache.get(key);
-  if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.data;
+  const hit = readHistory(symbol, safeRange);
+  const ttl = HISTORY_TTL_MS[safeRange] ?? HISTORY_TTL_DEFAULT_MS;
+  const fresh = hit && Date.now() - hit.at < ttl;
+  if (hit && fresh) return hit.data;
 
+  if (hit && opts.cacheFirst) {
+    fetchHistory(symbol, safeRange).catch(() => {});
+    return hit.data;
+  }
+  return (await fetchHistory(symbol, safeRange)) ?? hit?.data ?? null;
+}
+
+function fetchHistory(symbol: string, range: Range): Promise<HistoryPoint[] | null> {
+  const key = `${symbol}|${range}`;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const p = fetchHistoryLive(symbol, range).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function fetchHistoryLive(symbol: string, range: Range): Promise<HistoryPoint[] | null> {
+  const interval = RANGES[range];
   try {
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${safeRange}`,
-      { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store" }
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`,
+      { headers: { "User-Agent": UA, Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
     );
-    if (!res.ok) return hit?.data ?? null;
+    if (!res.ok) return null;
 
     const result = (await res.json())?.chart?.result?.[0];
     const stamps: number[] = result?.timestamp ?? [];
@@ -196,11 +281,11 @@ export async function getHistory(symbol: string, range: Range | string = "6mo"):
       // Feiertage liefern null — auslassen statt als 0 zu zeichnen
       if (typeof c === "number") data.push({ t: stamps[i] * 1000, c: c * scale });
     }
-    if (data.length === 0) return hit?.data ?? null;
+    if (data.length === 0) return null;
 
-    historyCache.set(key, { at: Date.now(), data });
+    writeHistory(symbol, range, data);
     return data;
   } catch {
-    return hit?.data ?? null;
+    return null;
   }
 }

@@ -254,6 +254,16 @@ function migrate(d: Database.Database) {
     -- Nothing else stores history, so this is what the net-worth chart draws.
     -- Demo readings are kept apart (demo = 1) so loading and removing the demo
     -- never bends the real line.
+    -- Price history per symbol and range, for the watchlist charts. A cache,
+    -- not data: safe to drop, refilled on demand.
+    CREATE TABLE IF NOT EXISTS history_cache (
+      symbol TEXT NOT NULL,
+      range TEXT NOT NULL,
+      fetched_at TEXT NOT NULL,
+      data TEXT NOT NULL,
+      PRIMARY KEY (symbol, range)
+    );
+
     CREATE TABLE IF NOT EXISTS networth_snapshots (
       date TEXT NOT NULL,
       demo INTEGER NOT NULL DEFAULT 0,

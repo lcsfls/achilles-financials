@@ -33,6 +33,9 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
 
+  /* Very wide monitors: the overview gains a fourth column. */
+  --breakpoint-3xl: 137.5rem;
+
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
@@ -154,12 +157,13 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
 
-/* Data tables — one look for every list of positions, lots, payments. */
+/* Data tables — one look for every list of positions, lots, payments.
+   In the components layer so utilities (text-right, padding) still win. */
+@layer components {
 .tbl { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
-/* :where() keeps these at zero specificity, so utilities like text-right win. */
-:where(.tbl thead th) { text-align: left; }
 .tbl thead th {
   padding: 0.625rem 1rem;
+  text-align: left;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--muted);
@@ -173,3 +177,4 @@ input[type="number"] { -moz-appearance: textfield; }
 .tbl tbody tr:hover { background: var(--surface-2); }
 .tbl th:first-child, .tbl td:first-child { padding-left: 1.25rem; }
 .tbl th:last-child, .tbl td:last-child { padding-right: 1.25rem; }
+}
