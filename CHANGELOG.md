@@ -3,6 +3,25 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.1.0] — 2026-10-07
+
+### Added
+- **Cash flow page** (nav: Cashflow) — where the money of a period came from and where it went, as
+  a flow diagram: income senders on the left, everything available in the middle, spending
+  categories, *Invested* and *Saved* on the right. Band widths are proportional to the amounts.
+  - **Periods:** month, quarter, year (with arrows) or a custom range. Calendar periods are compared
+    with the previous calendar period, custom ranges with the same number of days before.
+  - **Categories or groups:** fixed costs, living, leisure, other. Categories under 2 % of the
+    total are pooled so the diagram stays readable.
+  - **Click a category** (in the diagram or the table) to open its bookings, filtered to that
+    category and period. The transactions page now accepts `category`, `from` and `to` in the URL.
+  - A period in the red shows **"From savings"** as a source, so both sides still add up.
+  - **Transfers are left out** — mostly money between your own accounts that would otherwise count
+    twice — and the page states how much that was. Refunds reduce their category instead of
+    counting as income; investments appear as their own flow, not as spending.
+  - Table per category with share, previous period and change. On phones the diagram becomes two
+    lists with bars.
+
 ## [2.0.1] — 2026-10-07
 
 ### Fixed

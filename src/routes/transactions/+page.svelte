@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Search, ArrowLeftRight } from "@lucide/svelte";
+  import { Search, ArrowLeftRight, X } from "@lucide/svelte";
+  import { page } from "$app/state";
   import Card from "$lib/components/ui/Card.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Select from "$lib/components/ui/Select.svelte";
@@ -26,7 +27,11 @@
   let months = $state<string[]>([]);
   let accounts = $state<Array<{ id: string; name: string; n: number }>>([]);
   let q = $state("");
-  let category = $state("");
+  // Filters can arrive in the URL — the cash flow page links here with a
+  // category and its period.
+  let category = $state(page.url.searchParams.get("category") ?? "");
+  let from = $state(page.url.searchParams.get("from") ?? "");
+  let to = $state(page.url.searchParams.get("to") ?? "");
   let month = $state("");
   let account = $state("");
   let loading = $state(true);
@@ -39,6 +44,8 @@
     if (category) params.set("category", category);
     if (month) params.set("month", month);
     if (account) params.set("account", account);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     return apiJson<{ transactions: Tx[]; months: string[]; accounts: typeof accounts }>(`/api/transactions?${params}`)
       .then((d) => { txs = d.transactions; months = d.months; accounts = d.accounts; })
       .finally(() => (loading = false));
@@ -47,7 +54,7 @@
   // Refetch on every filter change; typing is debounced so a search doesn't
   // fire a request per keystroke.
   $effect(() => {
-    void [category, month, account, reloadKey];
+    void [category, month, account, from, to, reloadKey];
     const query = q;
     const timer = setTimeout(load, query ? 250 : 0);
     return () => clearTimeout(timer);
@@ -66,6 +73,7 @@
   const spent = $derived(txs.filter((tx) => tx.amount < 0).reduce((s, tx) => s - tx.amount, 0));
   const earned = $derived(txs.filter((tx) => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0));
 
+  const fmtDay = (d: string) => new Date(d).toLocaleDateString(prefs.locale, { day: "2-digit", month: "short", year: "numeric" });
   const fmtMonth = (m: string) => new Date(`${m}-01`).toLocaleDateString(prefs.locale, { month: "long", year: "numeric" });
 
   /** Bookings grouped by day, the way a bank statement reads. */
@@ -123,6 +131,17 @@
       <Select bind:value={category} class="w-full sm:w-52" options={[{ value: "", label: t("Alle Kategorien") }, ...catOptions]} />
       <Select bind:value={month} class="w-full sm:w-48" options={[{ value: "", label: t("Alle Monate") }, ...months.map((m) => ({ value: m, label: fmtMonth(m) }))]} />
       <!-- Only from two accounts on: with one, the filter would be a choice without a choice. -->
+      {#if from || to}
+        <button
+          type="button"
+          onclick={() => { from = ""; to = ""; }}
+          class="flex h-9.5 items-center gap-1.5 rounded-xl bg-accent-soft px-3 text-[13px] font-medium text-accent"
+          title={t("Zeitraum-Filter entfernen")}
+        >
+          {from ? fmtDay(from) : "…"} – {to ? fmtDay(to) : "…"}
+          <X class="size-3.5" />
+        </button>
+      {/if}
       {#if accounts.length > 1}
         <Select bind:value={account} class="w-full sm:w-52" options={[{ value: "", label: t("Alle Konten") }, ...accounts.map((a) => ({ value: a.id, label: `${a.name} (${a.n})` }))]} />
       {/if}

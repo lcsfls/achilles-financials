@@ -8,6 +8,9 @@ export async function GET({ request: req }: RequestEvent) {
   const q = searchParams.get("q");
   const category = searchParams.get("category");
   const month = searchParams.get("month"); // YYYY-MM
+  // Inclusive date range — the cash flow page links here with its period.
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
   const account = searchParams.get("account");
   const limit = Math.min(Number(searchParams.get("limit") || 200), 1000);
 
@@ -25,6 +28,14 @@ export async function GET({ request: req }: RequestEvent) {
   if (month) {
     sql += " AND strftime('%Y-%m', booking_date) = ?";
     params.push(month);
+  }
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    sql += " AND booking_date >= ?";
+    params.push(from);
+  }
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    sql += " AND booking_date <= ?";
+    params.push(to);
   }
   if (account) {
     sql += " AND account_id = ?";

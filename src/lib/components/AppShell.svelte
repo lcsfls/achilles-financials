@@ -5,7 +5,7 @@
   import { afterNavigate } from "$app/navigation";
   import {
     LayoutDashboard, ArrowLeftRight, Gem, TrendingUp, Eye, QrCode, Settings, Shield, ShieldCheck, Flame,
-    PiggyBank, HandCoins, Home, Briefcase, Menu, X, LogOut, Sun, Moon, Monitor,
+    PiggyBank, HandCoins, Home, Briefcase, Menu, X, LogOut, Sun, Moon, Monitor, Split,
   } from "@lucide/svelte";
   import { t } from "$lib/i18n";
   import { apiJson, cn } from "$lib/utils";
@@ -19,6 +19,7 @@
       items: [
         { href: "/", label: "Übersicht", icon: LayoutDashboard },
         { href: "/transactions", label: "Transaktionen", icon: ArrowLeftRight },
+        { href: "/cashflow", label: "Cashflow", icon: Split },
       ],
     },
     {
