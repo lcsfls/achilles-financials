@@ -48,20 +48,45 @@ export function categorize(merchant: string | null, description: string | null, 
   return "Sonstiges";
 }
 
+/**
+ * Mid-saturation hues that hold up on both the light and the dark theme —
+ * the old neon set was tuned for a near-black background only.
+ */
 export const CATEGORY_COLORS: Record<string, string> = {
-  "Lebensmittel": "#34d399",
-  "Restaurants & Cafés": "#fbbf24",
-  "Transport": "#38bdf8",
-  "Shopping": "#f472b6",
-  "Abos & Dienste": "#a78bfa",
-  "Wohnen & Nebenkosten": "#fb923c",
-  "Gesundheit": "#4ade80",
-  "Reisen": "#22d3ee",
-  "Unterhaltung": "#e879f9",
-  "Bildung": "#93c5fd",
-  "Gehalt & Einnahmen": "#d4af37",
-  "Investments": "#e9cd6f",
-  "Bargeld": "#94a3b8",
-  "Überweisungen": "#7dd3fc",
-  "Sonstiges": "#6b7280",
+  "Lebensmittel": "#22a06b",
+  "Restaurants & Cafés": "#f59f00",
+  "Transport": "#228be6",
+  "Shopping": "#e64980",
+  "Abos & Dienste": "#7950f2",
+  "Wohnen & Nebenkosten": "#fd7e14",
+  "Gesundheit": "#40c057",
+  "Reisen": "#15aabf",
+  "Unterhaltung": "#be4bdb",
+  "Bildung": "#4c6ef5",
+  "Gehalt & Einnahmen": "#2f9e44",
+  "Investments": "#c49a1a",
+  "Bargeld": "#868e96",
+  "Überweisungen": "#1c7ed6",
+  "Sonstiges": "#adb5bd",
+  "Weitere": "#adb5bd",
+};
+
+/** One glyph per category, shown in lists the way a banking app does. */
+export const CATEGORY_EMOJI: Record<string, string> = {
+  "Lebensmittel": "🛒",
+  "Restaurants & Cafés": "🍽️",
+  "Transport": "🚆",
+  "Shopping": "🛍️",
+  "Abos & Dienste": "📺",
+  "Wohnen & Nebenkosten": "🏠",
+  "Gesundheit": "💊",
+  "Reisen": "✈️",
+  "Unterhaltung": "🎬",
+  "Bildung": "📚",
+  "Gehalt & Einnahmen": "💰",
+  "Investments": "📈",
+  "Bargeld": "💵",
+  "Überweisungen": "🔁",
+  "Sonstiges": "📦",
+  "Weitere": "📦",
 };

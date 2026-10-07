@@ -9,7 +9,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN npm run build \
+    # Nur Laufzeit-Abhängigkeiten (SQLite, FinTS, QR) ins Image — kein Build-Werkzeug
+    && npm prune --omit=dev
 
 # ---- Runtime stage ----
 FROM node:22-bookworm-slim AS runner
@@ -28,10 +30,10 @@ ENV GIT_SHA=$GIT_SHA
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m achilles \
     && mkdir -p /data && chown achilles:nodejs /data
 
-# Standalone-Output: minimaler Server + nur benötigte node_modules
-COPY --from=builder --chown=achilles:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=achilles:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=achilles:nodejs /app/public ./public
+# adapter-node-Ausgabe + Einstiegspunkt + Produktions-node_modules
+COPY --from=builder --chown=achilles:nodejs /app/build ./build
+COPY --from=builder --chown=achilles:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=achilles:nodejs /app/package.json /app/server.js ./
 
 USER achilles
 EXPOSE 3000

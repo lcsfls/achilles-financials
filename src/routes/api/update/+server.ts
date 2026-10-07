@@ -1,0 +1,94 @@
+import { json } from "@sveltejs/kit";
+import type { RequestEvent } from "@sveltejs/kit";
+import {
+  BRANCH, FIX_PERMISSIONS_COMMAND, REPO, compareSemver, controlState, fetchLatestRelease,
+  getUpdateLog, getUpdateStatus, getVersion, parseSemver, requestUpdate, installMethod, shellUpdateCommand } from "$lib/server/version";
+
+
+/** Versions- und Update-Status inkl. Prüfung gegen die neueste Release-Version. */
+export async function GET({ request: req }: RequestEvent) {
+  const params = new URL(req.url).searchParams;
+  // Der Dialog pollt sekündlich und braucht dabei nur Status und Log —
+  // die Release-Prüfung dabei jedes Mal mitzumachen, sprengt GitHubs Limit.
+  const statusOnly = params.get("statusOnly") === "1";
+  const force = params.get("refresh") === "1";
+
+  const version = getVersion();
+  const status = getUpdateStatus();
+  const control = controlState();
+
+  const latest = statusOnly ? null : await fetchLatestRelease(force);
+
+  const installedSv = parseSemver(version.version);
+  const latestSv = parseSemver(latest?.version);
+
+  // Ohne bekannte installierte Version lässt sich nichts vergleichen — dann
+  // lieber nichts behaupten, statt fälschlich ein Update anzubieten.
+  const updateAvailable =
+    installedSv !== null && latestSv !== null ? compareSemver(latestSv, installedSv) > 0 : null;
+
+  // Unterscheidbar machen: "nichts Neues" ist etwas anderes als "konnte nicht
+  // nachsehen" — sonst wirkt eine gescheiterte Prüfung wie "alles aktuell".
+  const checkFailed = !statusOnly && latest === null;
+
+  return json({
+    repo: REPO,
+    branch: BRANCH,
+    version,
+    status,
+    log: getUpdateLog(),
+    canUpdate: control === "ok",
+    control,
+    fixCommand: control === "readonly" ? FIX_PERMISSIONS_COMMAND : null,
+    latest: latest ? { version: latest.version, tag: latest.tag, notes: latest.notes, publishedAt: latest.publishedAt } : null,
+    updateAvailable,
+    checkFailed,
+    upToDate: updateAvailable === false,
+    releasesUrl: `https://github.com/${REPO}/releases`,
+    installMethod: installMethod(),
+    shellCommand: shellUpdateCommand(),
+  });
+}
+
+/** Update anstoßen — der Host-Watcher übernimmt den eigentlichen Rebuild. */
+export async function POST() {
+  const control = controlState();
+  if (control === "readonly") {
+    // Der häufigste Fall im Betrieb: update.sh lief als root und hat die
+    // Statusdatei root-eigen hinterlassen.
+    return json(
+      {
+        error: "Keine Schreibrechte im Control-Verzeichnis — die Dateien gehören root, die App läuft als uid 1001. Einmalig in der Proxmox-Shell ausführen (<CTID> durch deine Container-ID ersetzen, ein Container-Passwort brauchst du dafür nicht):",
+        fixCommand: FIX_PERMISSIONS_COMMAND,
+      },
+      { status: 403 }
+    );
+  }
+  if (control === "missing") {
+    // Bei einer Paketinstallation ist das kein Defekt, sondern der Normalfall:
+    // apt ist die Paketverwaltung, die App hat sich da nicht einzumischen.
+    return json(
+      {
+        error:
+          installMethod() === "deb"
+            ? "Diese Installation wird über apt aktualisiert."
+            : installMethod() === "desktop"
+              ? "Die Desktop-App aktualisierst du, indem du die neue Version herunterlädst und über die alte ziehst. Deine Daten bleiben dabei erhalten."
+              : "In-App-Updates sind nicht eingerichtet (Control-Verzeichnis fehlt). Bitte per Shell aktualisieren.",
+        shellCommand: shellUpdateCommand(),
+      },
+      { status: 501 }
+    );
+  }
+
+  const status = getUpdateStatus();
+  if (status.state === "requested" || status.state === "running") {
+    return json({ error: "Es läuft bereits ein Update." }, { status: 409 });
+  }
+  try {
+    requestUpdate();
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : "Update konnte nicht angefordert werden" }, { status: 500 });
+  }
+  return json({ ok: true });
+}

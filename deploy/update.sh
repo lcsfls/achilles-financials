@@ -140,7 +140,7 @@ fi
 #  image prune  entfernt das vorige Image, das beim Rebuild seinen Tag an das
 #               neue verloren hat und sonst verwaist liegen bliebe.
 #  builder prune ist der wichtigere Teil: Der BuildKit-Cache wächst bei jedem
-#               Build weiter (npm ci und der Next-Build erzeugen jedes Mal neue
+#               Build weiter (npm ci und der Vite-Build erzeugen jedes Mal neue
 #               Layer) und wird von "image prune" gar nicht angefasst. Er ist
 #               bei einem Node-Image der mit Abstand größte Posten.
 if [[ "$PRUNE" == "1" ]]; then

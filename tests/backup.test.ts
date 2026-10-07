@@ -18,8 +18,8 @@ const check = (n: string, got: unknown, want: unknown) => {
 };
 
 async function main() {
-  const { db } = await import("@/lib/db");
-  const { createBackup, restoreBackup } = await import("@/lib/backup");
+  const { db } = await import("../src/lib/server/db");
+  const { createBackup, restoreBackup } = await import("../src/lib/server/backup");
   const d = db();
 
   // Ausgangsdaten mit einer echten Fremdschlüsselbeziehung anlegen —
@@ -74,7 +74,7 @@ async function main() {
   check("keine verwaisten Buchungen", (d.prepare("SELECT COUNT(*) c FROM transactions t LEFT JOIN accounts a ON a.id=t.account_id WHERE a.id IS NULL").get() as { c: number }).c, 0);
 
   console.log("=== Falsches Passwort wird abgewiesen");
-  const { BackupError } = await import("@/lib/backup");
+  const { BackupError } = await import("../src/lib/server/backup");
   try {
     await restoreBackup(Buffer.from(blob), "falsch");
     check("abgelehnt", false, true);

@@ -49,15 +49,19 @@ for ARCH in "${ARCHES[@]}"; do
       # Build in a writable copy; /src is mounted read-only so a build can
       # never touch the working tree it was started from.
       mkdir -p /build && cd /build
-      cp -r /src/src /src/public /src/package.json /src/package-lock.json \
-            /src/next.config.ts /src/tsconfig.json /src/postcss.config.mjs \
-            /src/next-env.d.ts . 2>/dev/null || true
+      cp -r /src/src /src/static /src/package.json /src/package-lock.json \
+            /src/svelte.config.js /src/vite.config.ts /src/tsconfig.json \
+            /src/server.js .
 
       echo "--> npm ci"
       npm ci --no-audit --no-fund >/dev/null
 
-      echo "--> next build"
+      echo "--> vite build"
       npm run build >/dev/null
+
+      # Only the runtime dependencies (SQLite, FinTS, QR) ship — the build
+      # tooling stays behind.
+      npm prune --omit=dev --no-audit --no-fund >/dev/null
 
       PKG=/pkg
       APP=$PKG/opt/achilles-financials
@@ -65,12 +69,9 @@ for ARCH in "${ARCHES[@]}"; do
                "$PKG/etc/achilles-financials" "$PKG/var/lib/achilles-financials" \
                "$PKG/usr/share/doc/achilles-financials"
 
-      # Standalone output plus the two things Next deliberately leaves out of
-      # it: static assets and public/, normally served by a CDN or proxy.
-      cp -r .next/standalone/. "$APP/"
-      mkdir -p "$APP/.next"
-      cp -r .next/static "$APP/.next/static"
-      cp -r public "$APP/public"
+      # adapter-node output (server, client assets, static/) plus the entry
+      # wrapper and the production node_modules it imports at runtime.
+      cp -r build server.js package.json node_modules "$APP/"
 
       # Ship the Node from this build image: it is the one npm ci compiled the
       # native module against, so no version can drift between the two.

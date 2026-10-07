@@ -3,6 +3,36 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.0.0] — 2026-10-07
+
+### Changed
+- **New interface.** A calm, Monarch-style redesign replaces the dark glass look: white cards on a
+  soft grey canvas, one warm accent, green and red only where money moves. **Light and dark theme**,
+  following the system by default and switchable per device (sidebar or Settings → Appearance).
+- **Overview, rebuilt around net worth.** A large net-worth chart with 1M/3M/6M/1Y/All ranges and the
+  change over the range; the asset breakdown as one stacked bar with a row per class (share, amount,
+  unrealised P/L); a "this month" strip; cash flow as monthly bars; spending by category as a donut
+  with per-category bars.
+- **Net-worth history.** Achilles now records one net-worth reading per day whenever the overview is
+  opened (`networth_snapshots`). Demo readings are kept apart and removed with the demo data, so the
+  real line is never bent by it. The demo seeds a year of plausible history.
+- **Transactions grouped by day** with daily totals and a category glyph per booking; categories are
+  edited inline.
+- **Watchlist tiles** show a 6-month sparkline directly instead of a floating hover card; swapping
+  tiles by drag animates both into place.
+- **Navigation**: grouped sidebar (Assets, Planning) on desktop; bottom tab bar plus drawer on phones.
+- **Settings** in sections with a side index; choices with a reason are shown as radio cards.
+
+### Under the hood
+- **Next.js/React → SvelteKit 2 with Svelte 5.** All 39 API routes are ported unchanged in behaviour;
+  the auth guard moved from middleware to `hooks.server.ts`, the background sync timer to the server
+  `init` hook, the first-run redirect to a server `load` (no client-side flicker).
+- No chart, dialog or select library any more: charts are plain SVG, dialogs use the native
+  `<dialog>`, the select is a small themed listbox. Recharts, Radix and React are gone.
+- **Stricter CSP**: scripts are nonce-based now — Next needed `'unsafe-inline'` for hydration.
+- **Inter is self-hosted** from the build; still no third-party fonts or scripts.
+- Docker and the `.deb` keep starting `node server.js` with the same `HOSTNAME`/`PORT` variables.
+
 ## [1.10.0] — 2026-07-18
 
 ### Fixed
