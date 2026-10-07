@@ -3,6 +3,32 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.2.0] — 2026-10-07
+
+### Added
+- **Budgets** (nav: Budgets) — a monthly budget per spending category, grouped like the cash flow
+  groups. Each shows spent / available, what is left, and a marker for where spending *should* be by
+  today if spread evenly. Status: on track, tight (near the limit, or at least half gone and well
+  ahead of the calendar), over. Optional **rollover**: leftovers carry into the next month,
+  overspending is deducted. New budgets are pre-filled with the average of the last three months;
+  categories with spending but no budget are listed with a one-click "add". Refunds net their
+  category, as on the cash flow page. The overview shows the four budgets closest to their limit.
+- **Recurring payments** (nav: Recurring) — subscriptions, contracts and savings plans detected
+  automatically: same payee (reference numbers ignored), steady rhythm (weekly to yearly) and steady
+  amount. Shows monthly and yearly cost, **price increases** of the last six months
+  (e.g. 15.99 € → 17.99 €), the debits of the next 30 days, savings plans separately (not counted
+  as costs) and payments that seem to have stopped. Anything that is not a subscription can be
+  hidden and restored.
+- **CI on GitHub Actions**: every push runs type checks, tests, the production build, a server start,
+  and builds and starts the Docker image. **Releases are automatic**: pushing a tag `v*` checks it
+  against `package.json`, builds the `.deb` packages for amd64 and arm64 and publishes a GitHub
+  release with the notes from this changelog.
+- **Tests** for cash flow, budgets and recurring detection (`tests/finance.test.ts`, 23 checks).
+
+### Changed
+- Demo data: contracts debit on a fixed day at a fixed amount (as real ones do), Netflix had a price
+  rise, a quarterly licence fee and demo budgets were added.
+
 ## [2.1.0] — 2026-10-07
 
 ### Added

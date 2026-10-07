@@ -1,0 +1,53 @@
+# A version tag (v2.2.0) becomes a GitHub release: notes from CHANGELOG.md,
+# .deb packages for amd64 and arm64 attached. The in-app updater reads exactly
+# this release, so its "what's new" text comes from here.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches package.json
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "Tag v$TAG passt nicht zu package.json ($PKG)." >&2
+            exit 1
+          fi
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # The section from "## [VERSION]" up to the next "## [".
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "Kein Abschnitt für $VERSION in CHANGELOG.md." >&2
+            exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - name: Build .deb packages
+        run: deploy/deb/build.sh amd64 arm64
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist-deb/*.deb \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag

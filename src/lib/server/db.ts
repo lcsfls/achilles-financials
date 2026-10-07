@@ -254,6 +254,23 @@ function migrate(d: Database.Database) {
     -- Nothing else stores history, so this is what the net-worth chart draws.
     -- Demo readings are kept apart (demo = 1) so loading and removing the demo
     -- never bends the real line.
+    -- Monthly budget per spending category. rollover: what is left (or
+    -- overspent) carries into the next month, counted from created_month.
+    CREATE TABLE IF NOT EXISTS budgets (
+      category TEXT PRIMARY KEY,
+      amount_eur REAL NOT NULL,
+      rollover INTEGER NOT NULL DEFAULT 0,
+      created_month TEXT NOT NULL,
+      demo INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- Recurring payments the user marked as "not a subscription" — detection
+    -- would otherwise list them again on every visit.
+    CREATE TABLE IF NOT EXISTS recurring_ignored (
+      merchant_key TEXT PRIMARY KEY,
+      ignored_at TEXT NOT NULL
+    );
+
     -- Price history per symbol and range, for the watchlist charts. A cache,
     -- not data: safe to drop, refilled on demand.
     CREATE TABLE IF NOT EXISTS history_cache (

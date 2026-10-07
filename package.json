@@ -1,6 +1,6 @@
 {
   "name": "achilles-financials",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "preview": "vite preview --port 3000",
     "start": "node build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "tsx tests/backup.test.ts"
+    "test": "tsx tests/backup.test.ts && tsx tests/finance.test.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.9.1",
