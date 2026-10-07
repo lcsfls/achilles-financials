@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { prefs } from "./prefs.svelte";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -28,40 +29,26 @@ export async function apiJson<T = unknown>(url: string, init?: RequestInit): Pro
   return res.json() as Promise<T>;
 }
 
-// Aktive Zahlen-/Datums-Locale — wird vom LanguageProvider gesetzt.
-let LOCALE = "de-DE";
-export function setNumberLocale(locale: string) {
-  LOCALE = locale;
-}
-
 /**
  * Anzeigewährung.
  *
  * Gerechnet und gespeichert wird durchgehend in EUR (alle Spalten heißen
  * *_eur). Umgerechnet wird ausschließlich hier, beim Formatieren — deshalb
- * nimmt fmtEUR weiterhin einen EUR-Betrag entgegen und alle bestehenden
- * Aufrufstellen stimmen ohne Änderung.
+ * nimmt fmtEUR einen EUR-Betrag entgegen. Locale und Kurs kommen aus prefs,
+ * einem $state-Objekt: Templates rendern neu, sobald sich beides ändert.
  */
-let DISPLAY = { code: "EUR", rate: 1 };
-let USD_RATE: number | null = null;
-
-export function setDisplayCurrency(code: string, rate: number, usdRate: number | null) {
-  DISPLAY = { code, rate: Number.isFinite(rate) && rate > 0 ? rate : 1 };
-  USD_RATE = usdRate && usdRate > 0 ? usdRate : null;
-}
-
 export function displayCurrency() {
-  return DISPLAY.code;
+  return prefs.currency;
 }
 
 /** Betrag in EUR — formatiert in der eingestellten Anzeigewährung. */
 export function fmtEUR(n: number, opts: Intl.NumberFormatOptions = {}) {
-  return new Intl.NumberFormat(LOCALE, {
+  return new Intl.NumberFormat(prefs.locale, {
     style: "currency",
-    currency: DISPLAY.code,
+    currency: prefs.currency,
     maximumFractionDigits: 2,
     ...opts,
-  }).format(n * DISPLAY.rate);
+  }).format(n * prefs.rate);
 }
 
 export function fmtEUR0(n: number) {
@@ -74,13 +61,13 @@ export function fmtEUR0(n: number) {
  * Dopplung) oder kein Kurs vorliegt.
  */
 export function fmtUSD(n: number, opts: Intl.NumberFormatOptions = {}): string | null {
-  if (DISPLAY.code === "USD" || USD_RATE === null) return null;
-  return new Intl.NumberFormat(LOCALE, {
+  if (prefs.currency === "USD" || prefs.usdRate === null) return null;
+  return new Intl.NumberFormat(prefs.locale, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
     ...opts,
-  }).format(n * USD_RATE);
+  }).format(n * prefs.usdRate);
 }
 
 export function fmtUSD0(n: number) {
@@ -89,21 +76,21 @@ export function fmtUSD0(n: number) {
 
 export function fmtPct(n: number) {
   const sign = n > 0 ? "+" : "";
-  return `${sign}${n.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} %`;
+  return `${sign}${n.toLocaleString(prefs.locale, { maximumFractionDigits: 1 })} %`;
 }
 
 export function fmtNum(n: number, maxFrac = 2) {
-  return n.toLocaleString(LOCALE, { maximumFractionDigits: maxFrac });
+  return n.toLocaleString(prefs.locale, { maximumFractionDigits: maxFrac });
 }
 
 export function fmtGrams(n: number) {
-  return `${n.toLocaleString(LOCALE, { maximumFractionDigits: 2 })} g`;
+  return `${n.toLocaleString(prefs.locale, { maximumFractionDigits: 2 })} g`;
 }
 
 export function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString(LOCALE, { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString(prefs.locale, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString(LOCALE);
+  return new Date(iso).toLocaleString(prefs.locale);
 }

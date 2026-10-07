@@ -1,0 +1,7 @@
+node_modules
+build
+.svelte-kit
+data
+control
+dist-deb
+.git

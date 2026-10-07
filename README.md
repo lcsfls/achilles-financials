@@ -2,7 +2,8 @@
 
 **Self-hosted private wealth dashboard.** Connect your bank by scanning a QR code, then track
 categorized spending, precious metals, investments with live prices and your pension — and simulate
-your path to financial independence. Dark glassmorphism UI with a gold accent.
+your path to financial independence. A calm, Monarch-style interface — light and dark — built with
+SvelteKit.
 
 Works with **2,700+ banks across 30 European countries** through
 [Enable Banking](https://enablebanking.com)'s PSD2 interface — read-only, revocable, and everything
@@ -15,6 +16,8 @@ stays on your own server.
 ---
 
 ![Overview](docs/screenshots/overview.png)
+
+<sub>Light and dark theme — follows the system by default, switchable per device. [Dark overview](docs/screenshots/overview-dark.png)</sub>
 
 <table>
 <tr>
@@ -44,7 +47,7 @@ stays on your own server.
 | 🏷️ **Auto-categorization** | Rule-based categories (groceries, subscriptions, housing, …). Manual overrides stick and survive re-syncs. |
 | 🥇 **Precious metals** | Track every purchase as its own lot — grams, cost basis, date, dealer. Live spot prices for gold, silver, platinum and palladium show current value and P/L per lot and per metal. |
 | 📈 **Investments + live prices** | Stocks, ETFs, crypto. Add a Yahoo-format symbol (`AAPL`, `VWCE.DE`, `BTC-EUR`) and refresh every price with one click, including USD→EUR conversion. |
-| 👀 **Watchlist** | Watch any symbol with its price, daily change and gain since you added it. Pin favourites to the top, drag tiles to rearrange, hover for a 6-month chart. |
+| 👀 **Watchlist** | Watch any symbol with its price, daily change and gain since you added it. Pin favourites to the top, drag tiles to rearrange, a 6-month sparkline on every tile, click for the full chart. |
 | 🏠 **Real estate** | Address, value and photos per property, with €/m² and the gain since purchase. The value is entered by hand and records **where it came from** — see the note below on why there is no "estimate my property" button. Whether it counts towards net worth is your choice. |
 | 🤝 **Loans** | Money you lent out and money you took on — privately or from a bank, with or without interest. Interest accrues daily on the outstanding balance; payments cover interest first, then principal. You choose whether they count towards net worth. |
 | 🔥 **FIRE simulator** | Inflation-adjusted wealth projection, your FIRE number, and years to financial independence — interactive sliders, seeded from your real net worth. |
@@ -452,8 +455,20 @@ Enable Banking and CSV import need none of this.
 
 ## Stack
 
-Next.js 15 (App Router, standalone output) · React 19 · Tailwind CSS 4 · shadcn-style UI (Radix)
-· Recharts · better-sqlite3 · Docker multi-stage build
+SvelteKit 2 (Svelte 5 runes, adapter-node) · Tailwind CSS 4 · hand-rolled SVG charts (no chart
+library) · Lucide icons · self-hosted Inter font · better-sqlite3 · Docker multi-stage build
+
+```bash
+npm run dev      # dev server with hot reload → http://localhost:3000
+npm run check    # svelte-check: types and templates
+npm test         # backup round-trip test
+npm run build    # production build into build/
+npm start        # node server.js — the same entry Docker and the .deb use
+```
+
+`server.js` wraps the adapter-node handler and reads `HOSTNAME`/`PORT` as before. Behind a reverse
+proxy it takes protocol and host from `X-Forwarded-Proto`/`X-Forwarded-Host`; without a proxy it
+treats requests as plain http, so login works on a LAN address too.
 
 Data sources: [Enable Banking](https://enablebanking.com) (PSD2 banking) ·
 [gold-api.com](https://gold-api.com) (metal spot prices) · Yahoo Finance (stocks/ETFs/crypto) ·

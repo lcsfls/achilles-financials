@@ -1,0 +1,175 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/*
+ * Design tokens.
+ *
+ * A calm, light-first finance look: white cards on a soft grey canvas, one warm
+ * accent, green/red only where money moves. Dark mode swaps the same tokens —
+ * components never hard-code a colour that only works on one background.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-pos: var(--pos);
+  --color-pos-soft: var(--pos-soft);
+  --color-neg: var(--neg);
+  --color-neg-soft: var(--neg-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 2px 6px rgb(16 24 40 / 0.06);
+}
+
+:root {
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --surface-3: #eff1f4;
+  --line: #e7e9ee;
+  --line-strong: #d6dae1;
+  --ink: #17202f;
+  --ink-2: #3a4555;
+  --muted: #6b7484;
+  --faint: #9aa2b1;
+  --accent: #f0652f;
+  --accent-ink: #ffffff;
+  --accent-soft: #fff0ea;
+  --pos: #12a150;
+  --pos-soft: #e8f7ee;
+  --neg: #e5484d;
+  --neg-soft: #fdecec;
+  --warn: #d98a00;
+  --warn-soft: #fff6e0;
+  --info: #2f6fed;
+  --info-soft: #eaf1fe;
+  --chart-grid: #eceef2;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --canvas: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1c2029;
+  --surface-3: #232834;
+  --line: #262b36;
+  --line-strong: #343a47;
+  --ink: #eef0f4;
+  --ink-2: #c9ced8;
+  --muted: #9198a6;
+  --faint: #687080;
+  --accent: #ff7a45;
+  --accent-ink: #1a0d06;
+  --accent-soft: #2c1a12;
+  --pos: #3ecf7a;
+  --pos-soft: #13261b;
+  --neg: #ff6b6f;
+  --neg-soft: #2c1617;
+  --warn: #f5b131;
+  --warn-soft: #2a2110;
+  --info: #6b9bff;
+  --info-soft: #152035;
+  --chart-grid: #232833;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 16px 40px -10px rgb(0 0 0 / 0.6), 0 0 0 1px var(--line);
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* subtle entrance */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-3) 0, var(--surface-2) 40%, var(--surface-3) 80%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .skeleton { animation: none; }
+}
+
+/* thin scrollbars that follow the theme */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--canvas); }
+
+/* number inputs without spinners — amounts are typed, not clicked */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+/* Data tables — one look for every list of positions, lots, payments. */
+.tbl { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
+/* :where() keeps these at zero specificity, so utilities like text-right win. */
+:where(.tbl thead th) { text-align: left; }
+.tbl thead th {
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tbl tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl tbody tr { transition: background-color 0.12s; }
+.tbl tbody tr:hover { background: var(--surface-2); }
+.tbl th:first-child, .tbl td:first-child { padding-left: 1.25rem; }
+.tbl th:last-child, .tbl td:last-child { padding-right: 1.25rem; }

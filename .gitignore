@@ -1,5 +1,6 @@
 node_modules/
-.next/
+/build/
+/.svelte-kit/
 out/
 data/
 *.db
@@ -13,10 +14,6 @@ npm-debug.log*
 control/
 
 .claude/
-
-# TypeScript incremental build info
-tsconfig.tsbuildinfo
-next-env.d.ts
 
 # Gebaute Pakete
 /dist-deb
