@@ -60,12 +60,19 @@
     business: { color: "#e64980", label: "Unternehmen", icon: Briefcase, href: "/business" },
   };
 
+  type BudgetRow = { category: string; available: number; spent: number; pct: number; status: "ok" | "warn" | "over" };
+  let budgets = $state<{ budgets: BudgetRow[]; totals: { available: number; spent: number } } | null>(null);
+
   let data = $state<Summary | null>(null);
   let loading = $state(true);
   let range = $state("1y");
 
   const load = () => apiJson<Summary>("/api/summary").then((d) => (data = d)).finally(() => (loading = false));
-  onMount(load);
+  onMount(() => {
+    load();
+    // Separate and non-blocking: the overview must not wait for the budget figures.
+    apiJson<typeof budgets>("/api/budgets").then((b) => (budgets = b)).catch(() => {});
+  });
 
   const monthShort = (m: number) => new Date(2000, m, 1).toLocaleDateString(prefs.locale, { month: "short" });
 
@@ -345,6 +352,31 @@
       </Card>
 
       <div class="flex flex-col gap-5">
+        {#if budgets && budgets.budgets.length > 0}
+          <!-- The three budgets closest to their limit — the ones worth a look. -->
+          <Card>
+            <CardHeader
+              title={t("Budgets")}
+              subtitle={t("{spent} von {available}", { spent: fmtEUR0(budgets.totals.spent), available: fmtEUR0(budgets.totals.available) })}
+            >
+              {#snippet actions()}
+                <Button variant="ghost" size="icon-sm" href="/budgets" aria-label={t("Budgets")}><ChevronRight /></Button>
+              {/snippet}
+            </CardHeader>
+            <div class="space-y-3.5 px-5 pb-5">
+              {#each [...budgets.budgets].sort((a, b) => b.pct - a.pct).slice(0, 4) as b (b.category)}
+                <div>
+                  <div class="mb-1.5 flex items-center justify-between gap-2 text-[13px]">
+                    <span class="flex min-w-0 items-center gap-2"><span>{CATEGORY_EMOJI[b.category] ?? "•"}</span><span class="truncate">{t(b.category)}</span></span>
+                    <span class="num shrink-0"><span class="font-semibold">{fmtEUR0(b.spent)}</span><span class="text-muted"> / {fmtEUR0(b.available)}</span></span>
+                  </div>
+                  <Progress height={6} value={b.pct} color={b.status === "over" ? "var(--neg)" : b.status === "warn" ? "var(--warn)" : "var(--pos)"} />
+                </div>
+              {/each}
+            </div>
+          </Card>
+        {/if}
+
         <EmergencyFund monthlySpending={data.thisMonth.spent} onchange={load} />
 
         <Card>

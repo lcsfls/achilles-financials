@@ -56,12 +56,31 @@ export function seedDemoData() {
     ["Eventim", "CTS Eventim Tickets", -75, 0.3],
     ["Acme Software GmbH", "Gehalt", 4650, 1],
     ["Kunde Schneider", "Rechnung 2026-0", 850, 0.5],
+    ["ARD ZDF Beitragsservice", "Rundfunkbeitrag Quartal", -55.08, 1 / 3],
   ];
 
   const insert = d.prepare(
     `INSERT OR REPLACE INTO transactions (id, account_id, booking_date, amount, currency, merchant, description, category, pending)
      VALUES (?, 'demo-main', ?, ?, 'EUR', ?, ?, ?, 0)`
   );
+
+  /*
+   * Contracts debit on a fixed day and at a fixed amount — unlike shopping.
+   * Without that the demo had no subscription the recurring-payment detection
+   * could find. Netflix raised its price three months ago, so the "price
+   * change" hint has something to show; the licence fee comes quarterly.
+   */
+  const FIXED: Record<string, { day: number; every?: number; amount?: (monthsAgo: number) => number }> = {
+    Netflix: { day: 15, amount: (m) => (m >= 3 ? -15.99 : -17.99) },
+    Spotify: { day: 3 },
+    Apple: { day: 22 },
+    Telekom: { day: 8 },
+    McFit: { day: 1 },
+    Stadtwerke: { day: 20 },
+    "Vermieter Wohnbau GmbH": { day: 1 },
+    "Trade Republic": { day: 2 },
+    "ARD ZDF Beitragsservice": { day: 15, every: 3 },
+  };
 
   // deterministischer Pseudo-Zufall
   let seed = 42;
@@ -73,6 +92,16 @@ export function seedDemoData() {
   const txAll = d.transaction(() => {
     for (let month = 0; month < 8; month++) {
       for (const [merchant, desc, base, freq] of merchants) {
+        const fixed = FIXED[merchant];
+        if (fixed) {
+          if (month % (fixed.every ?? 1) !== 0) continue;
+          const date = new Date(now.getFullYear(), now.getMonth() - month, fixed.day);
+          if (date > now) continue;
+          const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+          const amount = fixed.amount ? fixed.amount(month) : base;
+          insert.run(`demo-${merchant}-${month}-0`, iso, amount, merchant, desc, categorize(merchant, desc, amount));
+          continue;
+        }
         const count = Math.floor(freq) + (rand() < freq % 1 ? 1 : 0);
         for (let i = 0; i < count; i++) {
           // Einnahmen auf den Monatsanfang legen: bei einem zufälligen Tag
@@ -257,6 +286,29 @@ export function seedDemoData() {
     setSetting("emergency_months", "3");
   }
 
+  /*
+   * Budgets for the everyday categories, so the budget page has something to
+   * show. Only when the user has none of their own; created three months back
+   * so the rollover on groceries has history to carry.
+   */
+  const budgetCount = (d.prepare("SELECT COUNT(*) AS c FROM budgets").get() as { c: number }).c;
+  if (budgetCount === 0) {
+    const b = d.prepare("INSERT INTO budgets (category, amount_eur, rollover, created_month, demo) VALUES (?, ?, ?, ?, 1)");
+    const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const created = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+    for (const [cat, amount, rollover] of [
+      ["Wohnen & Nebenkosten", 1300, 0],
+      ["Lebensmittel", 450, 1],
+      ["Transport", 220, 0],
+      ["Shopping", 180, 0],
+      ["Restaurants & Cafés", 150, 0],
+      ["Abos & Dienste", 90, 0],
+      ["Gesundheit", 60, 0],
+    ] as const) {
+      b.run(cat, amount, rollover, created);
+    }
+  }
+
   setSetting("demo_mode", "1");
 }
 
@@ -316,6 +368,7 @@ export function clearDemoData() {
     d.prepare("DELETE FROM properties WHERE demo = 1").run();
     d.prepare("DELETE FROM businesses WHERE demo = 1").run();
     d.prepare("DELETE FROM networth_snapshots WHERE demo = 1").run();
+    d.prepare("DELETE FROM budgets WHERE demo = 1").run();
     // Nur die eigene Zuordnung zurücknehmen; zeigt sie woanders hin, hat der
     // Nutzer sie selbst gesetzt und sie bleibt.
     if (getSetting("emergency_account_id") === "demo-main") {
