@@ -3,6 +3,13 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.2.1] — 2026-10-07
+
+### Changed
+- **Cash flow diagram** has more air: its height now grows with the width (up to 760 px), flows
+  fill at most 60 % of it and the rest is spread as gaps between the nodes. On wide screens
+  (e.g. 1440 px) the bands no longer look squeezed and chunky; labels get more room.
+
 ## [2.2.0] — 2026-10-07
 
 ### Added

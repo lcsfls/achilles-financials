@@ -17,7 +17,7 @@
     right,
     center,
     format,
-    height: minHeight = 380,
+    height: minHeight = 440,
     onnode,
   }: {
     left: SankeyNode[];
@@ -32,21 +32,32 @@
   let hover = $state<string | null>(null);
   let tip = $state<{ x: number; y: number; title: string; value: number } | null>(null);
 
-  const NODE_W = 12;
-  const GAP = 10;
+  const NODE_W = 10;
   const LABEL_W = 190;
-  const LINE = 34; // minimum vertical room per label
+  const LINE = 40; // minimum vertical room per label
+  /** Share of the height the flows may fill; the rest is air between nodes. */
+  const FILL = 0.6;
 
   const total = $derived(Math.max(center.value, 1e-9));
-  const height = $derived(Math.max(minHeight, Math.max(left.length, right.length) * LINE + 24));
-  const top = 8;
-  const usable = $derived(height - top * 2);
+  // Height follows the width (a wide screen gets a taller diagram instead of
+  // stretched, chunky bands), and always leaves room for every label.
+  const height = $derived(
+    Math.max(minHeight, Math.min(760, Math.round(width * 0.5)), Math.max(left.length, right.length) * LINE + 48)
+  );
+  const top = 36; // room for the centre label above the middle node
+  const usable = $derived(height - top - 12);
+
+  /** Gap between nodes of one column: the unfilled height spread out, within sane bounds. */
+  const gapFor = (n: number) => (n > 1 ? Math.min(44, Math.max(10, (usable * (1 - FILL)) / (n - 1))) : 0);
+  const gapL = $derived(gapFor(left.length));
+  const gapR = $derived(gapFor(right.length));
 
   // One scale for all columns so a euro is equally thick everywhere.
   const k = $derived(
     Math.min(
-      (usable - GAP * Math.max(0, left.length - 1)) / total,
-      (usable - GAP * Math.max(0, right.length - 1)) / total
+      (usable * FILL) / total,
+      (usable - gapL * Math.max(0, left.length - 1)) / total,
+      (usable - gapR * Math.max(0, right.length - 1)) / total
     )
   );
 
@@ -56,19 +67,19 @@
 
   type Placed = SankeyNode & { y: number; h: number };
 
-  function stack(nodes: SankeyNode[]): Placed[] {
-    const sum = nodes.reduce((s, n) => s + n.value * k, 0) + GAP * Math.max(0, nodes.length - 1);
+  function stack(nodes: SankeyNode[], gap: number): Placed[] {
+    const sum = nodes.reduce((s, n) => s + n.value * k, 0) + gap * Math.max(0, nodes.length - 1);
     let y = top + (usable - sum) / 2;
     return nodes.map((n) => {
       const h = Math.max(1.5, n.value * k);
       const out = { ...n, y, h };
-      y += h + GAP;
+      y += h + gap;
       return out;
     });
   }
 
-  const L = $derived(stack(left));
-  const R = $derived(stack(right));
+  const L = $derived(stack(left, gapL));
+  const R = $derived(stack(right, gapR));
   const centerH = $derived(total * k);
   const centerY = $derived(top + (usable - centerH) / 2);
 
