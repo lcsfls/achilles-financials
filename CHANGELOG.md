@@ -3,6 +3,13 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [Unreleased]
+
+### Fixed
+- **502 behind nginx after login**: SvelteKit's `Link` preload header (one entry per JS/CSS chunk)
+  grew past the proxy's 4 KB header buffer on the overview page. The header is now dropped; the
+  same preloads are still in the page's `<head>`.
+
 ## [2.2.1] — 2026-10-07
 
 ### Changed

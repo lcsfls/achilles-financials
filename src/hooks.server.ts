@@ -82,6 +82,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event, {
     transformPageChunk: ({ html }) => html.replace("%lang%", lang),
   });
+  // SvelteKit 2 lists every preloaded chunk in a `Link` header. On large pages
+  // it outgrows the 4–8 KB header buffer of reverse proxies (nginx: 502). The
+  // same preloads are already in <head>, so the header is redundant.
+  response.headers.delete("link");
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) response.headers.set(k, v);
   return response;
 };
