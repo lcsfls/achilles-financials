@@ -131,14 +131,16 @@ export async function completeAuth(code: string, state?: string) {
   // mandatory, valid once and for a limited time.
   const expected = getSetting("eb_auth_state");
   const startedAt = Number(getSetting("eb_auth_state_at") ?? 0);
-  deleteSetting("eb_auth_state");
-  deleteSetting("eb_auth_state_at");
   const given = Buffer.from(typeof state === "string" ? state : "");
   const wanted = Buffer.from(expected ?? "");
   const matches = wanted.length > 0 && given.length === wanted.length && crypto.timingSafeEqual(given, wanted);
   if (!matches || Date.now() - startedAt > AUTH_STATE_TTL_MS) {
     throw new EbError("Die Autorisierung ist abgelaufen oder gehört nicht zu dieser Anfrage. Bitte die Bankverbindung neu starten.");
   }
+  // Used up only now: a request with a wrong state must not be able to cancel
+  // an authorization that is still in progress.
+  deleteSetting("eb_auth_state");
+  deleteSetting("eb_auth_state_at");
 
   const data = await ebFetch("/sessions", { method: "POST", body: JSON.stringify({ code }) });
   setSetting("eb_session_id", data.session_id);
