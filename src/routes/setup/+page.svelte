@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Sparkles, Database, KeyRound, Check } from "@lucide/svelte";
+  import { Sparkles, Database, KeyRound, Check, ShieldCheck } from "@lucide/svelte";
+  import type { PageData } from "./$types";
   import Button from "$lib/components/ui/Button.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import Textarea from "$lib/components/ui/Textarea.svelte";
@@ -13,7 +14,20 @@
   import { COUNTRIES } from "$lib/countries";
   import { cn } from "$lib/utils";
 
+  let { data }: { data: PageData } = $props();
+
   let step = $state(0);
+  // The login is mandatory: this app holds bank data, so a fresh install must
+  // never be readable by whoever reaches the host first. If the wizard is
+  // reopened after the account exists, the step only confirms that.
+  let createdNow = $state(false);
+  const accountCreated = $derived(data.authEnabled || createdNow);
+  let username = $state("");
+  let password = $state("");
+  let password2 = $state("");
+  const loginValid = $derived(
+    accountCreated || (username.trim() !== "" && password.length >= 8 && password === password2)
+  );
   let appId = $state("");
   let privateKey = $state("");
   let country = $state("DE");
@@ -24,6 +38,19 @@
   async function finish() {
     busy = true;
     error = null;
+    // Account first, as its own request: the settings API answers an auth
+    // change right away and sets the session cookie the next request needs.
+    if (!accountCreated) {
+      const a = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth: { username, password } }),
+      });
+      if (!a.ok) { busy = false; error = (await a.json()).error; step = 1; return; }
+      createdNow = true;
+      password = "";
+      password2 = "";
+    }
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,12 +62,12 @@
         setupDone: true,
       }),
     });
-    if (!res.ok) { busy = false; error = (await res.json()).error; step = 1; return; }
+    if (!res.ok) { busy = false; error = (await res.json()).error; step = 2; return; }
     if (startMode === "demo") await fetch("/api/demo", { method: "POST" });
     window.location.href = "/";
   }
 
-  const STEPS = $derived([t("Sprache"), "Enable Banking", "Start"]);
+  const STEPS = $derived([t("Sprache"), t("Login"), "Enable Banking", "Start"]);
 
   const choice = (on: boolean) =>
     cn(
@@ -87,6 +114,41 @@
     {:else if step === 1}
       <div class="space-y-5">
         <div class="flex items-start gap-3">
+          <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><ShieldCheck class="size-5" /></span>
+          <div>
+            <h2 class="text-lg font-semibold">{t("Login anlegen")}</h2>
+            <p class="text-xs text-muted">{t("Achilles zeigt deine Finanzen. Ohne Login könnte sie jeder lesen, der diesen Server erreicht.")}</p>
+          </div>
+        </div>
+        {#if accountCreated}
+          <Alert tone="pos">{t("Der Login ist eingerichtet.")}</Alert>
+        {:else}
+          <div class="space-y-4">
+            <Field label={t("Benutzername")}>
+              <Input autocomplete="username" bind:value={username} oninput={() => (error = null)} />
+            </Field>
+            <Field label={t("Passwort")}>
+              <Input type="password" autocomplete="new-password" bind:value={password} oninput={() => (error = null)} />
+            </Field>
+            <Field label={t("Passwort wiederholen")}>
+              <Input type="password" autocomplete="new-password" bind:value={password2} oninput={() => (error = null)} />
+            </Field>
+          </div>
+          {#if password && password.length < 8}
+            <p class="text-xs text-muted">{t("Das Passwort muss mindestens 8 Zeichen haben.")}</p>
+          {:else if password2 && password !== password2}
+            <p class="text-xs text-muted">{t("Die Passwörter stimmen nicht überein.")}</p>
+          {/if}
+        {/if}
+        {#if error}<Alert tone="neg">{t(error)}</Alert>{/if}
+        <div class="flex gap-3">
+          <Button variant="secondary" class="flex-1" onclick={() => (step = 0)}>{t("Zurück")}</Button>
+          <Button class="flex-1" onclick={() => (step = 2)} disabled={!loginValid}>{t("Weiter")}</Button>
+        </div>
+      </div>
+    {:else if step === 2}
+      <div class="space-y-5">
+        <div class="flex items-start gap-3">
           <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><KeyRound class="size-5" /></span>
           <div>
             <h2 class="text-lg font-semibold">{t("Bankanbindung (optional)")}</h2>
@@ -109,8 +171,8 @@
           {t("Du kannst das jederzeit später in den Einstellungen nachholen — oder Kontoauszüge per CSV importieren.")}
         </p>
         <div class="flex gap-3">
-          <Button variant="secondary" class="flex-1" onclick={() => (step = 0)}>{t("Zurück")}</Button>
-          <Button class="flex-1" onclick={() => (step = 2)}>{appId && privateKey ? t("Weiter") : t("Überspringen")}</Button>
+          <Button variant="secondary" class="flex-1" onclick={() => (step = 1)}>{t("Zurück")}</Button>
+          <Button class="flex-1" onclick={() => (step = 3)}>{appId && privateKey ? t("Weiter") : t("Überspringen")}</Button>
         </div>
       </div>
     {:else}
@@ -129,7 +191,7 @@
           </button>
         </div>
         <div class="flex gap-3">
-          <Button variant="secondary" class="flex-1" onclick={() => (step = 1)} disabled={busy}>{t("Zurück")}</Button>
+          <Button variant="secondary" class="flex-1" onclick={() => (step = 2)} disabled={busy}>{t("Zurück")}</Button>
           <Button class="flex-1" onclick={finish} disabled={busy}>{busy ? t("Einen Moment …") : t("Los geht's")}</Button>
         </div>
       </div>

@@ -128,7 +128,15 @@ export async function POST({ request: req, cookies, url }: RequestEvent) {
   }
   if (country) setSetting("eb_country", String(country).trim().toUpperCase());
   if (language === "de" || language === "en") setSetting("language", language);
-  if (setupDone === true) setSetting("setup_done", "1");
+  if (setupDone === true) {
+    // The wizard cannot be finished without a login: a fresh install must not
+    // leave bank data readable by whoever reaches the host. Installs that
+    // completed setup before this rule keep working and are not touched here.
+    if (!authEnabled()) {
+      return json({ error: "Bitte lege zuerst einen Login an." }, { status: 400 });
+    }
+    setSetting("setup_done", "1");
+  }
 
   return json({ ok: true });
 }

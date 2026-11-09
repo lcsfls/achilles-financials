@@ -3,6 +3,16 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
+## [2.3.0] — 2026-11-09
+
+### Changed
+- **The login is now required on first run.** The setup wizard has a new step that creates
+  username and password, and it cannot be finished without one. Before, a fresh install was open to
+  anyone who could reach the host until the login was enabled in Settings. Existing installs are
+  not changed; if yours runs without a login, set one under Settings → Login.
+- README: states plainly what Achilles does not do (no transfers, no support, no hosted version)
+  and how to reset a forgotten password.
+
 ## [2.2.1] — 2026-10-07
 
 ### Changed
