@@ -10,6 +10,16 @@ the update in Settings tracks released tags, not every commit on `main`.
   username and password, and it cannot be finished without one. Before, a fresh install was open to
   anyone who could reach the host until the login was enabled in Settings. Existing installs are
   not changed; if yours runs without a login, set one under Settings → Login.
+
+### Security
+- **Login lockout can no longer be bypassed.** Failed attempts are counted per connection address
+  instead of the client-supplied `X-Forwarded-For` header. Behind a reverse proxy, set
+  `ADDRESS_HEADER=X-Forwarded-For` to count per client.
+- **Bank callback works without a session, and is stricter.** The phone returning from the banking
+  app no longer needs to be signed in. In exchange the `state` is mandatory, valid once and for
+  30 minutes.
+
+### Docs
 - README: states plainly what Achilles does not do (no transfers, no support, no hosted version)
   and how to reset a forgotten password.
 

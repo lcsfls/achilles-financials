@@ -12,7 +12,7 @@
  * Auth: pro Request ein RS256-signiertes JWT (kid = Application-ID).
  */
 import crypto from "crypto";
-import { db, getSetting, setSetting } from "./db";
+import { db, deleteSetting, getSetting, setSetting } from "./db";
 import { categorize } from "../categorize";
 
 const API = "https://api.enablebanking.com";
@@ -96,6 +96,9 @@ export async function listAspsps(country: string): Promise<Aspsp[]> {
 }
 
 /** Startet die Autorisierung; liefert die URL, die als QR-Code angezeigt wird. */
+/** How long a started bank authorization may take before the callback is refused. */
+const AUTH_STATE_TTL_MS = 30 * 60_000;
+
 export async function startAuth(aspspName: string, country: string, redirectUrl: string) {
   const state = crypto.randomUUID();
   // Zugriff so lange gültig, wie die Bank erlaubt (üblich: 90–180 Tage)
@@ -113,6 +116,7 @@ export async function startAuth(aspspName: string, country: string, redirectUrl:
   });
 
   setSetting("eb_auth_state", state);
+  setSetting("eb_auth_state_at", String(Date.now()));
   setSetting("eb_aspsp_name", aspspName);
   setSetting("eb_country", country);
   setSetting("eb_auth_status", "started");
@@ -121,9 +125,19 @@ export async function startAuth(aspspName: string, country: string, redirectUrl:
 
 /** Schließt die Autorisierung ab: code → Session + Konten. */
 export async function completeAuth(code: string, state?: string) {
+  // The callback is reachable without a login (the phone that returns from
+  // the banking app is usually not signed in), so the state is the only proof
+  // that this request belongs to an authorization started here. It is
+  // mandatory, valid once and for a limited time.
   const expected = getSetting("eb_auth_state");
-  if (expected && state && expected !== state) {
-    throw new EbError("State stimmt nicht überein — Autorisierung abgebrochen.");
+  const startedAt = Number(getSetting("eb_auth_state_at") ?? 0);
+  deleteSetting("eb_auth_state");
+  deleteSetting("eb_auth_state_at");
+  const given = Buffer.from(typeof state === "string" ? state : "");
+  const wanted = Buffer.from(expected ?? "");
+  const matches = wanted.length > 0 && given.length === wanted.length && crypto.timingSafeEqual(given, wanted);
+  if (!matches || Date.now() - startedAt > AUTH_STATE_TTL_MS) {
+    throw new EbError("Die Autorisierung ist abgelaufen oder gehört nicht zu dieser Anfrage. Bitte die Bankverbindung neu starten.");
   }
 
   const data = await ebFetch("/sessions", { method: "POST", body: JSON.stringify({ code }) });

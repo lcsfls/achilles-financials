@@ -946,6 +946,8 @@ export const EN: Record<string, string> = {
   "Passwort wiederholen": "Repeat password",
   "Die Passwörter stimmen nicht überein.": "The passwords do not match.",
   "Bitte lege zuerst einen Login an.": "Please create a login first.",
+  "Die Autorisierung ist abgelaufen oder gehört nicht zu dieser Anfrage. Bitte die Bankverbindung neu starten.":
+    "The authorization has expired or does not belong to this request. Please start the bank connection again.",
   "Weiter": "Continue",
   "Zurück": "Back",
   "Wie möchtest du starten?": "How would you like to start?",

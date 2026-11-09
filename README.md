@@ -475,7 +475,9 @@ GitHub Actions runs all of this plus a Docker build on every push; pushing a ver
 the release with `.deb` packages and the notes from `CHANGELOG.md`.
 
 `server.js` wraps the adapter-node handler and reads `HOSTNAME`/`PORT` as before. Behind a reverse
-proxy it takes protocol and host from `X-Forwarded-Proto`/`X-Forwarded-Host`; without a proxy it
+proxy it takes protocol and host from `X-Forwarded-Proto`/`X-Forwarded-Host`; set
+`ADDRESS_HEADER=X-Forwarded-For` (and `XFF_DEPTH` to the number of proxies) so the login lockout
+counts per client instead of per proxy; without a proxy it
 treats requests as plain http, so login works on a LAN address too.
 
 Data sources: [Enable Banking](https://enablebanking.com) (PSD2 banking) ·
