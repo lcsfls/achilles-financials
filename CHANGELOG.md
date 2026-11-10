@@ -3,7 +3,7 @@
 All notable changes to Achilles Financials. Versions follow [semantic versioning](https://semver.org):
 the update in Settings tracks released tags, not every commit on `main`.
 
-## [2.3.0] — 2026-11-09
+## [2.3.0] — 2026-11-10
 
 ### Changed
 - **The login is now required on first run.** The setup wizard has a new step that creates
