@@ -45,6 +45,9 @@ function isPublic(pathname: string) {
   return (
     pathname === "/login" ||
     pathname.startsWith("/api/auth/") ||
+    // Return address from the bank. The phone that lands here is usually not
+    // signed in; the one-time state check in completeAuth protects it instead.
+    pathname === "/api/bank/callback" ||
     pathname.startsWith("/_app/") ||
     pathname === "/manifest.webmanifest"
   );

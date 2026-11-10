@@ -59,7 +59,7 @@ stays on your own server.
 | 🌍 **English & German** | Pick your language in the first-run setup wizard; switch anytime. Number and date formats follow. |
 | 💱 **Your currency** | Display everything in one of twelve currencies, with **USD always shown alongside**. Amounts stay in EUR internally; conversion happens at display time with ECB reference rates. |
 | ⬆️ **Self-updating** | Settings → Updates shows what's new since your version and installs it on click. Or one line in the shell. |
-| 🔐 **Login** | Username + password (scrypt), enabled in Settings. Off by default so a fresh install can't lock you out — turn it on before anyone else can reach the host. |
+| 🔐 **Login** | Username + password (scrypt). The setup wizard makes you create it on first run, so a fresh install is never readable by whoever reaches the host first. |
 | 💾 **Encrypted backup** | Settings → Backup downloads a password-protected `.achillesbak` (AES-256-GCM). It contains your banking private key, so it's never written in the clear — and never restorable without the password. |
 | 🔎 **Every outbound call, listed** | Settings → External services names each service Achilles contacts, **what actually leaves your server**, when, and the source file to check the claim. Six entries, compiled from every `fetch()` in the code. |
 | 🔒 **Private by design** | One SQLite file on your server. No analytics, no telemetry, no third-party scripts, fonts or tracking pixels. |
@@ -202,15 +202,15 @@ browser — no shell needed.
 
 ## First run
 
-However you installed it, the first open lands in a setup wizard: **language → optional bank
-credentials → demo data or start empty**. You can skip the bank part and add it later; nothing is
-required to get a working dashboard.
+However you installed it, the first open lands in a setup wizard: **language → login → optional
+bank credentials → demo data or start empty**. The login is required; the bank part can be skipped
+and added later.
 
 Three things worth doing right after:
 
-1. **Turn on the login.** It is **off by default**, so a fresh install can't lock you out before you
-   have credentials — which also means anyone who can reach the host can read your finances until
-   you enable it. **Settings → Login**, before the machine is reachable by anyone else.
+1. **Run the wizard right away.** Until you have created the login in the wizard, the instance is
+   open to anyone who can reach the host. Installs set up before version 2.3.0 may still run
+   without a login: check **Settings → Login**.
 2. **Set the public address.** **Settings → Public address of this instance**. Only needed for the
    bank connection, but it is the single most common reason the QR flow fails — without it the app
    guesses its own URL from the request, and behind a proxy that guess is wrong.
@@ -360,8 +360,10 @@ its own progress.
   EUR, converted only for display, so nothing is rewritten in your database.
 - **Watchlist** — pin the symbols you actually follow to the top, drag tiles to swap them, hover for
   a 6-month chart.
-- **Login** — Settings → Login. Off by default so a fresh install cannot lock you out. **Turn it on
-  before the host is reachable by anyone else.**
+- **Login** — created in the setup wizard; change it under Settings → Login. Forgot the password?
+  Remove the login from the database and set a new one in Settings right after:
+  `docker exec <container> node -e "require('better-sqlite3')('/data/achilles.db').prepare(\"DELETE FROM settings WHERE key LIKE 'auth_%'\").run()"`
+  (outside Docker: the same statement with `sqlite3` on `data/achilles.db`).
 - **Backup** — Settings → Backup downloads a password-protected `.achillesbak`. It holds your banking
   private key and every transaction, so it is never written in the clear — and never restorable
   without the password. Keep the password somewhere other than the file.
@@ -473,15 +475,30 @@ GitHub Actions runs all of this plus a Docker build on every push; pushing a ver
 the release with `.deb` packages and the notes from `CHANGELOG.md`.
 
 `server.js` wraps the adapter-node handler and reads `HOSTNAME`/`PORT` as before. Behind a reverse
-proxy it takes protocol and host from `X-Forwarded-Proto`/`X-Forwarded-Host`; without a proxy it
+proxy it takes protocol and host from `X-Forwarded-Proto`/`X-Forwarded-Host`; set
+`ADDRESS_HEADER=X-Forwarded-For` (and `XFF_DEPTH` to the number of proxies) so the login lockout
+counts per client instead of per proxy; without a proxy it
 treats requests as plain http, so login works on a LAN address too.
 
 Data sources: [Enable Banking](https://enablebanking.com) (PSD2 banking) ·
 [gold-api.com](https://gold-api.com) (metal spot prices) · Yahoo Finance (stocks/ETFs/crypto) ·
 [frankfurter.app](https://frankfurter.app) (FX rates)
 
+## What Achilles does not do
+
+- **No transfers.** Achilles only reads. It cannot move money, by design.
+- **No support.** It is a hobby project. Issues and pull requests are welcome, answers are not
+  guaranteed.
+- **No hosted version.** You run it yourself; nobody else sees your data.
+
 ## Disclaimer
 
-A hobby project, built entirely by an AI, for personal use on a private network. It has **no
-authentication layer** — don't expose it to the public internet without a reverse proxy with auth
-(Authelia, Tailscale, VPN, …) in front of it. Nothing in this app is financial advice.
+A hobby project, built entirely by an AI, for personal use on a private network. Review the code
+before you trust it with bank access. It has a login, but it is not hardened for the open internet:
+keep it on your LAN or behind a reverse proxy, VPN or Tailscale. Nothing in this app is financial
+advice.
+
+## License
+
+[GNU Affero General Public License v3.0](LICENSE). You may use, change and share Achilles; if you
+run a modified version for others over a network, you must offer them its source code.

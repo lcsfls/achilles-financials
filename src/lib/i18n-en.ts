@@ -939,6 +939,15 @@ export const EN: Record<string, string> = {
   "Du kannst das jederzeit später in den Einstellungen nachholen — oder Kontoauszüge per CSV importieren.":
     "You can do this later in Settings at any time — or import statements via CSV.",
   "Überspringen": "Skip",
+  "Login anlegen": "Create your login",
+  "Achilles zeigt deine Finanzen. Ohne Login könnte sie jeder lesen, der diesen Server erreicht.":
+    "Achilles shows your finances. Without a login, anyone who can reach this server could read them.",
+  "Der Login ist eingerichtet.": "The login is set up.",
+  "Passwort wiederholen": "Repeat password",
+  "Die Passwörter stimmen nicht überein.": "The passwords do not match.",
+  "Bitte lege zuerst einen Login an.": "Please create a login first.",
+  "Die Autorisierung ist abgelaufen oder gehört nicht zu dieser Anfrage. Bitte die Bankverbindung neu starten.":
+    "The authorization has expired or does not belong to this request. Please start the bank connection again.",
   "Weiter": "Continue",
   "Zurück": "Back",
   "Wie möchtest du starten?": "How would you like to start?",

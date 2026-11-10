@@ -5,7 +5,7 @@ import {
 } from "$lib/server/auth";
 
 
-export async function POST({ request: req, cookies, url }: RequestEvent) {
+export async function POST({ request: req, cookies, url, getClientAddress }: RequestEvent) {
   if (!authEnabled()) return json({ error: "Login ist nicht eingerichtet." }, { status: 400 });
 
   const { username, password } = await req.json();
@@ -15,7 +15,14 @@ export async function POST({ request: req, cookies, url }: RequestEvent) {
 
   // Nach Herkunft sperren, nicht nach Benutzername: Sonst könnte ein Fremder
   // den echten Nutzer aussperren, indem er dessen Namen falsch durchprobiert.
-  const who = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "direkt";
+  //
+  // The address comes from the connection, not from X-Forwarded-For: that
+  // header is set by the client, so trusting it would let anyone reset the
+  // counter with every attempt. Behind a reverse proxy, set ADDRESS_HEADER
+  // (and XFF_DEPTH) so adapter-node reads the real client address from the
+  // proxy instead; without it all proxied clients share one counter.
+  let who = "unbekannt";
+  try { who = getClientAddress(); } catch { /* no address available */ }
   const lock = loginLockSeconds(who);
   if (lock > 0) {
     return json({ error: "Zu viele Fehlversuche. Bitte {n} Sekunden warten.", seconds: lock }, { status: 429 });

@@ -12,6 +12,10 @@ import { getSetting, setSetting, deleteSetting } from "./db";
 const SCRYPT_N = 16384;
 const SESSION_DAYS = 30;
 export const SESSION_COOKIE = "achilles_session";
+/** Settings key holding the ids of the sessions that are still valid. */
+const SESSIONS_KEY = "auth_sessions";
+/** Signed-in devices kept at once; the oldest is dropped beyond that. */
+const MAX_SESSIONS = 20;
 
 export function authEnabled(): boolean {
   return Boolean(getSetting("auth_user") && getSetting("auth_hash"));
@@ -32,12 +36,14 @@ export function setCredentials(username: string, password: string) {
   setSetting("auth_hash", `${salt.toString("hex")}:${hash.toString("hex")}`);
   // Bestehende Sitzungen entwerten — ein Passwortwechsel soll überall wirken
   setSetting("auth_secret", crypto.randomBytes(32).toString("hex"));
+  deleteSetting(SESSIONS_KEY);
 }
 
 export function disableAuth() {
   deleteSetting("auth_user");
   deleteSetting("auth_hash");
   deleteSetting("auth_secret");
+  deleteSetting(SESSIONS_KEY);
 }
 
 export function verifyPassword(username: string, password: string): boolean {
@@ -79,25 +85,57 @@ function sessionSecret(): string {
   return s;
 }
 
-/** Signiertes Token: <expiry>.<hmac>. Kein Server-State nötig. */
+/** Valid session ids with their expiry, expired ones dropped. */
+function liveSessions(): Record<string, number> {
+  let all: Record<string, number> = {};
+  try { all = JSON.parse(getSetting(SESSIONS_KEY) ?? "{}"); } catch { /* treat as none */ }
+  const now = Date.now();
+  return Object.fromEntries(Object.entries(all).filter(([, exp]) => typeof exp === "number" && exp > now));
+}
+
+function sign(payload: string): string {
+  return crypto.createHmac("sha256", sessionSecret()).update(payload).digest("hex");
+}
+
+/**
+ * Signed token: <expiry>.<id>.<hmac>.
+ *
+ * The id is also stored on the server, so signing out really ends the session.
+ * A signature alone would stay valid until it expires, which made a copied
+ * cookie usable for 30 days after "Logout".
+ */
 export function createSession(): { value: string; maxAge: number } {
   const expiry = Date.now() + SESSION_DAYS * 24 * 3600 * 1000;
-  const mac = crypto.createHmac("sha256", sessionSecret()).update(String(expiry)).digest("hex");
-  return { value: `${expiry}.${mac}`, maxAge: SESSION_DAYS * 24 * 3600 };
+  const id = crypto.randomBytes(16).toString("hex");
+
+  const sessions = liveSessions();
+  sessions[id] = expiry;
+  const kept = Object.entries(sessions).sort((x, y) => y[1] - x[1]).slice(0, MAX_SESSIONS);
+  setSetting(SESSIONS_KEY, JSON.stringify(Object.fromEntries(kept)));
+
+  return { value: `${expiry}.${id}.${sign(`${expiry}.${id}`)}`, maxAge: SESSION_DAYS * 24 * 3600 };
 }
 
 export function verifySession(token: string | undefined): boolean {
   if (!token) return false;
-  const [expiryStr, mac] = token.split(".");
-  if (!expiryStr || !mac) return false;
+  const [expiryStr, id, mac] = token.split(".");
+  if (!expiryStr || !id || !mac) return false;
 
   const expiry = Number(expiryStr);
   if (!Number.isFinite(expiry) || Date.now() > expiry) return false;
 
-  const expected = crypto.createHmac("sha256", sessionSecret()).update(expiryStr).digest("hex");
-  const a = Buffer.from(mac);
-  const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!timingSafeEqualStr(mac, sign(`${expiryStr}.${id}`))) return false;
+  return id in liveSessions();
+}
+
+/** End one session (sign-out). Unknown or malformed tokens are ignored. */
+export function revokeSession(token: string | undefined) {
+  const id = token?.split(".")[1];
+  if (!id) return;
+  const sessions = liveSessions();
+  if (!(id in sessions)) return;
+  delete sessions[id];
+  setSetting(SESSIONS_KEY, JSON.stringify(sessions));
 }
 
 /* ---------- Schutz gegen Durchprobieren ---------- */
