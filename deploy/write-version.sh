@@ -16,9 +16,14 @@ TAG="$(git describe --tags --exact-match 2>/dev/null || echo '')"
 [[ -n "$TAG" ]] && VERSION="${TAG#v}"
 
 mkdir -p control
+# control/ is writable by the app; never let root write through a link there.
+find control -maxdepth 1 -type l -delete 2>/dev/null || true
+TMP="$(mktemp "$APP_DIR/.version.XXXXXX")"
 printf '{"version":"%s","sha":"%s","deployedAt":"%s","branch":"%s"}\n' \
   "$VERSION" "$SHA" "$(date -Iseconds)" "$BRANCH" \
-  > control/version.json
+  > "$TMP"
+chmod 644 "$TMP"
+mv -f "$TMP" control/version.json
 
 # uid 1001 = App-Nutzer im Container (siehe Dockerfile). Muss stimmen, bevor
 # Docker das Verzeichnis bind-mountet — sonst legt Docker es als root an und

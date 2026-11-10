@@ -19,6 +19,12 @@ the update in Settings tracks released tags, not every commit on `main`.
   app no longer needs to be signed in. In exchange the `state` is mandatory, valid once and for
   30 minutes.
 
+- **Signing out ends the session.** Sessions are tracked on the server; a copied cookie no longer
+  stays valid for 30 days after logout. Everyone is asked to sign in once after this update.
+- **Updater hardened against planted links.** The host-side update scripts no longer write through
+  symlinks in the control directory and build their files outside it.
+- The public auth status no longer reveals the username to signed-out visitors.
+
 ### Docs
 - README: states plainly what Achilles does not do (no transfers, no support, no hosted version)
   and how to reset a forgotten password.

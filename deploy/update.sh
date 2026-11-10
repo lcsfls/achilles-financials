@@ -46,15 +46,30 @@ fix_owner() {
   chmod 775 "$CONTROL_DIR" 2>/dev/null || true
 }
 
+# The control directory is writable by the app (uid 1001) while this script
+# runs as root. A compromised app could plant a symlink there and have root
+# write through it. So: never write through a link, and build new files
+# outside the directory, then rename them in (a rename replaces a link instead
+# of following it). This narrows the window; it does not make the directory
+# trustworthy.
+drop_links() {
+  [[ -d "$CONTROL_DIR" ]] || return 0
+  find "$CONTROL_DIR" -maxdepth 1 -type l -delete 2>/dev/null || true
+}
+
 write_status() {
   [[ -d "$CONTROL_DIR" ]] || return 0
   local state="$1" msg="${2:-}"
   # Nur JSON-sichere Zeichen in die Statusdatei schreiben
   msg=$(printf '%s' "$msg" | tr -d '"\\' | tr '\n\r\t' '   ' | cut -c1-300)
-  cat > "${CONTROL_DIR}/.status.tmp" <<EOF
+  local tmp
+  tmp="$(mktemp "${APP_DIR}/.status.XXXXXX")" || return 0
+  cat > "$tmp" <<EOF
 {"state":"${state}","startedAt":"${STARTED_AT}","finishedAt":"$(date -Iseconds)","fromSha":"${FROM_SHA}","toSha":"${TO_SHA}","message":"${msg}"}
 EOF
-  mv -f "${CONTROL_DIR}/.status.tmp" "${CONTROL_DIR}/update-status.json"
+  chmod 644 "$tmp"
+  mv -f "$tmp" "${CONTROL_DIR}/update-status.json"
+  drop_links
   fix_owner
 }
 
@@ -74,6 +89,7 @@ command -v docker >/dev/null 2>&1 || fail "Docker ist nicht installiert."
 # Verzeichnis kann von Docker als root angelegt worden sein (Bind-Mount ohne
 # vorhandenes Quellverzeichnis) — Besitzer daher immer zuerst geradeziehen.
 mkdir -p "$CONTROL_DIR"
+drop_links
 fix_owner
 write_status "running" "Update gestartet"
 
@@ -83,7 +99,9 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 # Das Log sammelt die komplette Build-Ausgabe jedes Updates und wuchs bisher
 # unbegrenzt — vor dem Anhängen auf die jüngsten 1 MB kürzen.
 if [[ -f "$LOG_FILE" ]] && [[ "$(wc -c <"$LOG_FILE" 2>/dev/null || echo 0)" -gt 2000000 ]]; then
-  tail -c 1000000 "$LOG_FILE" > "${LOG_FILE}.trim" 2>/dev/null && mv -f "${LOG_FILE}.trim" "$LOG_FILE"
+  TRIM_TMP="$(mktemp "${APP_DIR}/.log-trim.XXXXXX")" \
+    && tail -c 1000000 "$LOG_FILE" > "$TRIM_TMP" 2>/dev/null && chmod 644 "$TRIM_TMP" && mv -f "$TRIM_TMP" "$LOG_FILE"
+  rm -f "${TRIM_TMP:-}" 2>/dev/null || true
   fix_owner
 fi
 
@@ -131,6 +149,7 @@ fi
 export APP_URL
 
 log "Baue Container neu (das kann ein paar Minuten dauern) …"
+drop_links
 if ! docker compose up -d --build >>"$LOG_FILE" 2>&1; then
   fail "docker compose build fehlgeschlagen — Details in $LOG_FILE"
 fi
