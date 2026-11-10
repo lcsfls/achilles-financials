@@ -26,6 +26,8 @@ the update in Settings tracks released tags, not every commit on `main`.
 - The public auth status no longer reveals the username to signed-out visitors.
 
 ### Docs
+- **License added: AGPL-3.0.** Until now the repository had none, so nobody was formally allowed
+  to use or change the code.
 - README: states plainly what Achilles does not do (no transfers, no support, no hosted version)
   and how to reset a forgotten password.
 

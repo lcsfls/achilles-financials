@@ -2,6 +2,7 @@
   "name": "achilles-financials",
   "version": "2.3.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",

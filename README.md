@@ -497,3 +497,8 @@ A hobby project, built entirely by an AI, for personal use on a private network.
 before you trust it with bank access. It has a login, but it is not hardened for the open internet:
 keep it on your LAN or behind a reverse proxy, VPN or Tailscale. Nothing in this app is financial
 advice.
+
+## License
+
+[GNU Affero General Public License v3.0](LICENSE). You may use, change and share Achilles; if you
+run a modified version for others over a network, you must offer them its source code.
